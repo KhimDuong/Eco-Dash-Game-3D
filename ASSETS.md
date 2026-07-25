@@ -100,6 +100,19 @@ named `Greybox*` and using a small shared set of flat URP materials
 are original and need no CREDITS entry; they're listed here so the P3 art pass
 (Dev B task B5) knows to hunt the `Greybox` prefix to zero.
 
+**Currently in the project** (created in A3; materials live in
+`Assets/Models/Placeholder/`, kept separate from `Materials/` so B5 can find
+them by folder as well as by prefix):
+
+| Placeholder | Used by | Replace with |
+|---|---|---|
+| `Greybox_Greenie` on a scaled capsule + `Greybox_Accent` "Nose" cube | `Player.prefab` → `Visual` child | a ~1 m low-poly robot (see the Greenie row above); keep the `Visual` child, its collider-free setup and the CharacterController on the root |
+| `Greybox_Seed` on a 0.28 m sphere | `Seed.prefab` | small seed//energy-pellet mesh + emissive material |
+| `Greybox_Ground` on a 40×40 m plane | `Ground_Greybox` in Dev A's test scene | nothing — B1's greybox kit and real L1 floor supersede it |
+
+Greenie's proportions are the contract, not the mesh: **~1.15 m tall, 0.35 m
+radius**, pivot at the feet, `Visual` child centred at y = 0.6.
+
 Carried over from the 2D project's audio work: L1 SFX were Coplay-generated
 (kept); music/jingles are CC0/CC-BY from OpenGameArt — copy the corresponding
 entries into this repo's CREDITS.md when the audio is ported (Dev C task C5).
