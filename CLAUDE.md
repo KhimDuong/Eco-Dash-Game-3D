@@ -76,8 +76,11 @@ Physics layers and the collision matrix live in
 
 `W/A/S/D` move on the ground plane · `J` shoot Seed projectile · `E` interact
 (NPC/chest) · `Esc` pause · `I/Tab` bag · `1–4` hotbar · `Q` quest log ·
-`C` codex. Implemented via the Input System asset copied from the 2D repo
-([Assets/InputSystem_Actions.inputactions](Assets/InputSystem_Actions.inputactions)).
+`C` codex. Read exactly as in the 2D repo: **direct polling of `Keyboard.current`**
+from the Input System package (`kb.wKey.isPressed`, `kb.jKey.isPressed`, …), *not*
+through action maps. [Assets/InputSystem_Actions.inputactions](Assets/InputSystem_Actions.inputactions)
+is copied from the 2D repo and set as the project-wide asset, but gameplay
+doesn't bind to it — don't mix in legacy `Input.GetAxis` either.
 
 ## Working agreements for the AI
 
@@ -98,6 +101,7 @@ Physics layers and the collision matrix live in
 ## Current status
 
 See [.claude/docs/roadmap.md](.claude/docs/roadmap.md) for the live backlog.
-As of repo creation: **P0 bootstrap** is the active target — the Unity project
-itself hasn't been created yet (Dev A task A1 in
-[TEAM-TASKS.md](TEAM-TASKS.md)).
+**P0 bootstrap is landing:** the URP-3D project now exists at the repo root
+(seeded from the editor's own `3d-cross-platform` template), tags/layers are in,
+and the Tier-0 scripts plus the Tier-1 `Player/*` closure are ported. Next up:
+Cinemachine + ProBuilder install, the collision matrix, and `Player.prefab` (A3).

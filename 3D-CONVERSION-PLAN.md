@@ -69,14 +69,22 @@ The 2D repo has ~75 scripts. Sort them into three buckets:
 
 **Tier 0 — copy verbatim (no physics, dimension-agnostic).**
 `Systems/` (GameManager, Inventory, SaveSystem, QuestLog, QuestProgress, Codex,
-PlayerProgress, GameSettings, Crafting, ItemUse, SceneProgress, all catalogs),
+PlayerProgress, GameSettings, Crafting, SceneProgress, all catalogs),
 `Items/ItemDef`, `ItemDatabase`, `CraftingRecipe`, all of `UI/` except
-`DynamicYSorter`, all of `Shop/`, `UI/Dialogue/`, `MenuController`,
-`World/IInteractable`, `Enemies/IDamageable`, `Enemies/IKnockbackable`.
+`DynamicYSorter`, `Shop/ShopController` + `ShopUpgradeRow`, `UI/Dialogue/`,
+`MenuController`, `World/IInteractable`, `Enemies/IDamageable`.
 → These are the game's brain. **Do not rewrite them; copy and compile.**
+
+*Corrected during A2 (verified against the 2D source):* `Systems/ItemUse`
+(`Physics2D.OverlapCircleAll`) and `Shop/ShopNPC` (`Collider2D`) are **Tier 1**,
+not Tier 0. `Enemies/IKnockbackable` needs its `Vector2` impulse widened to
+`Vector3` — see the contract table in
+[.claude/docs/architecture.md](.claude/docs/architecture.md). `UI/BossHealthBar`
+is Tier-0 code but references `MegaSmogBoss`, so it ships with **C3**.
 
 **Tier 1 — mechanical port (find/replace 2D physics API, logic unchanged).**
 `Player/*` (Controller, Health, Shooter, Interactor, Animator),
+`Systems/ItemUse`, `Shop/ShopNPC`,
 `Items/SeedProjectile`, `EnemyProjectile`, all pickups (`ItemPickup`,
 `HealthPickup`, `SpeedBoostPickup`, `QuestItemPickup`, `EnergyCore`),
 `World/*` triggers (Chest, Keycard, Litter, LoreNote, portals/gates, BossDoor,

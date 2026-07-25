@@ -4,6 +4,23 @@ This project's Unity Editor is driven live through the **Coplay MCP** tools
 (`mcp__coplay-mcp__*`). Prefer them over hand-editing `.unity`/`.prefab` YAML,
 which is fragile and easy to corrupt.
 
+## Clone setup (run once per machine — Dev B & Dev C too)
+
+`.gitattributes` routes every Unity YAML type through Unity Smart Merge, but the
+merge driver itself lives in git config, which is **not** cloned. After cloning,
+run these three from the repo root with your own editor path:
+
+```sh
+git config merge.unityyamlmerge.name "Unity SmartMerge"
+git config merge.unityyamlmerge.driver '"<UNITY>/Editor/Data/Tools/UnityYAMLMerge.exe" merge -p --force --fallback none %O %B %A %A'
+git config merge.unityyamlmerge.recursive binary
+```
+
+On Dev A's machine `<UNITY>` is `D:/Y4-Sem3/Unity Editors/6000.3.16f1`; the
+default Hub location is `C:/Program Files/Unity/Hub/Editor/6000.3.16f1`. Without
+this, a scene/prefab conflict falls back to a line-based merge and will corrupt
+the YAML.
+
 ## Before you touch the scene
 
 1. Confirm the editor is connected: `list_unity_project_roots`.
@@ -42,10 +59,17 @@ Create these in the editor and keep them matching the code.
 
 **Tags:** `Player`, `Enemy`, `EnergyCore`, `Pickup`, `Projectile`, `Hazard`.
 
-**Physics layers:** `Player`, `Enemy`, `PlayerProjectile`, `EnemyProjectile`,
-`Obstacle`, `Trigger`, `Ground`. Collision matrix: `PlayerProjectile` hits
-`Enemy` + `Obstacle` but **not** `Player`; `EnemyProjectile` hits `Player` +
-`Obstacle` but **not** `Enemy`; `Trigger` collides with `Player` only.
+**Physics layers** (created in A1 at these exact indices — code and prefabs
+depend on them): `8 Player`, `9 Enemy`, `10 PlayerProjectile`,
+`11 EnemyProjectile`, `12 Obstacle`, `13 Trigger`, `14 Ground`.
+
+Collision matrix: `PlayerProjectile` hits `Enemy` + `Obstacle` only (never
+`Player`, never another projectile); `EnemyProjectile` hits `Player` + `Obstacle`
+only; `Trigger` collides with `Player` only. Everything else keeps the default
+"collides with all". Set it with `Physics.IgnoreLayerCollision` from
+`execute_script` (it writes `DynamicsManager.asset`) — **never hand-edit
+`m_LayerCollisionMatrix`**, it's a packed little-endian hex blob and a wrong byte
+order silently scrambles the matrix instead of failing.
 
 **No sorting layers.** Depth sorting is free in 3D — the 2D repo's
 `DynamicYSorter` has no 3D counterpart; never port it.
@@ -72,6 +96,21 @@ Create these in the editor and keep them matching the code.
     on disk actually changed.
 
 ## Gotchas (hard-won — do not rediscover these)
+
+- **Never hand-write `ProjectSettings/*.asset` YAML.** Unity's reader is strict and
+  fails *silently*: an empty array entry must be `  - ` **with a trailing space**.
+  Writing a bare `  -` made Unity drop every `layers` entry after the first one
+  (indices 0–5 survived, `Player`…`Ground` came back as `''` — while the file on
+  disk still looked correct). Set tags/layers through
+  `new SerializedObject(AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/TagManager.asset")[0])`
+  → `FindProperty("tags"/"layers")` → `ApplyModifiedPropertiesWithoutUndo()` →
+  `AssetDatabase.SaveAssets()`, then assert with `LayerMask.NameToLayer(...)`.
+- **`m_LayerCollisionMatrix` is 32 little-endian uint32s** in one hex string
+  (`ffd3ffff` = `0xFFFFD3FF`). Use `Physics.IgnoreLayerCollision` + read back with
+  `Physics.GetIgnoreLayerCollision`; never edit the blob.
+- **`Player` is already one of Unity's 7 built-in tags.** The 2D repo also declares
+  it as a custom tag, so copying that list verbatim yields a duplicate dropdown
+  entry — the 3D project keeps only the built-in.
 
 - **`save_scene` does a "Save As" into `Assets/` root.** Save in place instead
   via `execute_script`:

@@ -1,2 +1,48 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# ===== Unity YAML — merge with UnityYAMLMerge (Smart Merge) =====
+# Requires the local merge driver; each clone runs the git config lines in
+# .claude/docs/unity-workflow.md ("Clone setup") once.
+*.unity          merge=unityyamlmerge eol=lf
+*.prefab         merge=unityyamlmerge eol=lf
+*.asset          merge=unityyamlmerge eol=lf
+*.meta           merge=unityyamlmerge eol=lf
+*.mat            merge=unityyamlmerge eol=lf
+*.anim           merge=unityyamlmerge eol=lf
+*.controller     merge=unityyamlmerge eol=lf
+*.overrideController merge=unityyamlmerge eol=lf
+*.physicMaterial merge=unityyamlmerge eol=lf
+*.playable       merge=unityyamlmerge eol=lf
+*.mask           merge=unityyamlmerge eol=lf
+*.brush          merge=unityyamlmerge eol=lf
+*.terrainlayer   merge=unityyamlmerge eol=lf
+*.preset         merge=unityyamlmerge eol=lf
+*.asmdef         text eol=lf
+*.inputactions   text eol=lf
+
+# ===== Binary assets — never try to merge =====
+*.fbx     binary
+*.obj     binary
+*.blend   binary
+*.dae      binary
+*.3ds     binary
+*.gltf    binary
+*.glb     binary
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
+*.psd     binary
+*.tga     binary
+*.tif     binary
+*.exr     binary
+*.hdr     binary
+*.cubemap binary
+*.wav     binary
+*.mp3     binary
+*.ogg     binary
+*.ttf     binary
+*.otf     binary
+*.unitypackage binary
+*.dll     binary
+*.pdf     binary
