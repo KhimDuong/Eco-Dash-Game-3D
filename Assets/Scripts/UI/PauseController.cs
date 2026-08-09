@@ -58,6 +58,18 @@ public class PauseController : MonoBehaviour
         else Time.timeScale = 1f;
     }
 
+    /// <summary>
+    /// "Về Menu" on the pause panel. A pass-through so the button can target this
+    /// component inside HUD.prefab rather than the scene's GameManager — a prefab
+    /// asset can't hold a scene reference, so the 2D wiring broke on every new scene.
+    /// </summary>
+    public void LoadMainMenu()
+    {
+        Time.timeScale = 1f;
+        if (GameManager.Instance != null) GameManager.Instance.LoadMainMenu();
+        else UnityEngine.SceneManagement.SceneManager.LoadScene(0);
+    }
+
     void SetPaused(bool paused)
     {
         isPaused = paused;

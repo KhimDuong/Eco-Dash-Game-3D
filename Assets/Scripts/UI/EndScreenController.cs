@@ -84,4 +84,26 @@ public class EndScreenController : MonoBehaviour
         Vector3 at = Camera.main != null ? Camera.main.transform.position : Vector3.zero;
         AudioSource.PlayClipAtPoint(clip, at);
     }
+
+    // --- Button targets (3D) --------------------------------------------------
+    // In the 2D build the win/lose buttons pointed straight at the scene's
+    // GameManager, which a prefab ASSET cannot reference — every level scene had to
+    // re-drag it into the HUD instance. These pass-throughs let the buttons target a
+    // component inside HUD.prefab instead, so dropping the prefab into a scene needs
+    // no wiring. Same behaviour, one less thing for Dev B to forget.
+
+    /// <summary>"Chơi lại" on the win/lose panel.</summary>
+    public void RestartLevel()
+    {
+        if (GameManager.Instance != null) GameManager.Instance.RestartLevel();
+        else Time.timeScale = 1f;
+    }
+
+    /// <summary>"Về Menu" on the win/lose panel.</summary>
+    public void LoadMainMenu()
+    {
+        Time.timeScale = 1f;
+        if (GameManager.Instance != null) GameManager.Instance.LoadMainMenu();
+        else SceneManager.LoadScene(0);
+    }
 }

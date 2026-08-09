@@ -44,22 +44,46 @@ owners in [../../TEAM-TASKS.md](../../TEAM-TASKS.md).
     instance in `Assets/_Scenes/SampleScene.unity` (Dev A's test scene)
   - [x] Play-mode smoke test: grounded, HP 6/6, i-frames block the second hit,
     shield/heal clamp, seed launches flat at speed 10 — 24 checks, no exceptions
-  - [ ] human check: WASD moves / J fires / visual turns to face (keyboard input
-    can't be synthesised from the MCP)
+  - [x] input check **automated** (A5): synthesised Input System key events prove
+    W→+Z and D→+X at exactly 5.00 m/s (2D `moveSpeed`), the visual child turns 90°
+    to face travel, and J spawns a `SeedProjectile`
   - [ ] E-interact end-to-end — needs a real `IInteractable` in the scene
     (arrives with B2's `Chest`)
-- **A4** ¾ follow cam + `Shake` API kept
+- **A4** ¾ follow cam + `Shake` API kept — **done**
   - [x] `CameraFollow` 3D rig: pitch 50°/dist 12 verified in play mode
     (camera at `(0, 9.69, -7.71)`, no yaw/roll), `Instance`/`Shake` intact
-  - [ ] swap the follow half to a Cinemachine vcam + impulse source
+  - [x] follow half swapped to Cinemachine: `CameraRig.prefab` = Main Camera
+    (`CinemachineBrain`) + `CM_PlayerCam` (`CinemachineCamera` + `CinemachineFollow`
+    + impulse source/listener + `CameraFollow`). Binds to the `Player` tag on Start,
+    so B and C just drop the prefab in
+  - [x] verified in play mode: rest offset exactly `(0, 9.693, -7.713)`, rotation
+    `(50, 0, 0)`, zero drift after a teleport, and `Shake(0.18, 0.18)` peaks at
+    0.178 m then settles — magnitude keeps its 2D meaning (peak offset in metres)
 - [ ] **B1** Greybox kit + `Level1_BarrenFarm` blockout (2D layout as map) + NavMesh
 - [ ] **C1** `PlasticSlime` 3D (NavMeshAgent chase, contact damage, hit-flash,
   death drop) in sandbox + placed in L1
 - [ ] Slice gate: chest → core → HUD tick, slime fight, no Play-mode exceptions
 
 ### P2 — Full port (Week 2)
-- [ ] **A5** HUD/menus wired (bag, hotbar, quest log, codex, pause, settings,
-  end screens); `MainMenu` + story scenes; Build Settings order
+- **A5** HUD/menus wired — **landed early** (it unblocks B2's objective flow)
+  - [x] `Assets/Audio/**` + TMP Essential Resources imported; the migrated UI binds
+    to `LiberationSans SDF` by its stock GUID and Vietnamese renders via the
+    dynamic fallback, same as 2D
+  - [x] `HUD.prefab` rebuilt from the 2D **Level 1 HUD instance** (the only place
+    the full HUD was assembled) with `TutorialPopup` folded in — see the
+    [HUD contract](architecture.md#hudprefab-contract-dev-b-drop-it-in-dont-rewire)
+  - [x] `GameManager.prefab` banked for B; both placed in `SampleScene`
+  - [x] `MainMenu` / `Intro_Story` / `Ending_Story` migrated verbatim (zero missing
+    scripts); menu cleanup: three stray `MenuController` copies nested under button
+    labels deleted, URP 2D light removed
+  - [x] Build Settings: `MainMenu` at index 0 (`GameManager.LoadMainMenu` → scene 0),
+    then `Intro_Story`, `Ending_Story`, `SampleScene` (disabled — Dev A sandbox)
+  - [x] play-mode verified, 22/22 + 10/10 + 5/5 + 5/5: I/Tab bag · Q quest log ·
+    C codex · Esc pause+freeze/resume · H tutorial (auto-shows on a fresh run) ·
+    HP/objective/trash readouts · win + lose screens with working buttons ·
+    MainMenu → settings → "Chơi Mới" → all five intro slides
+  - [ ] `menu → intro → L1` end-to-end: `Intro_Story.nextScene` is already
+    `Level1_BarrenFarm`; the last hop needs **B1**'s scene to exist
 - [ ] **A6** Persistence parity (save/continue, New Game reset)
 - [ ] **B2** L1 complete (3 chests/cores, reclamation patches, mud, litter,
   pickups, Bà Tư + Ông Sáu + herbs, teleport gate)
@@ -83,6 +107,26 @@ owners in [../../TEAM-TASKS.md](../../TEAM-TASKS.md).
 
 ## Recent log
 
+- _(2026-08-09)_ **A4 done, A5 landed early.** The camera follow moved onto a
+  Cinemachine vcam (`CameraRig.prefab`); `CameraFollow` now only authors the rig
+  and turns `Shake` into an impulse — measured 0.178 m peak for magnitude 0.18, so
+  the 2D contract holds. The whole 2D UI layer migrated by **file copy**: A2's
+  GUID-preserving script port paid off, and `HUD.prefab` + the three UI-only
+  scenes imported with **zero missing scripts**. `HUD.prefab` was rebuilt from the
+  2D Level 1 HUD *instance* (the base prefab alone lacks the objective panel,
+  settings and dialogue system) and `TutorialPopup` folded in, so B places one
+  prefab per scene. Three real bugs found and fixed on the way: the 2D MainMenu
+  carried **four** `MenuController` copies (three parented under button labels,
+  only the root wired to the settings overlay); the Win/Lose/Pause "Về Menu" and
+  "Chơi lại" buttons pointed at the *scene's* GameManager, a reference a prefab
+  asset can't hold, so they arrived dead — now routed through additive
+  pass-throughs on the HUD's own components; and the migrated menu still had a
+  URP **2D** light. Testing note: MCP-driven play-mode probes must run from a
+  `MonoBehaviour` in the player loop, not `EditorApplication.update`, and must set
+  `backgroundBehavior = IgnoreFocus` — an unfocused editor otherwise **disables the
+  keyboard device** and silently drops synthesised events (see
+  [unity-workflow.md](unity-workflow.md#play-mode-probes)). With that fixed, A3's
+  open "human check" is now automated: 5.00 m/s on both axes, 90° facing turn, J fires.
 - _(2026-07-25)_ **A1 + A2 green; A3/A4 scaffolded.** Project opened clean:
   `check_compile_errors` passes on all 46 scripts, ProBuilder 6.1.2 + Cinemachine
   3.1.7 installed, collision matrix verified across all 528 layer pairs.

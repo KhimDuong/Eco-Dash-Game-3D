@@ -101,7 +101,11 @@ doesn't bind to it — don't mix in legacy `Input.GetAxis` either.
 ## Current status
 
 See [.claude/docs/roadmap.md](.claude/docs/roadmap.md) for the live backlog.
-**P0 bootstrap is landing:** the URP-3D project now exists at the repo root
-(seeded from the editor's own `3d-cross-platform` template), tags/layers are in,
-and the Tier-0 scripts plus the Tier-1 `Player/*` closure are ported. Next up:
-Cinemachine + ProBuilder install, the collision matrix, and `Player.prefab` (A3).
+**P0 done; Dev A is through A5.** The URP-3D project, tags/layers/collision
+matrix, Tier-0 + Tier-1 scripts, `Player.prefab`, the Cinemachine `CameraRig.prefab`
+and the whole UI layer (`HUD.prefab`, `GameManager.prefab`, `MainMenu` /
+`Intro_Story` / `Ending_Story`, Build Settings) are in and play-mode verified.
+Dev A's next task is **A6** (persistence parity). The critical path now runs
+through **B1** — no gameplay scene exists yet, so `Intro_Story` can't hand off to
+Level 1. B and C should pull `main` and build on
+`Player.prefab` / `HUD.prefab` / `CameraRig.prefab` rather than rolling their own.
