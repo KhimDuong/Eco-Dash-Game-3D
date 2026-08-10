@@ -110,6 +110,26 @@ them by folder as well as by prefix):
 | `Greybox_Seed` on a 0.28 m sphere | `Seed.prefab` | small seed//energy-pellet mesh + emissive material |
 | `Greybox_Ground` on a 40×40 m plane | `Ground_Greybox` in Dev A's test scene | nothing — B1's greybox kit and real L1 floor supersede it |
 
+### B1 greybox kit — `Assets/Prefabs/Greybox/`
+
+Built by `Assets/Editor/Level1Builder.cs`'s companion scripts; floors and walls
+are real **ProBuilder** meshes so they stay editable with the ProBuilder tools,
+small props are primitives. Materials live in `Assets/Models/Materials/Greybox_*`.
+
+| Prefab | What it stands in for | Notes for the P3 art pass |
+|---|---|---|
+| `Greybox_Floor` | 4 × 4 m ground tile (192 of them make Level 1) | keep the **tiling** — `ReclamationPatch` re-tints tiles as its wave passes; one giant slab would flip the whole map green at once |
+| `Greybox_Wall` | level boundary, scaled per side | any wall/hedge mesh; keep the `Obstacle` layer |
+| `Greybox_Crate` / `_Barrel` / `_Rock` | crates, barrels, exhaust pipes, rocks, bushes, pots | farm-set props |
+| `Greybox_Hut` | `RusticHut` | village hut |
+| `Greybox_Fence` | fence post (36 ring the village) | fence section |
+| `Greybox_DeadTree` | dead tree (30 across the field) | withered tree; the crown has no collider on purpose |
+| `Chest` · `EnergyCore` · `Litter` · `ToxicMud` · `ReclamationPatch` · `TeleportGate` · `NPC_Villager` · `Herb` · `LoreNote` · `ItemPickup` | every interactable in L1 | swap the meshes only — the scripts, trigger colliders and "Nhấn E" prompts are the contract |
+
+**Do not shrink the walk-over trigger radii** (0.75–0.8 m) when swapping meshes:
+a CharacterController is only sampled once per physics step, so the 2D-sized
+0.4 m spheres could be stepped clean over on a slow frame.
+
 Greenie's proportions are the contract, not the mesh: **~1.15 m tall, 0.35 m
 radius**, pivot at the feet, `Visual` child centred at y = 0.6.
 

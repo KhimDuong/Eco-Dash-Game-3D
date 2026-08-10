@@ -101,11 +101,14 @@ doesn't bind to it — don't mix in legacy `Input.GetAxis` either.
 ## Current status
 
 See [.claude/docs/roadmap.md](.claude/docs/roadmap.md) for the live backlog.
-**P0 done; Dev A is through A5.** The URP-3D project, tags/layers/collision
-matrix, Tier-0 + Tier-1 scripts, `Player.prefab`, the Cinemachine `CameraRig.prefab`
-and the whole UI layer (`HUD.prefab`, `GameManager.prefab`, `MainMenu` /
-`Intro_Story` / `Ending_Story`, Build Settings) are in and play-mode verified.
-Dev A's next task is **A6** (persistence parity). The critical path now runs
-through **B1** — no gameplay scene exists yet, so `Intro_Story` can't hand off to
-Level 1. B and C should pull `main` and build on
-`Player.prefab` / `HUD.prefab` / `CameraRig.prefab` rather than rolling their own.
+**P0 done; A1–A5 and B1–B2 done.** The URP-3D project, Tier-0 + Tier-1 scripts,
+`Player.prefab`, the Cinemachine `CameraRig.prefab`, the whole UI layer
+(`HUD.prefab`, `GameManager.prefab`, `MainMenu` / `Intro_Story` / `Ending_Story`)
+and **`Level1_BarrenFarm`** are in and play-mode verified — menu → intro → L1 →
+chests → cores → gate runs end to end.
+
+Next up: **C1** (`PlasticSlime`) is now the critical path — L1 has 29 spawn
+markers waiting under `Spawns/`. Then **A6** (persistence parity) and **B3**
+(Level 2). Level 1 is *generated* from the 2D layout — edit
+[Tools/level1_layout.csv](Tools/level1_layout.csv) and re-run
+**Eco-Dash → Rebuild Level 1** rather than hand-placing.
