@@ -86,6 +86,7 @@ Tunable values stay numerically identical (1 tile = 1 m).
 | `PollutionFlyBot` | hovers at flight height on Y (no NavMesh); 3D raycast LOS masked to `Obstacle`; kite + fire SmogOrbs |
 | `MegaSmogBoss` | same phase machine; 8-dir spray → **horizontal ring** of orbs on XZ; gas zones spawn on the arena floor |
 | `SweepingLaser` | telegraph→sweep cycle unchanged; beam = emissive scaled cylinder (or LineRenderer) + trigger collider |
+| `ReclamationPatch` | **done (B2).** 2D crossfaded two layers of sprite tiles; opaque URP meshes have no alpha, so the 3D patch does what the brief asks — *swap materials in a radius*. A flat disc grows from 0 to `radius` while its colour lerps barren → lush, and ground tiles the wave sweeps over are re-tinted as it passes |
 | `CameraFollow` | keeps the **class name and `Instance`/`Shake(duration, magnitude)` API** so ported callers (`PlayerHealth`, bosses) compile untouched. **A4 (done):** the component now lives on the `CinemachineCamera` and only *authors* the rig — pitch/yaw/distance drive `CinemachineFollow.FollowOffset`, and `Shake` fires a `CinemachineImpulseSource` (camera-space listener, so the jitter is still screen-plane). `magnitude` is still peak offset in metres (measured: 0.18 → 0.178 m) |
 | `DynamicYSorter` | **deleted** — depth is free in 3D |
 | `Environment/*` cosmetics | rebuilt as cheap particles/transform animation, or dropped |
@@ -138,6 +139,34 @@ Per-scene overrides Dev B *is* expected to set: `ObjectiveTracker.objectives`
 (+ `missionTitle`), `HudController.objectiveLabel` (Level 2 counts keycards,
 not cores), `EndScreenController.completeScene` (`Ending_Story` after the L2
 boss; blank elsewhere), and `GameManager.requiredCores`.
+
+## Level 1 is generated from the 2D layout, not hand-placed
+
+`Assets/Editor/Level1Builder.cs` (menu: **Eco-Dash → Rebuild Level 1 from the 2D
+layout**) rebuilds `Level1_BarrenFarm` from `Tools/level1_layout.csv`, which
+`Tools/dump_scene.py` + `Tools/export_layout.py` extract from the 2D scene's YAML.
+2D `(x, y)` becomes 3D `(x, z)` at 1 tile = 1 m, so the farm keeps its exact
+proportions and every landmark sits where players remember it. Re-run it after
+changing the CSV; it is idempotent and re-bakes the NavMesh.
+
+Two small helpers came out of the port:
+
+- **`MaterialTint`** — the 2D scripts tinted `SpriteRenderer.color` all over the
+  place. Meshes have no colour channel and `renderer.material.color` clones the
+  material per object, so tints go through a shared `MaterialPropertyBlock`.
+- **`Billboard`** — world-space "Nhấn E" prompts would lie flat on the ground
+  under the fixed ¾ rig; this keeps them square to the camera.
+
+### Two traps worth knowing before debugging Level 1
+
+- **`DialogueRunner` pins `Time.timeScale` to 0 while a line is up**, so physics
+  stops dead — no trigger events, no gravity. `TutorialPopup` does the same. Since
+  `DialogueNPC`'s auto-briefing is an `Invoke` (scaled time), Bà Tư cannot even
+  *start* talking until the tutorial popup is dismissed. Anything that looks like
+  "triggers are broken" is usually a modal holding the clock.
+- **Walk-over triggers are 0.75–0.8 m, not the 2D 0.4 m.** A CharacterController is
+  only sampled by the physics step once per frame; at a high or uneven frame rate
+  Greenie can step clean over a small sphere without registering.
 
 ## Communication patterns (unchanged — frozen contract)
 

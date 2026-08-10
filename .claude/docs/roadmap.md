@@ -59,7 +59,17 @@ owners in [../../TEAM-TASKS.md](../../TEAM-TASKS.md).
   - [x] verified in play mode: rest offset exactly `(0, 9.693, -7.713)`, rotation
     `(50, 0, 0)`, zero drift after a teleport, and `Shake(0.18, 0.18)` peaks at
     0.178 m then settles — magnitude keeps its 2D meaning (peak offset in metres)
-- [ ] **B1** Greybox kit + `Level1_BarrenFarm` blockout (2D layout as map) + NavMesh
+- **B1** Greybox kit + `Level1_BarrenFarm` blockout — **done**
+  - [x] greybox kit in `Assets/Prefabs/Greybox/`: ProBuilder floor/wall (so the
+    shapes stay editable) + primitive crate/barrel/rock/hut/fence/dead-tree
+  - [x] `Level1_BarrenFarm` generated from the **2D scene's own layout** —
+    `Tools/dump_scene.py` → `Tools/export_layout.py` → `Tools/level1_layout.csv` →
+    `Assets/Editor/Level1Builder.cs` (menu: *Eco-Dash → Rebuild Level 1*).
+    64 × 48 m walled field, 192 ground tiles, 91 props, all at 1 tile = 1 m
+  - [x] NavMesh baked (`NavMeshSurface`, physics colliders) and sampled clean at
+    the centre and both far corners
+  - [x] 29 `PlasticSlime_Spawn` markers left under `Spawns/` — the 2D encounter
+    layout, waiting for **C1**'s prefab
 - [ ] **C1** `PlasticSlime` 3D (NavMeshAgent chase, contact damage, hit-flash,
   death drop) in sandbox + placed in L1
 - [ ] Slice gate: chest → core → HUD tick, slime fight, no Play-mode exceptions
@@ -82,11 +92,23 @@ owners in [../../TEAM-TASKS.md](../../TEAM-TASKS.md).
     C codex · Esc pause+freeze/resume · H tutorial (auto-shows on a fresh run) ·
     HP/objective/trash readouts · win + lose screens with working buttons ·
     MainMenu → settings → "Chơi Mới" → all five intro slides
-  - [ ] `menu → intro → L1` end-to-end: `Intro_Story.nextScene` is already
-    `Level1_BarrenFarm`; the last hop needs **B1**'s scene to exist
+  - [x] `menu → intro → L1` end-to-end — unblocked by B1: `Level1_BarrenFarm`
+    now exists at build index 1, which `Intro_Story.nextScene` already pointed at
 - [ ] **A6** Persistence parity (save/continue, New Game reset)
-- [ ] **B2** L1 complete (3 chests/cores, reclamation patches, mud, litter,
-  pickups, Bà Tư + Ông Sáu + herbs, teleport gate)
+- **B2** L1 interactables & flow — **done** (landed with B1)
+  - [x] Tier-1/2 world scripts ported: `Chest`, `EnergyCore`, `ReclamationPatch`,
+    `TeleportGate`, `ToxicMud`, `Litter`, `ItemPickup`, `HealthPickup`,
+    `SpeedBoostPickup`, `QuestItemPickup`, `LoreNote`, `DialogueNPC`,
+    `QuestGiverNPC` (+ new `MaterialTint` / `Billboard` helpers)
+  - [x] placed at their 2D coordinates: 3 chests → 4 reclamation patches,
+    teleport gate (+ pad, exits to the hub), 3 mud pools, 8 litter, Bà Tư,
+    Ông Sáu, 3 herbs, 4 valley lore notes, spring water ×2 / energy drink /
+    materials
+  - [x] play-mode verified **28/28**: walls hold, mud slows and releases, litter
+    feeds the counter + HUD, chest → core → patch → gate with the objective list
+    ticking to `[x] Tìm Lõi Năng Lượng (3/3)` and `[x] Mở cổng dịch chuyển`
+  - [x] Ông Sáu's M8 herb quest **7/7**: offer → 3 herbs → `HerbsReady` → antidote
+  - [ ] `SlimeKing` mini-boss and the enemy population wait on **C1/C3**
 - [ ] **B3** L2 Factory Maze (corridors, lasers, manholes, gas, keycards ×3,
   boss door, Tí at entrance)
 - [ ] **B4** Hub (shop, crafting bench, Portal Nexus + return portals,
@@ -107,6 +129,25 @@ owners in [../../TEAM-TASKS.md](../../TEAM-TASKS.md).
 
 ## Recent log
 
+- _(2026-08-10)_ **B1 + B2 done — Level 1 is playable start→gate.** The blockout is
+  **generated, not hand-placed**: `Tools/dump_scene.py` parses the 2D scene YAML
+  (including the `PrefabInstance` records a naive pass misses — the player, the
+  herbs and ~30 slimes all live there), `export_layout.py` maps 2D `(x, y)` to 3D
+  `(x, z)`, and `Assets/Editor/Level1Builder.cs` rebuilds the scene from the CSV.
+  Re-runnable from the **Eco-Dash** menu, so the map can be re-derived rather than
+  re-drawn. 13 world scripts ported (all Tier-1 collider swaps except
+  `ReclamationPatch`, redesigned to swap materials in a radius as the brief asks).
+  Verified 28/28 on the level and 7/7 on Ông Sáu's herb quest.
+  Two traps cost real time and are now written up in
+  [architecture.md](architecture.md#two-traps-worth-knowing-before-debugging-level-1):
+  `DialogueRunner`/`TutorialPopup` pin `Time.timeScale` to 0, which stops physics
+  dead — every "triggers are broken" symptom was actually a modal holding the
+  clock, and because the auto-briefing is an `Invoke` (scaled time) Bà Tư can't
+  even start until the tutorial is dismissed. Second: walk-over triggers had to
+  grow from the 2D 0.4 m to 0.75–0.8 m, because a CharacterController is sampled
+  once per physics step and can step clean over a small sphere.
+  Enemy placement is left to **C1** — the 29 spawn points from the 2D scene are
+  preserved as markers under `Spawns/`.
 - _(2026-08-09)_ **A4 done, A5 landed early.** The camera follow moved onto a
   Cinemachine vcam (`CameraRig.prefab`); `CameraFollow` now only authors the rig
   and turns `Shake` into an impulse — measured 0.178 m peak for magnitude 0.18, so
