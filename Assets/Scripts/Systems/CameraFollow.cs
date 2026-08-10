@@ -1,21 +1,32 @@
+using Unity.Cinemachine;
+using Unity.Cinemachine.TargetTracking;
 using UnityEngine;
 
 /// <summary>
-/// Fixed ¾ top-down camera that trails the player (Tunic / Death's Door framing).
-/// Assign the player as the target, or it auto-finds the object tagged "Player".
-/// The player never controls the camera — pitch and distance are authored, not input.
+/// Fixed ¾ top-down camera rig (Tunic / Death's Door framing), driven by Cinemachine.
 ///
-/// A4 replaces the *follow* half of this with a Cinemachine camera; <see cref="Shake"/>
-/// and <see cref="Instance"/> are the contract that ported callers (PlayerHealth, the
-/// bosses) rely on, so they keep working when the follow is swapped for an impulse
-/// source. Don't change those two signatures.
+/// This component lives on the <see cref="CinemachineCamera"/> and does two jobs:
+/// it authors the framing (pitch / yaw / distance → the vcam's rotation and
+/// <see cref="CinemachineFollow.FollowOffset"/>) and it exposes the shake API that
+/// ported 2D callers still use. The player never controls the camera — pitch and
+/// distance are authored, not input.
+///
+/// <see cref="Instance"/> and <see cref="Shake"/> are the contract ported callers
+/// (PlayerHealth, the bosses) rely on. Don't change those two signatures; the shake
+/// now travels through a <see cref="CinemachineImpulseSource"/> instead of moving the
+/// transform directly, so it composes with any other impulse in the scene.
 /// </summary>
+[RequireComponent(typeof(CinemachineCamera))]
+[RequireComponent(typeof(CinemachineFollow))]
+[RequireComponent(typeof(CinemachineImpulseSource))]
+[ExecuteAlways]
 public class CameraFollow : MonoBehaviour
 {
     /// <summary>Set in Awake so gameplay code (e.g. PlayerHealth) can request a shake.</summary>
     public static CameraFollow Instance { get; private set; }
 
     [Header("Target")]
+    [Tooltip("Leave empty and the rig binds to the object tagged \"Player\" on Start.")]
     [SerializeField] Transform target;
 
     [Header("Framing (fixed ¾ top-down)")]
@@ -29,58 +40,91 @@ public class CameraFollow : MonoBehaviour
     [SerializeField] float targetHeightOffset = 0.5f;
 
     [Header("Follow")]
+    [Tooltip("Cinemachine position damping, in seconds. Matches the old SmoothDamp feel.")]
     [SerializeField] float smoothTime = 0.15f;
 
-    Vector3 velocity;
-    float shakeTimeLeft;
-    float shakeDuration;
-    float shakeMagnitude;
+    [Header("Shake")]
+    [Tooltip("Impulse velocity (m/s) generated per 1 unit of Shake magnitude. Measured in " +
+             "play mode: a Bump impulse displaces the camera by ~1 m per 1 m/s, so 1.0 keeps " +
+             "the 2D contract that magnitude is the peak offset in metres.")]
+    [SerializeField] float impulseVelocityPerUnit = 1f;
 
-    void Awake() => Instance = this;
+    CinemachineCamera vcam;
+    CinemachineFollow follow;
+    CinemachineImpulseSource impulse;
+
+    Quaternion Rotation => Quaternion.Euler(pitch, yaw, 0f);
+
+    /// <summary>
+    /// Where the camera sits relative to the target. Pitch 50° / distance 12 puts it
+    /// ~9.2 m up and ~7.7 m behind, plus the aim-point lift.
+    /// </summary>
+    public Vector3 FollowOffset =>
+        Vector3.up * targetHeightOffset + Rotation * Vector3.back * distance;
+
+    void Awake()
+    {
+        Cache();
+        if (Application.isPlaying) Instance = this;
+    }
+
     void OnDestroy() { if (Instance == this) Instance = null; }
+
+    void Cache()
+    {
+        if (vcam == null) vcam = GetComponent<CinemachineCamera>();
+        if (follow == null) follow = GetComponent<CinemachineFollow>();
+        if (impulse == null) impulse = GetComponent<CinemachineImpulseSource>();
+    }
 
     void Start()
     {
-        if (target == null)
+        if (target == null && Application.isPlaying)
         {
             var player = GameObject.FindGameObjectWithTag("Player");
             if (player != null) target = player.transform;
         }
-        transform.rotation = Rotation;
-        if (target != null) transform.position = DesiredPosition;   // no lerp-in on the first frame
+        ApplyFraming();
+        // Snap on the first frame instead of sliding in from wherever the rig was authored.
+        if (Application.isPlaying && target != null)
+            vcam.ForceCameraPosition(target.position + FollowOffset, Rotation);
     }
 
-    Quaternion Rotation => Quaternion.Euler(pitch, yaw, 0f);
+    void OnValidate()
+    {
+        Cache();
+        ApplyFraming();
+    }
 
-    // Sit back along the view direction: pitch 50°/distance 12 puts the camera
-    // ~9.2 m up and ~7.7 m behind the target.
-    Vector3 DesiredPosition =>
-        target.position + Vector3.up * targetHeightOffset + Rotation * Vector3.back * distance;
+    /// <summary>Push the authored framing onto the Cinemachine camera. Safe to call any time.</summary>
+    public void ApplyFraming()
+    {
+        if (vcam == null) return;
+        // No Rotation Control behaviour on the vcam: its own transform rotation *is* the
+        // camera rotation, which is exactly the "fixed angle, no player control" rule.
+        transform.rotation = Rotation;
+        if (target != null) vcam.Follow = target;
+        if (follow != null)
+        {
+            follow.FollowOffset = FollowOffset;
+            follow.TrackerSettings.BindingMode = BindingMode.WorldSpace;
+            follow.TrackerSettings.PositionDamping = Vector3.one * smoothTime;
+        }
+    }
 
-    /// <summary>Kick off a brief positional shake (e.g. on player damage).</summary>
+    /// <summary>Kick off a brief shake (e.g. on player damage). 2D-parity API.</summary>
     public void Shake(float duration, float magnitude)
     {
-        // Keep the strongest pending shake rather than cutting one short.
-        shakeMagnitude = Mathf.Max(shakeMagnitude * Mathf.Clamp01(shakeTimeLeft / Mathf.Max(shakeDuration, 0.0001f)), magnitude);
-        shakeDuration = duration;
-        shakeTimeLeft = duration;
-    }
+        if (impulse == null || magnitude <= 0f) return;
+        impulse.ImpulseDefinition.ImpulseDuration = Mathf.Max(duration, 0.01f);
 
-    void LateUpdate()
-    {
-        if (target == null) return;
-
-        transform.rotation = Rotation;
-        transform.position = Vector3.SmoothDamp(transform.position, DesiredPosition, ref velocity, smoothTime);
-
-        if (shakeTimeLeft > 0f)
-        {
-            shakeTimeLeft -= Time.unscaledDeltaTime;
-            float falloff = Mathf.Clamp01(shakeTimeLeft / Mathf.Max(shakeDuration, 0.0001f));
-            Vector2 jitter = Random.insideUnitCircle * (shakeMagnitude * falloff);
-            // Jitter across the screen plane, not the world plane, so it reads the
-            // same as the 2D shake regardless of the camera's tilt.
-            transform.position += transform.right * jitter.x + transform.up * jitter.y;
-        }
+        // Jitter across the screen plane, not the world plane, so it reads the same as
+        // the 2D shake regardless of the camera's tilt. The listener is in camera space,
+        // so a local X/Y velocity is all we need.
+        Vector2 dir = Random.insideUnitCircle;
+        if (dir.sqrMagnitude < 0.0001f) dir = Vector2.up;
+        dir.Normalize();
+        impulse.GenerateImpulseWithVelocity(
+            new Vector3(dir.x, dir.y, 0f) * (magnitude * impulseVelocityPerUnit));
     }
 }

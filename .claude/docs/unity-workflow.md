@@ -134,3 +134,34 @@ order silently scrambles the matrix instead of failing.
   magenta. See [ASSETS.md](../../ASSETS.md).
 - Always save (in place) at the end; MCP changes to the live editor are not on
   disk until saved.
+
+## Play-mode probes
+
+Gameplay polls `Keyboard.current` directly, so a play-mode probe can drive the
+**real** input path with `InputSystem.QueueStateEvent(Keyboard.current, state)`
+instead of leaving "human check: does WASD work?" open forever. Two rules make it
+reliable — both were learned the hard way, with probes that reported clean passes
+one run and total silence the next:
+
+1. **Drive the probe from a `MonoBehaviour.Update`, not `EditorApplication.update`.**
+   An MCP-driven editor is usually unfocused, and editor ticks then race ahead of
+   player frames — a press queued on one tick and released on the next collapse
+   into a single input update, so `wasPressedThisFrame` never fires. Define the
+   driver class in the same file `execute_script` compiles and
+   `new GameObject(...).AddComponent<Driver>()`; `DontDestroyOnLoad` it if the
+   probe spans a scene load.
+2. **Undo the focus gating in `Awake`, restore it when done:**
+   ```csharp
+   InputSystem.settings.editorInputBehaviorInPlayMode =
+       InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
+   InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
+   InputSystem.EnableDevice(Keyboard.current);   // it may already be disabled
+   ```
+   The one that actually bites is `backgroundBehavior`: `InputManager` *disables and
+   resets* the keyboard while the player is "in the background", so queued events are
+   dropped with no error. `InputSystem.settings` is a **project asset** — always put
+   both values back, or the change lands in someone's commit.
+
+Return results through `SessionState.SetString(key, …)` and read them with a second
+`execute_script` entry point; the probe runs across frames, so it can't return them
+directly.

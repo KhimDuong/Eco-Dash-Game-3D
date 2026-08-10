@@ -46,6 +46,11 @@ Three exceptions the original plan listed as Tier 0 but which are **not**
 `UI/BossHealthBar` is Tier-0 code but has a hard reference to `MegaSmogBoss`, so
 it ships with Dev C's **C3** rather than with A2.
 
+A5 made the only other edit to Tier-0 UI so far — **additive only, no behaviour
+changed**: `EndScreenController.RestartLevel()/LoadMainMenu()` and
+`PauseController.LoadMainMenu()` are new pass-throughs to `GameManager.Instance`,
+added so `HUD.prefab` can own its own button wiring (see the HUD contract below).
+
 The `sortingOrder` calls all over `UI/` are `Canvas.sortingOrder` (via
 `UIFactory.EnsureCanvas`) and are perfectly valid in 3D — only
 `DynamicYSorter`'s `SpriteRenderer.sortingOrder` was 2D-specific.
@@ -81,7 +86,7 @@ Tunable values stay numerically identical (1 tile = 1 m).
 | `PollutionFlyBot` | hovers at flight height on Y (no NavMesh); 3D raycast LOS masked to `Obstacle`; kite + fire SmogOrbs |
 | `MegaSmogBoss` | same phase machine; 8-dir spray → **horizontal ring** of orbs on XZ; gas zones spawn on the arena floor |
 | `SweepingLaser` | telegraph→sweep cycle unchanged; beam = emissive scaled cylinder (or LineRenderer) + trigger collider |
-| `CameraFollow` | keeps the **class name and `Instance`/`Shake(duration, magnitude)` API** so ported callers (`PlayerHealth`, bosses) compile untouched. A2 shipped it as a plain ¾ follow rig (pitch/yaw/distance knobs, screen-plane shake); **A4 swaps the follow half for a Cinemachine vcam + impulse source behind the same two members** |
+| `CameraFollow` | keeps the **class name and `Instance`/`Shake(duration, magnitude)` API** so ported callers (`PlayerHealth`, bosses) compile untouched. **A4 (done):** the component now lives on the `CinemachineCamera` and only *authors* the rig — pitch/yaw/distance drive `CinemachineFollow.FollowOffset`, and `Shake` fires a `CinemachineImpulseSource` (camera-space listener, so the jitter is still screen-plane). `magnitude` is still peak offset in metres (measured: 0.18 → 0.178 m) |
 | `DynamicYSorter` | **deleted** — depth is free in 3D |
 | `Environment/*` cosmetics | rebuilt as cheap particles/transform animation, or dropped |
 
@@ -93,13 +98,46 @@ Player.prefab
 ├─ Visual (child)  ← rotates to face movement; PlayerAnimator hover-bob/squash; mesh here
 └─ (no Rigidbody2D, no SpriteRenderer, no sorting)
 
-CameraRig: Main Camera + CameraFollow (fixed ¾) → A4: + CinemachineCamera (follow=Player)
+CameraRig.prefab
+├─ Main Camera (CinemachineBrain)
+└─ CM_PlayerCam (CinemachineCamera + CinemachineFollow + ImpulseSource/Listener
+                 + CameraFollow) ← binds to the "Player" tag on Start, no wiring
+
+HUD.prefab   (one Screen-Space-Overlay canvas — everything the UI layer needs)
+├─ HudController / EndScreenController / PauseController  (on the root)
+├─ HPBar_BG (Fill + HPText) · CoreText (inactive — ObjectivePanel counts) · TrashText
+├─ ObjectivePanel  → ObjectiveTracker (objectives authored per scene as overrides)
+├─ InventorySystem → InventoryUI · Hotbar · QuestLogUI · CodexUI (self-build at runtime)
+├─ DialogueSystem  → DialogueRunner + AudioSource
+├─ WinPanel · LosePanel · PausePanel · Settings (SettingsPanel)
+└─ TutorialPopup   (builds its overlay at runtime; H, auto-shows on a fresh run)
+
+GameManager.prefab: bare GameManager (requiredCores authored per scene)
 
 Level geometry: greybox-kit prefab instances (colliders, static) + baked NavMesh
-Everything else (GameManager, HUD canvas, chests, portals, NPCs, quest/codex/
-inventory wiring) is structurally identical to the 2D scenes — see the 2D
-architecture doc.
+Everything else (chests, portals, NPCs, quest/codex/inventory wiring) is
+structurally identical to the 2D scenes — see the 2D architecture doc.
 ```
+
+### HUD.prefab contract (Dev B: drop it in, don't rewire)
+
+A5 folded the 2D per-scene HUD additions (ObjectivePanel, Settings,
+DialogueSystem, TutorialPopup) into the single prefab, so a level scene needs
+exactly **one `HUD.prefab` instance + one `GameManager.prefab` instance + one
+`CameraRig.prefab` instance** and no manual references.
+
+One deliberate deviation from the 2D wiring: the Win/Lose/Pause "Chơi lại" and
+"Về Menu" buttons used to call the **scene's** `GameManager` directly, which a
+prefab *asset* cannot reference — in 2D every scene had to re-drag it, and the
+reference is silently lost the moment the prefab is re-saved. They now target
+pass-throughs on the HUD's own components (`EndScreenController.RestartLevel/
+LoadMainMenu`, `PauseController.LoadMainMenu`), which forward to
+`GameManager.Instance`. Same behaviour, nothing to re-drag.
+
+Per-scene overrides Dev B *is* expected to set: `ObjectiveTracker.objectives`
+(+ `missionTitle`), `HudController.objectiveLabel` (Level 2 counts keycards,
+not cores), `EndScreenController.completeScene` (`Ending_Story` after the L2
+boss; blank elsewhere), and `GameManager.requiredCores`.
 
 ## Communication patterns (unchanged — frozen contract)
 
