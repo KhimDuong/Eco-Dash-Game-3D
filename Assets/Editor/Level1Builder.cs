@@ -30,7 +30,7 @@ public static class Level1Builder
     const float HalfX = 32.5f, HalfZ = 24.5f, WallHeight = 3f, Tile = 4f;
 
     static StringBuilder log;
-    static Transform envRoot, propRoot, playRoot, spawnRoot;
+    static Transform envRoot, propRoot, playRoot, enemyRoot;
 
     public static string Execute()
     {
@@ -46,7 +46,7 @@ public static class Level1Builder
         envRoot = new GameObject("Environment").transform;
         propRoot = new GameObject("Props").transform;
         playRoot = new GameObject("Gameplay").transform;
-        spawnRoot = new GameObject("Spawns").transform;
+        enemyRoot = new GameObject("Enemies").transform;
 
         BuildGround();
         BuildWalls();
@@ -121,10 +121,12 @@ public static class Level1Builder
     static readonly List<(Transform t, Vector2 pos2D)> chests = new();
     static Transform gate;
     static Vector3 playerStart = new Vector3(0f, 0f, -5f);
+    static GameObject slimePrefab;
+    static int slimeCount;
 
     static int PlaceFromLayout()
     {
-        patches.Clear(); chests.Clear(); gate = null;
+        patches.Clear(); chests.Clear(); gate = null; slimeCount = 0;
         int n = 0;
         foreach (var line in File.ReadAllLines(LayoutCsv))
         {
@@ -155,18 +157,34 @@ public static class Level1Builder
                 case "herb": Spawn("Herb", playRoot, ClampInside(pos)).name = name; break;
                 case "energydrink": Pickup("energy_drink", "EnergyDrink", pos); break;
                 case "player": playerStart = pos; break;
-                case "slimespawn":
-                    // C1 owns the PlasticSlime prefab; keep the 2D spawn points so the
-                    // encounter layout survives until Dev C can drop the prefab in.
-                    var mark = new GameObject(name + "_Spawn");
-                    mark.transform.SetParent(spawnRoot, false);
-                    mark.transform.position = ClampInside(pos);
-                    break;
+                case "slimespawn": PlaceSlime(name, ClampInside(pos)); break;
                 default: continue;
             }
             n++;
         }
         return n;
+    }
+
+    // C1: the 29 spawn points from the 2D scene now carry real slimes. Each gets a
+    // numbered name because SceneProgress ids objects by name + position, and two of
+    // the chest-guards clamp to the same spot inside the west wall.
+    static void PlaceSlime(string name, Vector3 pos)
+    {
+        if (slimePrefab == null)
+            slimePrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Enemies/PlasticSlime.prefab");
+
+        if (slimePrefab == null)
+        {
+            log.AppendLine("  MISSING PlasticSlime.prefab — left a bare marker at " + pos);
+            var mark = new GameObject(name + "_Spawn");
+            mark.transform.SetParent(enemyRoot, false);
+            mark.transform.position = pos;
+            return;
+        }
+
+        var go = (GameObject)PrefabUtility.InstantiatePrefab(slimePrefab, enemyRoot);
+        go.name = $"{name}_{++slimeCount:00}";
+        go.transform.position = pos;
     }
 
     static float Lift(string kind) => kind switch

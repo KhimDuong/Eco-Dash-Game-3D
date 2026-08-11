@@ -101,14 +101,14 @@ doesn't bind to it — don't mix in legacy `Input.GetAxis` either.
 ## Current status
 
 See [.claude/docs/roadmap.md](.claude/docs/roadmap.md) for the live backlog.
-**P0 done; A1–A5 and B1–B2 done.** The URP-3D project, Tier-0 + Tier-1 scripts,
-`Player.prefab`, the Cinemachine `CameraRig.prefab`, the whole UI layer
-(`HUD.prefab`, `GameManager.prefab`, `MainMenu` / `Intro_Story` / `Ending_Story`)
-and **`Level1_BarrenFarm`** are in and play-mode verified — menu → intro → L1 →
-chests → cores → gate runs end to end.
+**P0 done; A1–A6, B1–B2 and C1 done — the P1 vertical slice is closed.** The
+URP-3D project, Tier-0 + Tier-1 scripts, `Player.prefab`, the Cinemachine
+`CameraRig.prefab`, the whole UI layer (`HUD.prefab`, `GameManager.prefab`,
+`MainMenu` / `Intro_Story` / `Ending_Story`), **`Level1_BarrenFarm`** with its 29
+`PlasticSlime`s, and save/continue parity are in and play-mode verified — menu →
+intro → L1 → chests → cores → gate runs end to end, slimes fight and stay dead.
 
-Next up: **C1** (`PlasticSlime`) is now the critical path — L1 has 29 spawn
-markers waiting under `Spawns/`. Then **A6** (persistence parity) and **B3**
-(Level 2). Level 1 is *generated* from the 2D layout — edit
-[Tools/level1_layout.csv](Tools/level1_layout.csv) and re-run
-**Eco-Dash → Rebuild Level 1** rather than hand-placing.
+Next up: **C2** (projectiles + `PollutionFlyBot`), **B3** (Level 2) and **B4**
+(hub). Two generated things — don't hand-edit their output: Level 1 comes from
+[Tools/level1_layout.csv](Tools/level1_layout.csv) via **Eco-Dash → Rebuild Level 1**,
+and the enemy prefabs from **Eco-Dash → Rebuild enemy prefabs**.

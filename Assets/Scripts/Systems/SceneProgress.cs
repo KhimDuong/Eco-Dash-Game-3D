@@ -45,11 +45,19 @@ public static class SceneProgress
 
     // --- Consumed objects ---------------------------------------------------
 
-    /// <summary>Stable id for a placed object: name + rounded world position.</summary>
+    /// <summary>
+    /// Stable id for a placed object: name + rounded ground-plane position.
+    ///
+    /// <para>3D port: the second coordinate is <b>z</b>, not y. The 2D original keyed on
+    /// (x, y) because that was its ground plane; in 3D y is the vertical axis and sits at
+    /// 0 for everything placed on the floor, so keeping it would have collapsed every
+    /// object sharing an x into one id — kill one chest-guard slime and its neighbour
+    /// dies with it on the next load.</para>
+    /// </summary>
     public static string IdFor(GameObject go)
     {
         var p = go.transform.position;
-        return $"{go.name}@{Mathf.RoundToInt(p.x * 100f)},{Mathf.RoundToInt(p.y * 100f)}";
+        return $"{go.name}@{Mathf.RoundToInt(p.x * 100f)},{Mathf.RoundToInt(p.z * 100f)}";
     }
 
     public static bool IsConsumed(GameObject go) =>
