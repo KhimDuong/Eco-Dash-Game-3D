@@ -4,10 +4,10 @@ using UnityEngine;
 using UnityEngine.AI;
 
 /// <summary>
-/// C1: builds the greybox enemy prefabs (and their materials) from code, the same way
+/// C1/C2: builds the greybox enemy prefabs (and their materials) from code, the same way
 /// <see cref="Level1Builder"/> builds the level — so the kit can be regenerated after a
-/// component or stat change instead of being re-dragged by hand. C2/C3 extend this with
-/// the fly-bot and the bosses.
+/// component or stat change instead of being re-dragged by hand. C3 extends this with
+/// the bosses.
 ///
 /// Menu: <b>Eco-Dash → Rebuild enemy prefabs</b>. Idempotent.
 /// </summary>
@@ -16,6 +16,12 @@ public static class EnemyPrefabBuilder
     const string PrefabDir = "Assets/Prefabs/Enemies/";
     const string MatDir = "Assets/Models/Materials/";
 
+    // C2: the fly-bot hovers this high, its nozzle hangs this far below the body, and the
+    // orb therefore flies at (Hover - Nozzle) ≈ 0.88 m — inside Greenie's 1.15 m capsule.
+    // Change one of these and shots start sailing over his head; they belong together.
+    const float FlyBotHover = 1.6f;
+    const float FlyBotNozzle = 0.72f;
+
     [MenuItem("Eco-Dash/Rebuild enemy prefabs")]
     public static void Rebuild() => Debug.Log(Execute());
 
@@ -23,6 +29,8 @@ public static class EnemyPrefabBuilder
     {
         System.IO.Directory.CreateDirectory(PrefabDir);
         string log = BuildPlasticSlime();
+        log += BuildSmogOrb();          // before the fly-bot — the bot references it
+        log += BuildPollutionFlyBot();
         log += ExcludePlayerFromNavMeshBake();
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
@@ -98,9 +106,149 @@ public static class EnemyPrefabBuilder
         s.GetComponent<Renderer>().sharedMaterial = mat;
     }
 
+    // --- SmogOrb (C2) -------------------------------------------------------------------
+
+    // The enemies' answer to Seed.prefab, and deliberately built to match it: same
+    // trigger-collider + non-kinematic Rigidbody shape, so both projectiles behave
+    // identically and only the layer decides who they can hit.
+    static string BuildSmogOrb()
+    {
+        var mat = MakeMaterial("Greybox_SmogOrb", new Color(0.42f, 0.22f, 0.52f), 0.6f,
+                               new Color(0.55f, 0.15f, 0.70f));
+
+        var root = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        root.name = "SmogOrb";
+        root.tag = "Projectile";
+        root.layer = LayerMask.NameToLayer("EnemyProjectile");
+        root.transform.localScale = Vector3.one * 0.36f;
+        root.GetComponent<Renderer>().sharedMaterial = mat;
+
+        var col = root.GetComponent<SphereCollider>();
+        col.isTrigger = true;
+
+        var rb = root.AddComponent<Rigidbody>();
+        rb.useGravity = false;
+        rb.interpolation = RigidbodyInterpolation.Interpolate;
+        rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+
+        root.AddComponent<EnemyProjectile>();
+
+        string path = PrefabDir + "SmogOrb.prefab";
+        PrefabUtility.SaveAsPrefabAsset(root, path);
+        Object.DestroyImmediate(root);
+        return "built " + path + "\n";
+    }
+
+    // --- PollutionFlyBot (C2) -----------------------------------------------------------
+
+    static string BuildPollutionFlyBot()
+    {
+        var body = MakeMaterial("Greybox_FlyBot", new Color(0.30f, 0.28f, 0.37f), 0.55f);
+        var trim = MakeMaterial("Greybox_FlyBotTrim", new Color(0.56f, 0.53f, 0.60f), 0.72f);
+        var eye = MakeMaterial("Greybox_FlyBotEye", new Color(0.95f, 0.55f, 0.15f), 0.5f,
+                               new Color(1.6f, 0.70f, 0.15f));
+
+        var root = new GameObject("PollutionFlyBot");
+        root.tag = "Enemy";
+        root.layer = LayerMask.NameToLayer("Enemy");
+
+        // Everything visual lives under Visual: the script bobs and turns that child so
+        // the physics body — which owns the hover height — is never yanked around by it.
+        var visual = new GameObject("Visual").transform;
+        visual.SetParent(root.transform, false);
+
+        Part(visual, "Body", PrimitiveType.Sphere, Vector3.zero, Vector3.zero,
+             new Vector3(0.80f, 0.54f, 0.80f), body);
+        // Rotor arms + housings, so the silhouette reads as a drone from directly above —
+        // which is most of what the ¾ camera ever shows of it.
+        for (int s = -1; s <= 1; s += 2)
+        {
+            string side = s < 0 ? "L" : "R";
+            Part(visual, "Arm_" + side, PrimitiveType.Cube, new Vector3(0.28f * s, 0.09f, 0f),
+                 Vector3.zero, new Vector3(0.40f, 0.06f, 0.10f), trim);
+            Part(visual, "Rotor_" + side, PrimitiveType.Cylinder, new Vector3(0.50f * s, 0.12f, 0f),
+                 Vector3.zero, new Vector3(0.34f, 0.03f, 0.34f), trim);
+        }
+        // The nozzle is not decoration: its tip is where FirePoint sits, and orbs fly flat
+        // from there. It is what keeps a hovering shooter's shots at player height.
+        Part(visual, "Nozzle", PrimitiveType.Cylinder, new Vector3(0f, -0.42f, 0f),
+             Vector3.zero, new Vector3(0.20f, 0.30f, 0.20f), trim);
+        Part(visual, "Eye", PrimitiveType.Cube, new Vector3(0f, 0.06f, 0.34f),
+             Vector3.zero, new Vector3(0.24f, 0.10f, 0.10f), eye);
+
+        var firePoint = new GameObject("FirePoint").transform;
+        firePoint.SetParent(root.transform, false);          // on the root, not Visual —
+        firePoint.localPosition = Vector3.down * FlyBotNozzle; // the bob must not jitter shots
+
+        // Two colliders, and the split is the whole reason the bot is shootable.
+        //
+        // The SOLID one is small and rides with the body, so the bot bumps walls but
+        // sails over the low clutter a ground agent has to walk around — the point of
+        // hovering. The TRIGGER one is a column dropped from the body to just above the
+        // floor, because Greenie's Seeds fly flat at his fire point (y = 0.6) and a
+        // hitbox that started at the body would sit a clear metre above every shot he
+        // can take. Height is presentation here; hitting things stays a matter of XZ.
+        var solid = root.AddComponent<SphereCollider>();
+        solid.radius = 0.45f;
+
+        float localFloor = 0.1f - FlyBotHover;   // hurtbox reaches to 0.1 m above the floor
+        const float localTop = 0.5f;             // and up past the top of the body
+        var hurtbox = root.AddComponent<CapsuleCollider>();
+        hurtbox.isTrigger = true;
+        hurtbox.direction = 1;                   // Y
+        hurtbox.radius = 0.40f;
+        hurtbox.height = localTop - localFloor;
+        hurtbox.center = Vector3.up * (localTop + localFloor) * 0.5f;
+
+        var rb = root.AddComponent<Rigidbody>();
+        rb.useGravity = false;
+        rb.freezeRotation = true;
+        rb.interpolation = RigidbodyInterpolation.Interpolate;
+        rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+
+        // Level builders bake the NavMesh from physics colliders on every layer; a bot
+        // parked over the floor would stamp a hole in the mesh the slimes walk on.
+        root.AddComponent<NavMeshModifier>().ignoreFromBuild = true;
+
+        var flash = root.AddComponent<HitFlash>();
+        var bot = root.AddComponent<PollutionFlyBot>();
+        var so = new SerializedObject(bot);
+        so.FindProperty("flash").objectReferenceValue = flash;
+        so.FindProperty("visual").objectReferenceValue = visual;
+        so.FindProperty("firePoint").objectReferenceValue = firePoint;
+        so.FindProperty("smogOrbPrefab").objectReferenceValue =
+            AssetDatabase.LoadAssetAtPath<GameObject>(PrefabDir + "SmogOrb.prefab");
+        so.FindProperty("hoverHeight").floatValue = FlyBotHover;
+        so.FindProperty("sightBlockers").intValue = 1 << LayerMask.NameToLayer("Obstacle");
+        so.FindProperty("groundMask").intValue = (1 << LayerMask.NameToLayer("Ground")) |
+                                                 (1 << LayerMask.NameToLayer("Obstacle"));
+        so.ApplyModifiedPropertiesWithoutUndo();
+
+        string path = PrefabDir + "PollutionFlyBot.prefab";
+        PrefabUtility.SaveAsPrefabAsset(root, path);
+        Object.DestroyImmediate(root);
+        return "built " + path + "\n";
+    }
+
+    static void Part(Transform parent, string name, PrimitiveType type, Vector3 pos,
+                     Vector3 euler, Vector3 scale, Material mat)
+    {
+        var p = GameObject.CreatePrimitive(type);
+        p.name = name;
+        p.transform.SetParent(parent, false);
+        p.transform.localPosition = pos;
+        p.transform.localRotation = Quaternion.Euler(euler);
+        p.transform.localScale = scale;
+        Object.DestroyImmediate(p.GetComponent<Collider>());   // the root owns the hitbox
+        p.GetComponent<Renderer>().sharedMaterial = mat;
+    }
+
     // --- shared ------------------------------------------------------------------------
 
-    static Material MakeMaterial(string name, Color color, float smoothness)
+    static Material MakeMaterial(string name, Color color, float smoothness) =>
+        MakeMaterial(name, color, smoothness, Color.black);
+
+    static Material MakeMaterial(string name, Color color, float smoothness, Color emission)
     {
         string path = MatDir + name + ".mat";
         var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
@@ -114,8 +262,11 @@ public static class EnemyPrefabBuilder
         // HitFlash pushes _EmissionColor through a property block; without the keyword
         // URP strips emission from the shader variant and the flash is invisible.
         mat.EnableKeyword("_EMISSION");
-        mat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.EmissiveIsBlack;
-        mat.SetColor("_EmissionColor", Color.black);
+        bool glows = emission.maxColorComponent > 0f;
+        mat.globalIlluminationFlags = glows
+            ? MaterialGlobalIlluminationFlags.RealtimeEmissive
+            : MaterialGlobalIlluminationFlags.EmissiveIsBlack;
+        mat.SetColor("_EmissionColor", emission);
         EditorUtility.SetDirty(mat);
         return mat;
     }

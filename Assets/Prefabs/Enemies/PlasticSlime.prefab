@@ -232,6 +232,7 @@ MonoBehaviour:
   arriveDistance: 0.2
   aggroRadius: 6
   loseAggroRadius: 9
+  provokeDuration: 4
   chaseSpeed: 2.5
   chaseRepathInterval: 0.25
   contactRange: 0.9

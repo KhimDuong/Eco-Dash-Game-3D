@@ -84,7 +84,7 @@ Tunable values stay numerically identical (1 tile = 1 m).
 |---|---|
 | `PlasticSlime` | **done (C1).** **NavMeshAgent** chase on the baked NavMesh — the 2D version steered a `Rigidbody2D` straight at a random point, which only works because the 2D farm is an open field. Every stat, drop and damage number is the 2D one. Two things are new: an **aggro radius** (6 m, 9 m hysteresis, 2.5 m/s chase — under Greenie's 5 m/s, plus a `provokeDuration` so a slime sniped from range actually comes for you), and contact damage as a **distance test** rather than `OnCollisionStay`, because a NavMeshAgent moves kinematically and the player is a CharacterController, so that pair never generates collision callbacks at all |
 | `SlimeKing` | **NavMeshAgent** chase like the slime; contact damage + knockback unchanged (C3) |
-| `PollutionFlyBot` | hovers at flight height on Y (no NavMesh); 3D raycast LOS masked to `Obstacle`; kite + fire SmogOrbs |
+| `PollutionFlyBot` | **done (C2).** Hovers at flight height on Y (no NavMesh) — a downward probe holds it 1.6 m above *whatever is beneath it*, so it clears crates and follows the factory floor instead of sliding on one plane like the 2D "hover" did. LOS is a 3D raycast masked to `Obstacle` **cast along the orb's own flat path from the fire point**, so it can never claim a shot its own orbs would splash on a crate. Kites at `preferredRange` and fires SmogOrbs. Contact damage is a distance test (same reason as the slime). Every stat is the 2D one; `provokeDuration` is carried over from C1 |
 | `MegaSmogBoss` | same phase machine; 8-dir spray → **horizontal ring** of orbs on XZ; gas zones spawn on the arena floor |
 | `SweepingLaser` | telegraph→sweep cycle unchanged; beam = emissive scaled cylinder (or LineRenderer) + trigger collider |
 | `ReclamationPatch` | **done (B2).** 2D crossfaded two layers of sprite tiles; opaque URP meshes have no alpha, so the 3D patch does what the brief asks — *swap materials in a radius*. A flat disc grows from 0 to `radius` while its colour lerps barren → lush, and ground tiles the wave sweeps over are re-tinted as it passes |
@@ -162,6 +162,26 @@ Two small helpers came out of the port:
   0.07 s, meshes have no colour channel and `renderer.material` clones per
   instance. It flashes emission alongside base colour, which is what actually
   reads under the ¾ rig. Shared so C2's fly-bot and C3's bosses reuse it.
+
+### Flying enemies need two colliders (C2)
+
+The single most expensive thing to rediscover in C2: **Greenie's Seeds fly flat at
+his fire point, `y ≈ 0.6`.** Give a hovering enemy one collider that rides with its
+body at 1.6 m and the player's only weapon passes a clear metre underneath it — the
+enemy is not "hard to hit", it is *unhittable*, and nothing in the scene looks wrong.
+
+`PollutionFlyBot.prefab` therefore carries **two colliders on the root**, and both are
+load-bearing:
+
+| Collider | Purpose | Why it must stay as it is |
+|---|---|---|
+| `SphereCollider` (solid, r 0.45, centred on the body) | movement — what walls push against | drop it low and the bot stops clearing crates, which is the entire point of flying |
+| `CapsuleCollider` (**trigger**, r 0.40, body down to 0.1 m) | the hurtbox projectiles hit | drop it and the bot is unkillable; move it to a child and it is unkillable too — `SeedProjectile` resolves `IDamageable` off the collider it hits |
+
+The general rule for the rest of the port: **height is presentation, hitting things is
+XZ.** Under a fixed ¾ camera the player aims on the ground plane, so anything that
+leaves the ground still needs a ground-plane footprint you can shoot. C3's flying boss
+phases inherit this.
 
 ### Enemy persistence: id by spawn point, not by death spot (C1/A6)
 
