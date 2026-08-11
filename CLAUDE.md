@@ -101,18 +101,22 @@ doesn't bind to it — don't mix in legacy `Input.GetAxis` either.
 ## Current status
 
 See [.claude/docs/roadmap.md](.claude/docs/roadmap.md) for the live backlog.
-**P0 done; A1–A6, B1–B2, C1–C2 done — the P1 vertical slice is closed.** The
-URP-3D project, Tier-0 + Tier-1 scripts, `Player.prefab`, the Cinemachine
-`CameraRig.prefab`, the whole UI layer (`HUD.prefab`, `GameManager.prefab`,
-`MainMenu` / `Intro_Story` / `Ending_Story`), **`Level1_BarrenFarm`** with its 29
-`PlasticSlime`s, save/continue parity, and the **`PollutionFlyBot` + `SmogOrb`**
-combat kit are in and play-mode verified — menu → intro → L1 → chests → cores →
-gate runs end to end, slimes fight and stay dead, the fly-bot hovers and kites.
+**P0 done; A1–A6, B1–B3, C1–C2 done.** The URP-3D project, Tier-0 + Tier-1 scripts,
+`Player.prefab`, the Cinemachine `CameraRig.prefab`, the whole UI layer (`HUD.prefab`,
+`GameManager.prefab`, `MainMenu` / `Intro_Story` / `Ending_Story`),
+**`Level1_BarrenFarm`** with its 29 `PlasticSlime`s, save/continue parity, the
+**`PollutionFlyBot` + `SmogOrb`** combat kit, and **`Level2_FactoryMaze`** with its
+lasers, manholes, keycard chain and boss door are all in and play-mode verified.
 
-Next up: **B3** (Level 2), **B4** (hub) and **C3** (bosses). Two generated things —
-don't hand-edit their output: Level 1 comes from
-[Tools/level1_layout.csv](Tools/level1_layout.csv) via **Eco-Dash → Rebuild Level 1**,
-and the enemy prefabs from **Eco-Dash → Rebuild enemy prefabs**.
+Next up: **B4** (hub) and **C3** (bosses — the last thing between here and a full
+playthrough). Four generated things — **don't hand-edit their output**:
+
+| What | Menu command | Source |
+|---|---|---|
+| Level 1 | **Eco-Dash → Rebuild Level 1** | [Tools/level1_layout.csv](Tools/level1_layout.csv) |
+| Level 2 | **Eco-Dash → Rebuild Level 2** | [Tools/level2_layout.csv](Tools/level2_layout.csv) |
+| Enemy prefabs | **Eco-Dash → Rebuild enemy prefabs** | `Assets/Editor/EnemyPrefabBuilder.cs` |
+| Factory kit | **Eco-Dash → Rebuild factory kit** | `Assets/Editor/FactoryKitBuilder.cs` |
 
 **One rule that keeps biting:** height is presentation, hitting things is XZ. Greenie's
 Seeds fly flat at y ≈ 0.6, so anything that leaves the ground still needs a hurtbox

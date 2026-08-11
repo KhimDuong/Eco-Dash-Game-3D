@@ -86,7 +86,9 @@ Tunable values stay numerically identical (1 tile = 1 m).
 | `SlimeKing` | **NavMeshAgent** chase like the slime; contact damage + knockback unchanged (C3) |
 | `PollutionFlyBot` | **done (C2).** Hovers at flight height on Y (no NavMesh) — a downward probe holds it 1.6 m above *whatever is beneath it*, so it clears crates and follows the factory floor instead of sliding on one plane like the 2D "hover" did. LOS is a 3D raycast masked to `Obstacle` **cast along the orb's own flat path from the fire point**, so it can never claim a shot its own orbs would splash on a crate. Kites at `preferredRange` and fires SmogOrbs. Contact damage is a distance test (same reason as the slime). Every stat is the 2D one; `provokeDuration` is carried over from C1 |
 | `MegaSmogBoss` | same phase machine; 8-dir spray → **horizontal ring** of orbs on XZ; gas zones spawn on the arena floor |
-| `SweepingLaser` | telegraph→sweep cycle unchanged; beam = emissive scaled cylinder (or LineRenderer) + trigger collider |
+| `SweepingLaser` | **done (B3).** Telegraph→sweep cycle and every timing unchanged. It **sweeps around Y, not Z**: in 2D "rotate the sprite in the screen plane" and "sweep the beam across the floor" were the same operation, and in 3D they are different axes. The beam is a stretched mesh, so the 2D alpha ramp becomes a renderer toggle plus a colour swap, and detection is `Physics.OverlapBox` **filtered to the Player layer** — the 2D version scanned everything the beam touched, which in a factory full of crates is a lot of wasted overlap |
+| `ToxicGasZone` | **done (B3).** Logic and timings are the 2D ones. The cloud is a **flat disc on the ground** rather than a sprite: under the fixed ¾ camera what the player must read is *which floor is about to be unsafe*, and a billowing volume would hide exactly that. The telegraph pulses scale as well as colour, since opaque greybox has no alpha to ramp |
+| `ManholeTrap` | **done (B3).** Tier-1 collider swap; the lid rattle jitters across **XZ**, and the bite still roots via `ApplyKnockback(Vector3.zero, …)` |
 | `ReclamationPatch` | **done (B2).** 2D crossfaded two layers of sprite tiles; opaque URP meshes have no alpha, so the 3D patch does what the brief asks — *swap materials in a radius*. A flat disc grows from 0 to `radius` while its colour lerps barren → lush, and ground tiles the wave sweeps over are re-tinted as it passes |
 | `CameraFollow` | keeps the **class name and `Instance`/`Shake(duration, magnitude)` API** so ported callers (`PlayerHealth`, bosses) compile untouched. **A4 (done):** the component now lives on the `CinemachineCamera` and only *authors* the rig — pitch/yaw/distance drive `CinemachineFollow.FollowOffset`, and `Shake` fires a `CinemachineImpulseSource` (camera-space listener, so the jitter is still screen-plane). `magnitude` is still peak offset in metres (measured: 0.18 → 0.178 m) |
 | `DynamicYSorter` | **deleted** — depth is free in 3D |
@@ -140,6 +142,38 @@ Per-scene overrides Dev B *is* expected to set: `ObjectiveTracker.objectives`
 (+ `missionTitle`), `HudController.objectiveLabel` (Level 2 counts keycards,
 not cores), `EndScreenController.completeScene` (`Ending_Story` after the L2
 boss; blank elsewhere), and `GameManager.requiredCores`.
+
+## Level 2 is generated too — but from tilemaps (B3)
+
+`Assets/Editor/Level2Builder.cs` (menu: **Eco-Dash → Rebuild Level 2 from the 2D
+layout**) rebuilds `Level2_FactoryMaze` from `Tools/level2_layout.csv`. The pipeline
+is the same idea as Level 1's but needed its own extractor, because the 2D Level 2 is
+authored completely differently:
+
+| | Level 1 | Level 2 |
+|---|---|---|
+| geometry | individual prop objects | **two Tilemaps** (1 360 floor cells, 926 obstacle cells) |
+| gameplay | plain scene objects + some prefab instances | almost entirely **`PrefabInstance`** records |
+| extractor | `Tools/dump_scene.py` | `Tools/dump_level2.py` |
+
+`dump_scene.py` reads neither tilemap data nor a prefab instance's modification list,
+which is where its position lives — so a naive re-run reports an empty level. The Level 2
+dumper reads both, and `Tools/export_level2.py` then **merges the obstacle grid into
+maximal rectangles** (greedy: extend right, then down while the full width matches).
+926 cells become 23 boxes: the same solid shape, two orders of magnitude fewer objects
+for the renderer, the physics scene and the NavMesh bake.
+
+The 2D Grid sits at `(-20, -17)` with 1 m cells, so cell `(cx, cy)` centres on world
+`(cx + 0.5 - 20, cy + 0.5 - 17)` — verified against Greenie's own spawn before anything
+was generated. The factory comes out 40 × 34 m.
+
+Level 2 also carries the **3-keycard chain** that ties the two levels together: two cards
+lie in the side wings, and the third is handed over by Tí when he is rescued with the
+antidote from Ông Sáu's Level 1 herb quest. `RescueNPC` credits the objective directly
+rather than dropping a physical card, so the level cannot soft-lock.
+
+`MegaSmogBoss` is **C3's**; the builder leaves a `BossSpawn_MegaSmog` marker at its 2D
+position so the arena reads correctly and C3 has an anchor.
 
 ## Level 1 is generated from the 2D layout, not hand-placed
 

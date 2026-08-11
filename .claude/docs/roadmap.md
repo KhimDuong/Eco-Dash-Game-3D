@@ -143,8 +143,32 @@ owners in [../../TEAM-TASKS.md](../../TEAM-TASKS.md).
     ticking to `[x] Tìm Lõi Năng Lượng (3/3)` and `[x] Mở cổng dịch chuyển`
   - [x] Ông Sáu's M8 herb quest **7/7**: offer → 3 herbs → `HerbsReady` → antidote
   - [ ] `SlimeKing` mini-boss and the enemy population wait on **C1/C3**
-- [ ] **B3** L2 Factory Maze (corridors, lasers, manholes, gas, keycards ×3,
-  boss door, Tí at entrance)
+- **B3** L2 Factory Maze — **done**
+  - [x] **generated from the 2D level, like B1** — but Level 2 is authored differently:
+    the maze is a pair of **tilemaps** (1 360 floor cells, 926 obstacle cells) and every
+    piece of gameplay is a `PrefabInstance` whose position lives in the modification list.
+    `dump_scene.py` reads neither, so `Tools/dump_level2.py` is its Level 2 sibling
+  - [x] `Tools/export_level2.py` merges the obstacle grid into **maximal rectangles**
+    (926 cells → **23 boxes**) — same solid shape, two orders of magnitude less for the
+    renderer, the physics scene and the NavMesh bake
+  - [x] 7 scripts ported: `Keycard`, `BossDoor`, `ReturnPortal`, `RescueNPC` (Tier 1),
+    `ManholeTrap` (Tier 1), `SweepingLaser` + `ToxicGasZone` (Tier 2)
+  - [x] `Assets/Editor/FactoryKitBuilder.cs` (menu: *Eco-Dash → Rebuild factory kit*)
+    builds the 9 greybox prefabs; `Assets/Editor/Level2Builder.cs` (menu: *Eco-Dash →
+    Rebuild Level 2 from the 2D layout*) builds the scene and bakes the NavMesh
+  - [x] the **3-keycard chain** is intact: 2 on the floor + the one Tí hands over when
+    rescued with Ông Sáu's antidote, which is what ties L1's M8 quest to L2's boss door
+  - [x] per-scene HUD contract authored from the 2D scene's own values: *Nhiệm Vụ: Phá
+    Nhà Máy*, 5 objectives, `objectiveLabel` = "Thẻ từ", `completeScene` = `Ending_Story`
+  - [x] **bug found: `Keycard` never banked its own pickup.** It checked
+    `SceneProgress.IsConsumed` in `Awake` but never called `Consume`, unlike its sibling
+    `EnergyCore` — so on reload both cards respawned while the count stayed, and
+    re-collecting pushed the objective past 3/3. Fixed to match `EnergyCore`
+  - [x] play-mode verified **52/52**: blockout counts, NavMesh paths to both keycards and
+    the door, the sealed arena, walls holding, the keycard → Tí → door chain, manhole
+    bite + root, laser telegraph/burn/dark, gas telegraph → live → clear, hovering
+    fly-bots, and the whole scene contract
+  - [ ] `MegaSmogBoss` waits on **C3** — its spot is marked `BossSpawn_MegaSmog`
 - [ ] **B4** Hub (shop, crafting bench, Portal Nexus + return portals,
   side-quest NPCs)
 - **C2** Projectiles + `PollutionFlyBot` (true Y-hover, 3D LOS) — **done**
@@ -184,6 +208,22 @@ owners in [../../TEAM-TASKS.md](../../TEAM-TASKS.md).
 
 ## Recent log
 
+- _(2026-08-11)_ **B3 done — the Factory Maze is playable entrance → boss door.**
+  Generated from the 2D level like Level 1, but Level 2 is authored differently and
+  needed its own extractor: the maze is a pair of **tilemaps** and every piece of
+  gameplay is a `PrefabInstance` whose position lives in the modification list, neither
+  of which `dump_scene.py` reads. The 926 obstacle cells are merged into **23 rectangles**
+  before they ever reach Unity — the same solid shape with two orders of magnitude less
+  for the renderer, physics and the NavMesh bake to chew on.
+  Seven scripts ported; the two that needed real thought were `SweepingLaser` (sweeps
+  around **Y**, not Z — in 2D "rotate in the screen plane" and "sweep across the floor"
+  were the same operation and in 3D they are different axes) and `ToxicGasZone` (a flat
+  disc on the ground, because what the player must read is *which floor is about to be
+  unsafe*, and a billowing volume would hide exactly that).
+  One real bug: **`Keycard` never banked its own pickup** — it checked
+  `SceneProgress.IsConsumed` but never called `Consume`, unlike `EnergyCore`, so on
+  reload both cards respawned while the collected count stayed and re-collecting pushed
+  the objective past 3/3. Verified **52/52**, first run.
 - _(2026-08-11)_ **C2 done — the fly-bot flies, sees and shoots.** Y is a real axis for
   it: a downward probe holds it 1.6 m above whatever is under it, so it clears crates and
   follows the floor rather than sliding on one plane like the 2D "hover". Line of sight is
