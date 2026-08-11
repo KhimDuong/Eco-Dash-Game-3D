@@ -143,6 +143,30 @@ Per-scene overrides Dev B *is* expected to set: `ObjectiveTracker.objectives`
 not cores), `EndScreenController.completeScene` (`Ending_Story` after the L2
 boss; blank elsewhere), and `GameManager.requiredCores`.
 
+## The hub (B4)
+
+`Assets/Editor/HubBuilder.cs` (menu: **Eco-Dash → Rebuild the hub**) builds
+`Shop_RecyclingStation` **and the prefabs it needs**. There is no CSV: the 2D hub's
+props are hand-placed rather than tilemapped, so its six placements are written out at
+their 2D coordinates. The ground tilemap spans cells x −9..8, y −7..6 with the Grid at
+the origin — an 18 × 14 m room.
+
+Two things are worth knowing before touching it:
+
+- **`ShopController` does not self-build.** `CraftingUI` constructs its whole window
+  through `UIFactory` in `Awake`, so `CraftingBench` works dropped into any scene.
+  `ShopController` is Tier-0 too but expects `panel`, `trashText`, `rows[]`,
+  `closeButton` and `backButton` already wired — hence `Assets/Prefabs/Hub/ShopUI.prefab`,
+  built from code in `UIFactory`'s visual language so the two windows match.
+- **`PlayerInteractor` resolves one `IInteractable` per collider.** Ông Bear therefore
+  carries the shop and nothing else; his `bear_recycle` side quest lives on a separate
+  recycling counter beside him. Any NPC that wants two jobs needs two colliders.
+
+The **stage-portal shard gate** (M9/K7) is the hub's own mechanic: Stage 1 is always
+open and walk-over, Stage 2 is broken until a Mảnh Cổng powers it. Gated portals are
+**E-interact on purpose** — walking past must never spend a shard — and the powered
+state persists through a `QuestLog` flag, not just the session.
+
 ## Level 2 is generated too — but from tilemaps (B3)
 
 `Assets/Editor/Level2Builder.cs` (menu: **Eco-Dash → Rebuild Level 2 from the 2D
