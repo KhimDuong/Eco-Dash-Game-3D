@@ -82,7 +82,8 @@ Tunable values stay numerically identical (1 tile = 1 m).
 ### Tier 2 — redesigned for 3D
 | Script | 3D design |
 |---|---|
-| `PlasticSlime`, `SlimeKing` | **NavMeshAgent** chase (baked NavMesh per level); contact damage + knockback unchanged |
+| `PlasticSlime` | **done (C1).** **NavMeshAgent** chase on the baked NavMesh — the 2D version steered a `Rigidbody2D` straight at a random point, which only works because the 2D farm is an open field. Every stat, drop and damage number is the 2D one. Two things are new: an **aggro radius** (6 m, 9 m hysteresis, 2.5 m/s chase — under Greenie's 5 m/s, plus a `provokeDuration` so a slime sniped from range actually comes for you), and contact damage as a **distance test** rather than `OnCollisionStay`, because a NavMeshAgent moves kinematically and the player is a CharacterController, so that pair never generates collision callbacks at all |
+| `SlimeKing` | **NavMeshAgent** chase like the slime; contact damage + knockback unchanged (C3) |
 | `PollutionFlyBot` | hovers at flight height on Y (no NavMesh); 3D raycast LOS masked to `Obstacle`; kite + fire SmogOrbs |
 | `MegaSmogBoss` | same phase machine; 8-dir spray → **horizontal ring** of orbs on XZ; gas zones spawn on the arena floor |
 | `SweepingLaser` | telegraph→sweep cycle unchanged; beam = emissive scaled cylinder (or LineRenderer) + trigger collider |
@@ -156,6 +157,19 @@ Two small helpers came out of the port:
   material per object, so tints go through a shared `MaterialPropertyBlock`.
 - **`Billboard`** — world-space "Nhấn E" prompts would lie flat on the ground
   under the fixed ¾ rig; this keeps them square to the camera.
+- **`HitFlash`** (C1) — the enemies' "I got hit" flash. Same reason as
+  `MaterialTint`: the 2D enemies set `spriteRenderer.color = Color.white` for
+  0.07 s, meshes have no colour channel and `renderer.material` clones per
+  instance. It flashes emission alongside base colour, which is what actually
+  reads under the ¾ rig. Shared so C2's fly-bot and C3's bosses reuse it.
+
+### Enemy persistence: id by spawn point, not by death spot (C1/A6)
+
+`SceneProgress` ids a placed object by **name + position**, which is fine for a
+chest and wrong for anything that walks: a slime killed 10 m from its spawn banks
+an id no freshly-placed slime ever matches, so it is back on the next load.
+`PlasticSlime` captures `SceneProgress.IdFor(gameObject)` in `Awake` and marks
+*that* id on death. Any future moving enemy must do the same.
 
 ### Two traps worth knowing before debugging Level 1
 
@@ -167,6 +181,16 @@ Two small helpers came out of the port:
 - **Walk-over triggers are 0.75–0.8 m, not the 2D 0.4 m.** A CharacterController is
   only sampled by the physics step once per frame; at a high or uneven frame rate
   Greenie can step clean over a small sphere without registering.
+- **A dead Greenie freezes the whole scene.** `GameManager.OnPlayerDied` raises the
+  lose screen, which pins `Time.timeScale = 0` — same clock-holding trap as the
+  modals above. In a play-mode probe this is especially nasty: everything after the
+  death reads a frozen world, so enemies "stop moving", projectiles "miss" and drops
+  "never happen", and you get a page of unrelated-looking failures from one cause.
+  Probes should top the player up between phases and assert he is still alive.
+- **Anything that moves and bakes must carry `NavMeshModifier(ignoreFromBuild)`.**
+  `Level1Builder` bakes from physics colliders across every layer, so a placed
+  agent otherwise carves a hole in the mesh it is standing on. Both
+  `PlasticSlime.prefab` and `Player.prefab` set it.
 
 ## Communication patterns (unchanged — frozen contract)
 
