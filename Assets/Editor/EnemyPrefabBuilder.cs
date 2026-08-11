@@ -259,13 +259,17 @@ public static class EnemyPrefabBuilder
         }
         mat.SetColor("_BaseColor", color);
         mat.SetFloat("_Smoothness", smoothness);
-        // HitFlash pushes _EmissionColor through a property block; without the keyword
-        // URP strips emission from the shader variant and the flash is invisible.
+
+        // Every material this builder makes sits on an enemy that HitFlash drives, and
+        // HitFlash pushes _EmissionColor through a property block — without the keyword
+        // URP strips emission from the shader variant and the flash is silently invisible.
+        //
+        // RealtimeEmissive even when the resting emission is black, and that is the whole
+        // point: under EmissiveIsBlack Unity decides the keyword is pointless and drops it
+        // from m_ValidKeywords on the next reserialize, which turns the flash off again
+        // days later in a diff that looks like meaningless churn.
         mat.EnableKeyword("_EMISSION");
-        bool glows = emission.maxColorComponent > 0f;
-        mat.globalIlluminationFlags = glows
-            ? MaterialGlobalIlluminationFlags.RealtimeEmissive
-            : MaterialGlobalIlluminationFlags.EmissiveIsBlack;
+        mat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
         mat.SetColor("_EmissionColor", emission);
         EditorUtility.SetDirty(mat);
         return mat;

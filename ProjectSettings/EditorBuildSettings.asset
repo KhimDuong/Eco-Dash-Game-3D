@@ -12,6 +12,9 @@ EditorBuildSettings:
     path: Assets/_Scenes/Level1_BarrenFarm.unity
     guid: 7b471c1979b821d468fcebcc3e349465
   - enabled: 1
+    path: Assets/_Scenes/Level2_FactoryMaze.unity
+    guid: b689f0d7ebbeb7c4781ec6462d2ef205
+  - enabled: 1
     path: Assets/_Scenes/Intro_Story.unity
     guid: 29946c42bf13d244eb35188a3d87255b
   - enabled: 1
