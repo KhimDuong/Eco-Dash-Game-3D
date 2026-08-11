@@ -169,8 +169,32 @@ owners in [../../TEAM-TASKS.md](../../TEAM-TASKS.md).
     bite + root, laser telegraph/burn/dark, gas telegraph → live → clear, hovering
     fly-bots, and the whole scene contract
   - [ ] `MegaSmogBoss` waits on **C3** — its spot is marked `BossSpawn_MegaSmog`
-- [ ] **B4** Hub (shop, crafting bench, Portal Nexus + return portals,
-  side-quest NPCs)
+- **B4** Hub (shop, crafting bench, stage portals, side-quest NPC) — **done**
+  - [x] `Shop_RecyclingStation` built by `Assets/Editor/HubBuilder.cs` (menu: *Eco-Dash →
+    Rebuild the hub*). No CSV — the 2D hub's props are hand-placed, not tilemapped, so
+    its six placements are written out at their 2D coordinates. 18 × 14 m room
+  - [x] 4 scripts ported Tier-1: `StagePortal`, `CraftingBench`, `ShopNPC`, `SideQuestNPC`
+  - [x] **`ShopUI.prefab` built from code.** `ShopController` is Tier-0 but, unlike
+    `CraftingUI`, it does *not* self-build — it needs `panel`, `trashText`, `rows[]`,
+    `closeButton`, `backButton` wired. Built in `UIFactory`'s visual language so the shop
+    and crafting windows match
+  - [x] two stage portals with the M9 shard gate: Stage 1 always open (walk-over),
+    Stage 2 broken until a Mảnh Cổng powers it, persisted via a `QuestLog` flag and
+    **E-interact so shards can't be spent by walking past**
+  - [x] two corrections to the 2D scene, the same kind B1 made for `TEST_LoreNote`:
+    the 2D hub had **no walls at all** (the ground tilemap just stopped), and Ông Bear's
+    `bear_recycle` quest was test-placed in *Level 1* as "Ông Bear (TEST)" wanting 2+2.
+    `QuestCatalog` — the authority — puts it in the hub at **10 + 10**; it lives on its own
+    recycling counter beside him, because `PlayerInteractor` resolves one `IInteractable`
+    per collider and Ông Bear's own is the shop
+  - [x] play-mode verified **30/30**: walls, greeting → shop → buy (tier up, trash spent,
+    +2 max HP), crafting window, the side quest offer → turn-in → `recipe_advanced`
+    unlock, and both portals' gate state
+- [ ] **Known gap (not B4's):** three of `QuestCatalog`'s four side quests still have no
+  NPC — `may_pet` + `tai_pond` belong in Level 1 (B2) and `lan_intel` in Level 2 (B3).
+  **The 2D repo never placed them either**, and `QuestCompleteTrigger` (which the two
+  "External" ones need) is in **zero** 2D scenes, so they are un-completable there too.
+  Porting parity is intact; finishing them is a design decision, not a port task
 - **C2** Projectiles + `PollutionFlyBot` (true Y-hover, 3D LOS) — **done**
   - [x] `EnemyProjectile` (Smog Orb) ported Tier-1 from 2D, built to mirror `Seed.prefab`
     component for component; flattened onto XZ like the Seed, so neither projectile arcs
@@ -208,6 +232,21 @@ owners in [../../TEAM-TASKS.md](../../TEAM-TASKS.md).
 
 ## Recent log
 
+- _(2026-08-11)_ **B4 done — the hub closes the travel loop.** `Shop_RecyclingStation`
+  is built by `HubBuilder`, without a CSV: the 2D hub's props are hand-placed rather than
+  tilemapped, so its six placements are written out at their 2D coordinates.
+  The one piece of real work was the **shop window**. `ShopController` is Tier-0 and does
+  *not* self-build the way `CraftingUI` does — it expects `panel`, `trashText`, `rows[]`
+  and two buttons already wired — so `ShopUI.prefab` is built from code in `UIFactory`'s
+  visual language, and the two windows now match.
+  Two corrections to the 2D scene, both the kind B1 made when it replaced `TEST_LoreNote`:
+  the 2D hub had **no walls at all** (its ground tilemap simply stopped and Greenie walked
+  into the void), and Ông Bear's `bear_recycle` quest was test-placed in *Level 1* as
+  "Ông Bear (TEST)" wanting 2 scrap + 2 bottles. `QuestCatalog` is the authority and puts
+  it in the hub ("Trạm Trung Tâm") at 10 + 10.
+  It sits on its own recycling counter rather than on Ông Bear, because
+  `PlayerInteractor` resolves **one `IInteractable` per collider** and his is the shop —
+  worth remembering for any NPC that wants two jobs. Verified **30/30**.
 - _(2026-08-11)_ **B3 done — the Factory Maze is playable entrance → boss door.**
   Generated from the 2D level like Level 1, but Level 2 is authored differently and
   needed its own extractor: the maze is a pair of **tilemaps** and every piece of

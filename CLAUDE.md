@@ -101,20 +101,23 @@ doesn't bind to it — don't mix in legacy `Input.GetAxis` either.
 ## Current status
 
 See [.claude/docs/roadmap.md](.claude/docs/roadmap.md) for the live backlog.
-**P0 done; A1–A6, B1–B3, C1–C2 done.** The URP-3D project, Tier-0 + Tier-1 scripts,
-`Player.prefab`, the Cinemachine `CameraRig.prefab`, the whole UI layer (`HUD.prefab`,
-`GameManager.prefab`, `MainMenu` / `Intro_Story` / `Ending_Story`),
-**`Level1_BarrenFarm`** with its 29 `PlasticSlime`s, save/continue parity, the
-**`PollutionFlyBot` + `SmogOrb`** combat kit, and **`Level2_FactoryMaze`** with its
-lasers, manholes, keycard chain and boss door are all in and play-mode verified.
+**P0 done; A1–A6, B1–B4, C1–C2 done — every scene in the game now exists.** The URP-3D
+project, Tier-0 + Tier-1 scripts, `Player.prefab`, the Cinemachine `CameraRig.prefab`,
+the whole UI layer (`HUD.prefab`, `GameManager.prefab`, `MainMenu` / `Intro_Story` /
+`Ending_Story`), **`Level1_BarrenFarm`** with its 29 `PlasticSlime`s, save/continue
+parity, the **`PollutionFlyBot` + `SmogOrb`** combat kit, **`Level2_FactoryMaze`** with
+its lasers, manholes, keycard chain and boss door, and the
+**`Shop_RecyclingStation`** hub with Ông Bear's shop, the crafting bench and the two
+stage portals are all in and play-mode verified.
 
-Next up: **B4** (hub) and **C3** (bosses — the last thing between here and a full
-playthrough). Four generated things — **don't hand-edit their output**:
+Next up: **C3** (`SlimeKing` + `MegaSmogBoss`) — the last thing between here and a full
+start-to-ending playthrough. Five generated things — **don't hand-edit their output**:
 
 | What | Menu command | Source |
 |---|---|---|
 | Level 1 | **Eco-Dash → Rebuild Level 1** | [Tools/level1_layout.csv](Tools/level1_layout.csv) |
 | Level 2 | **Eco-Dash → Rebuild Level 2** | [Tools/level2_layout.csv](Tools/level2_layout.csv) |
+| The hub | **Eco-Dash → Rebuild the hub** | `Assets/Editor/HubBuilder.cs` |
 | Enemy prefabs | **Eco-Dash → Rebuild enemy prefabs** | `Assets/Editor/EnemyPrefabBuilder.cs` |
 | Factory kit | **Eco-Dash → Rebuild factory kit** | `Assets/Editor/FactoryKitBuilder.cs` |
 
