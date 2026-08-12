@@ -53,6 +53,7 @@ public static class Level1Builder
         int placed = PlaceFromLayout();
         AddExtras();
         WireChestsAndGate();
+        Dress();
         PlaceSystems();
         SetupLighting();
         int navOk = BakeNavMesh();
@@ -119,6 +120,8 @@ public static class Level1Builder
 
     static readonly List<(Transform t, Vector2 pos2D)> patches = new();
     static readonly List<(Transform t, Vector2 pos2D)> chests = new();
+    // Every XZ the layout used, so B5's ground dressing never buries something interactive.
+    static readonly List<Vector2> occupied = new();
     static Transform gate;
     static Vector3 playerStart = new Vector3(0f, 0f, -5f);
     static GameObject slimePrefab;
@@ -126,7 +129,7 @@ public static class Level1Builder
 
     static int PlaceFromLayout()
     {
-        patches.Clear(); chests.Clear(); gate = null; slimeCount = 0;
+        patches.Clear(); chests.Clear(); occupied.Clear(); gate = null; slimeCount = 0;
         int n = 0;
         foreach (var line in File.ReadAllLines(LayoutCsv))
         {
@@ -139,9 +142,9 @@ public static class Level1Builder
             switch (kind)
             {
                 case "prop":
+                    // B5: the props are real models now and every one of them pivots on the
+                    // floor, so the hand-measured lift the primitives needed is gone.
                     var prop = Spawn("Greybox_" + name, propRoot, pos, rotY);
-                    // Primitives are centred on their own origin; lift them onto the floor.
-                    if (name != "DeadTree") prop.transform.position = pos + Vector3.up * Lift(name);
                     prop.name = name;
                     break;
                 case "chest": chests.Add((Spawn("Chest", playRoot, pos).transform, new Vector2(x, z))); break;
@@ -160,8 +163,11 @@ public static class Level1Builder
                 case "slimespawn": PlaceSlime(name, ClampInside(pos)); break;
                 default: continue;
             }
+            occupied.Add(new Vector2(x, z));
             n++;
         }
+        // The player's start and the four lore notes AddExtras() places are reserved too.
+        occupied.Add(new Vector2(playerStart.x, playerStart.z));
         return n;
     }
 
@@ -187,16 +193,6 @@ public static class Level1Builder
         go.transform.position = pos;
     }
 
-    static float Lift(string kind) => kind switch
-    {
-        "Crate" => 0.45f,
-        "Barrel" => 0.45f,
-        "Rock" => 0.30f,
-        "Hut" => 1.10f,
-        "Fence" => 0.55f,
-        _ => 0f
-    };
-
     static Vector3 ClampInside(Vector3 p) => new(
         Mathf.Clamp(p.x, -HalfX + 2f, HalfX - 2f), p.y, Mathf.Clamp(p.z, -HalfZ + 2f, HalfZ - 2f));
 
@@ -209,6 +205,7 @@ public static class Level1Builder
         var go = (GameObject)PrefabUtility.InstantiatePrefab(prefab, parent);
         go.transform.position = pos;
         if (!Mathf.Approximately(rotY, 0f)) go.transform.rotation = Quaternion.Euler(0f, rotY, 0f);
+        occupied.Add(new Vector2(pos.x, pos.z));
         return go;
     }
 
@@ -226,7 +223,9 @@ public static class Level1Builder
 
     static void BaTu(Vector3 pos)
     {
-        var go = Spawn("NPC_Villager", playRoot, pos);
+        // B5 gave the villagers real models; Bà Tư uses the woman variant so the valley's two
+        // quest-givers don't read as the same person.
+        var go = Spawn("NPC_VillagerWoman", playRoot, pos);
         go.name = "BaTu";
         var npc = go.AddComponent<DialogueNPC>();
         var so = new SerializedObject(npc);
@@ -403,21 +402,81 @@ public static class Level1Builder
 
     static void SetupLighting()
     {
-        var sun = Object.FindFirstObjectByType<UnityEngine.Light>();
-        if (sun == null)
+        // B5 owns the look now — warm, hazy, washed-out valley light + the post stack.
+        log.AppendLine("  " + SceneLook.Apply(SceneLook.Look.Farm, "Assets/_Scenes/Level1_BarrenFarm"));
+    }
+
+    // --- B5 dressing ------------------------------------------------------------------------
+
+    /// <summary>
+    /// A fence line inside the boundary walls, and a scatter of grass, flowers and stones over
+    /// the bare ground. Both are decoration only — no colliders, and nothing is placed within
+    /// <c>Clearance</c> of anything the player has to reach.
+    /// </summary>
+    static void Dress()
+    {
+        var parent = new GameObject("Dressing").transform;
+        parent.SetParent(envRoot, false);
+
+        int posts = 0;
+        const float step = 2f;
+        for (float x = -HalfX + 1f; x <= HalfX - 1f; x += step)
         {
-            var go = new GameObject("Directional Light");
-            sun = go.AddComponent<UnityEngine.Light>();
-            sun.type = LightType.Directional;
+            posts += Post(parent, new Vector3(x, 0f, -HalfZ + 0.6f), 0f);
+            posts += Post(parent, new Vector3(x, 0f, HalfZ - 0.6f), 180f);
         }
-        sun.transform.SetPositionAndRotation(new Vector3(0f, 12f, 0f), Quaternion.Euler(52f, -35f, 0f));
-        sun.color = new Color(1f, 0.94f, 0.82f);      // hazy, washed-out farm light
-        sun.intensity = 1.1f;
-        sun.shadows = LightShadows.Soft;
-        RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
-        RenderSettings.ambientSkyColor = new Color(0.55f, 0.55f, 0.5f);
-        RenderSettings.ambientEquatorColor = new Color(0.42f, 0.40f, 0.35f);
-        RenderSettings.ambientGroundColor = new Color(0.25f, 0.22f, 0.18f);
+        for (float z = -HalfZ + 1f; z <= HalfZ - 1f; z += step)
+        {
+            posts += Post(parent, new Vector3(-HalfX + 0.6f, 0f, z), 90f);
+            posts += Post(parent, new Vector3(HalfX - 0.6f, 0f, z), -90f);
+        }
+
+        // Deterministic so a rebuild reproduces the same valley.
+        var rng = new System.Random(20260812);
+        string[] detail =
+        {
+            ArtKit.Nature + "grass.fbx", ArtKit.Nature + "grass_large.fbx",
+            ArtKit.Nature + "plant_bushSmall.fbx", ArtKit.Nature + "stone_smallA.fbx",
+            ArtKit.Nature + "stone_smallFlatA.fbx", ArtKit.Nature + "flower_yellowA.fbx",
+            ArtKit.Nature + "mushroom_tan.fbx", ArtKit.Nature + "stump_old.fbx",
+        };
+
+        int scattered = 0;
+        for (int i = 0; i < 320; i++)
+        {
+            var p = new Vector3(
+                (float)(rng.NextDouble() * (HalfX * 2f - 6f) - (HalfX - 3f)), 0f,
+                (float)(rng.NextDouble() * (HalfZ * 2f - 6f) - (HalfZ - 3f)));
+            if (TooClose(p)) continue;
+
+            var holder = new GameObject("Detail_" + scattered);
+            holder.transform.SetParent(parent, false);
+            holder.transform.position = p;
+            ArtKit.Spawn(detail[rng.Next(detail.Length)], holder.transform, 0f,
+                         rotY: (float)(rng.NextDouble() * 360.0));
+            GameObjectUtility.SetStaticEditorFlags(holder, StaticEditorFlags.BatchingStatic);
+            scattered++;
+        }
+        log.AppendLine("  dressing: " + posts + " fence posts, " + scattered + " ground details");
+    }
+
+    const float Clearance = 2.2f;
+
+    static int Post(Transform parent, Vector3 pos, float rotY)
+    {
+        var holder = new GameObject("FencePost");
+        holder.transform.SetParent(parent, false);
+        holder.transform.position = pos;
+        var art = ArtKit.Spawn(ArtKit.Nature + "fence_planksDouble.fbx", holder.transform, 0f, rotY);
+        GameObjectUtility.SetStaticEditorFlags(holder, StaticEditorFlags.BatchingStatic);
+        return art != null ? 1 : 0;
+    }
+
+    static bool TooClose(Vector3 p)
+    {
+        foreach (var q in occupied)
+            if ((new Vector2(p.x, p.z) - q).sqrMagnitude < Clearance * Clearance) return true;
+        return false;
     }
 
     static int BakeNavMesh()

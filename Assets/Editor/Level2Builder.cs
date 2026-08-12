@@ -56,8 +56,11 @@ public static class Level2Builder
         playRoot = new GameObject("Gameplay").transform;
         enemyRoot = new GameObject("Enemies").transform;
         botCount = 0;
+        walls.Clear(); floors.Clear(); occupied.Clear();
 
         int placed = PlaceFromLayout();
+        occupied.Add(new Vector2(playerStart.x, playerStart.z));
+        Dress();
         PlaceSystems();
         SetupLighting();
         int navOk = BakeNavMesh();
@@ -91,10 +94,12 @@ public static class Level2Builder
                     // Slab top sits at y = 0, like Level 1's ground.
                     Slab(Kit + "Greybox_FactoryFloor.prefab", "Floor", envRoot,
                          new Vector3(x, -FloorThickness * 0.5f, z), new Vector3(a, FloorThickness, b));
+                    floors.Add((new Vector2(x, z), new Vector2(a, b)));
                     break;
                 case "wall":
                     Slab(Kit + "Greybox_FactoryWall.prefab", "Wall", envRoot,
                          new Vector3(x, WallHeight * 0.5f, z), new Vector3(a, WallHeight, b));
+                    walls.Add((new Vector2(x, z), new Vector2(a, b)));
                     break;
                 case "keycard": Spawn(Kit, "Keycard", playRoot, pos).name = name; break;
                 case "manhole": Spawn(Kit, "ManholeTrap", hazardRoot, pos).name = name; break;
@@ -223,23 +228,99 @@ public static class Level2Builder
         }
     }
 
+    // --- B5 dressing ------------------------------------------------------------------------
+
+    static readonly List<(Vector2 centre, Vector2 size)> walls = new();
+    static readonly List<(Vector2 centre, Vector2 size)> floors = new();
+    static readonly List<Vector2> occupied = new();
+
+    /// <summary>
+    /// Machinery pushed up against the maze walls: pipes, hoppers, screens, crates. Decoration
+    /// only — nothing here has a collider, so the corridors the player and the NavMesh see are
+    /// exactly the ones the tilemap authored.
+    /// </summary>
+    static void Dress()
+    {
+        if (walls.Count == 0) return;
+        var parent = new GameObject("Dressing").transform;
+        parent.SetParent(envRoot, false);
+
+        string[] kit =
+        {
+            ArtKit.Factory + "pipe-large-long.fbx", ArtKit.Factory + "machine.fbx",
+            ArtKit.Factory + "machine-window.fbx", ArtKit.Factory + "box-large.fbx",
+            ArtKit.Factory + "box-small.fbx", ArtKit.Factory + "hopper-round.fbx",
+            ArtKit.Factory + "screen-wide.fbx", ArtKit.Factory + "warning-orange.fbx",
+            ArtKit.Factory + "cone.fbx", ArtKit.Factory + "conveyor.fbx",
+        };
+
+        var rng = new System.Random(20260812);
+        int placed = 0;
+        // Most candidate points land inside one of the 23 merged wall rectangles or too close
+        // to something the player needs, so the accept rate is low by design — spend attempts.
+        for (int attempt = 0; attempt < 6000 && placed < 130; attempt++)
+        {
+            var (centre, size) = walls[rng.Next(walls.Count)];
+
+            // A random point just off one of the four faces, facing away from the wall.
+            float halfX = size.x * 0.5f, halfZ = size.y * 0.5f;
+            const float standoff = 0.85f;
+            int face = rng.Next(4);
+            Vector2 p; float rotY;
+            switch (face)
+            {
+                case 0: p = centre + new Vector2(Lerp(rng, -halfX, halfX), halfZ + standoff); rotY = 180f; break;
+                case 1: p = centre + new Vector2(Lerp(rng, -halfX, halfX), -halfZ - standoff); rotY = 0f; break;
+                case 2: p = centre + new Vector2(halfX + standoff, Lerp(rng, -halfZ, halfZ)); rotY = 270f; break;
+                default: p = centre + new Vector2(-halfX - standoff, Lerp(rng, -halfZ, halfZ)); rotY = 90f; break;
+            }
+
+            if (!OnFloor(p) || InsideWall(p, 0.6f) || NearGameplay(p, 2.4f)) continue;
+
+            var holder = new GameObject("FactoryProp_" + placed);
+            holder.transform.SetParent(parent, false);
+            holder.transform.position = new Vector3(p.x, 0f, p.y);
+            if (ArtKit.Spawn(kit[rng.Next(kit.Length)], holder.transform, 0f, rotY) == null)
+            {
+                Object.DestroyImmediate(holder);
+                continue;
+            }
+            GameObjectUtility.SetStaticEditorFlags(holder, StaticEditorFlags.BatchingStatic);
+            occupied.Add(p);
+            placed++;
+        }
+        log.AppendLine("  dressing: " + placed + " factory props against the walls");
+    }
+
+    static float Lerp(System.Random rng, float a, float b) => a + (float)rng.NextDouble() * (b - a);
+
+    static bool OnFloor(Vector2 p)
+    {
+        foreach (var (c, s) in floors)
+            if (Mathf.Abs(p.x - c.x) <= s.x * 0.5f && Mathf.Abs(p.y - c.y) <= s.y * 0.5f) return true;
+        return false;
+    }
+
+    static bool InsideWall(Vector2 p, float margin)
+    {
+        foreach (var (c, s) in walls)
+            if (Mathf.Abs(p.x - c.x) <= s.x * 0.5f + margin &&
+                Mathf.Abs(p.y - c.y) <= s.y * 0.5f + margin) return true;
+        return false;
+    }
+
+    static bool NearGameplay(Vector2 p, float radius)
+    {
+        foreach (var q in occupied)
+            if ((p - q).sqrMagnitude < radius * radius) return true;
+        return false;
+    }
+
     static void SetupLighting()
     {
-        var sun = Object.FindFirstObjectByType<UnityEngine.Light>();
-        if (sun == null)
-        {
-            var go = new GameObject("Directional Light");
-            sun = go.AddComponent<UnityEngine.Light>();
-            sun.type = LightType.Directional;
-        }
-        sun.transform.SetPositionAndRotation(new Vector3(0f, 12f, 0f), Quaternion.Euler(58f, 20f, 0f));
-        sun.color = new Color(0.78f, 0.80f, 0.92f);      // cold factory strip-lighting
-        sun.intensity = 0.85f;
-        sun.shadows = LightShadows.Soft;
-        RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
-        RenderSettings.ambientSkyColor = new Color(0.30f, 0.32f, 0.40f);
-        RenderSettings.ambientEquatorColor = new Color(0.24f, 0.25f, 0.30f);
-        RenderSettings.ambientGroundColor = new Color(0.12f, 0.12f, 0.15f);
+        // B5 owns the look now — cold, dark, high-contrast so the lasers and screens are the
+        // brightest things on screen.
+        log.AppendLine("  " + SceneLook.Apply(SceneLook.Look.Factory, "Assets/_Scenes/Level2_FactoryMaze"));
     }
 
     static int BakeNavMesh()
@@ -287,6 +368,7 @@ public static class Level2Builder
         var go = (GameObject)PrefabUtility.InstantiatePrefab(prefab, parent);
         go.transform.position = pos;
         if (!Mathf.Approximately(rotY, 0f)) go.transform.rotation = Quaternion.Euler(0f, rotY, 0f);
+        occupied.Add(new Vector2(pos.x, pos.z));   // B5 dressing keeps clear of these
         return go;
     }
 

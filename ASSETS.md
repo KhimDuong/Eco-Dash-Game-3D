@@ -92,7 +92,38 @@ LICENSE/README it shipped with, so attribution stays traceable.
 5. Use it in prefabs (swap the `Greybox*` placeholder mesh, keep colliders
    and scripts); commit.
 
-## Greybox placeholders (swap with real art in P3)
+## The art pass (B5) — how real art gets in
+
+**Done.** The greybox tables below are kept as the record of what each prefab used
+to be; every one of them now carries a real model. Two generated things own it:
+
+| What | Where | Notes |
+|---|---|---|
+| `Assets/Editor/ArtKit.cs` | the plumbing | loads a model, sizes it to a **height in metres**, pivots it on the floor, converts glTF materials to URP/Lit, strips lights, builds an Idle controller |
+| `Assets/Editor/ArtPass.cs` | the mapping | one entry per prefab: what replaces what. Menu: **Eco-Dash → Run the art pass (B5)**. Idempotent |
+| `Assets/Editor/SceneLook.cs` | the look | per-scene sun, ambient, fog and a **post-processing volume profile** saved beside the scene |
+
+Rules that keep it working:
+
+- **Only the visual is replaced.** Colliders, trigger radii, scripts, prompt canvases
+  and the toggled-child contracts (`Visual_Open`/`Visual_Locked`, `Lid`/`Hole`,
+  `Visual_Unconscious`/`Visual_Awake`) are gameplay and are never touched. The loose
+  props are the one exception: their colliders are **refit from the model's measured
+  bounds**, because a real model pivots on the floor where a primitive is centred on
+  its own origin — which is also why `Level1Builder` no longer lifts props.
+- **`HubBuilder`, `FactoryKitBuilder` and `EnemyPrefabBuilder` rebuild their prefabs
+  from primitives**, so each one calls `ArtPass.Reapply*()` at the end. Without that,
+  rebuilding the hub silently reverts Ông Bear to a grey capsule.
+- **Fit by height only works on roughly cubic models.** `rock_largeA` is a flat slab;
+  fitting it to 0.55 m tall made it 2.15 m across and closed corridors the 2D layout
+  leaves open. Check the printed size in the pass's log.
+- **`.glb` needs `com.unity.cloud.gltfast`** (added in B5). Kenney ships `.fbx`, which
+  Unity reads natively and which imports straight to URP/Lit.
+- **Anything a glTF model brings with it is suspect.** The Quaternius flying robot
+  ships two baked-in **directional lights**; one per fly-bot would blow out the level.
+  `ArtKit.Spawn` always strips lights.
+
+## Greybox placeholders (the P3 art pass replaced these)
 
 Until art is sourced, everything visual is **ProBuilder/primitive greybox**,
 named `Greybox*` and using a small shared set of flat URP materials

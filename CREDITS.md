@@ -18,8 +18,64 @@ Template for a new entry:
 
 ## 3D models & materials — third-party
 
-*(none yet — greybox placeholders only; entries land with the P1 character
-pass and the P3 art pass)*
+All of it is **CC0** (public domain) — no attribution is legally required for any
+row below. We credit anyway, per our policy. Imported in **B5** (the P3 art pass).
+
+### Nature Kit — by Kenney
+- **Used for:** Level 1's trees, dead trees, rocks, bushes, grass, flowers,
+  mushrooms, stumps, fence posts and the teleport gate's stone ring.
+- **Source:** https://kenney.nl/assets/nature-kit
+- **Author:** Kenney (Kenney Vleugels) — https://kenney.nl
+- **License:** CC0 1.0
+- **Files:** `Assets/Models/ThirdParty/Kenney_NatureKit/` (FBX + License.txt)
+- **Modifications:** none to the models. The pack's OBJ/GLTF/DAE/STL copies and
+  isometric sprite renders were dropped on import — FBX only, to keep the repo small.
+
+### Survival Kit — by Kenney
+- **Used for:** the chest, crates, barrels, litter bottles, item pickups, the
+  rustic hut and the hub's crafting bench.
+- **Source:** https://kenney.nl/assets/survival-kit
+- **Author:** Kenney — https://kenney.nl
+- **License:** CC0 1.0
+- **Files:** `Assets/Models/ThirdParty/Kenney_SurvivalKit/` (FBX + Textures + License.txt)
+- **Modifications:** none to the models; non-FBX format copies dropped on import.
+
+### Factory Kit — by Kenney
+- **Used for:** **Greenie himself** (the `oopi` robot), Level 2's machinery,
+  pipes, screens, crates, warning posts, the sweeping-laser emitter, the manhole
+  lid, the stage/return portal doorways and the hub's recycling hopper.
+- **Source:** https://kenney.nl/assets/factory-kit
+- **Author:** Kenney — https://kenney.nl
+- **License:** CC0 1.0
+- **Files:** `Assets/Models/ThirdParty/Kenney_FactoryKit/` (FBX + Textures + License.txt)
+- **Modifications:** none to the models; non-FBX format copies dropped on import.
+
+### Cube Pets — by Kenney
+- **Used for:** Ông Bear, the hub shopkeeper (`animal-polar`).
+- **Source:** https://kenney.nl/assets/cube-pets
+- **Author:** Kenney — https://kenney.nl
+- **License:** CC0 1.0
+- **Files:** `Assets/Models/ThirdParty/Kenney_CubePets/` (one model + Textures + License.txt)
+- **Modifications:** only `animal-polar` was imported out of the 24-animal pack, and
+  it is **tinted warm brown** at runtime (`MrBearFur` material) — Kenney's only bear
+  is a polar bear and Ông Bear is a brown one.
+
+### Slime · Robot Enemy Flying Gun · Farmer — by Quaternius
+- **Used for:** `PlasticSlime` (Quái Rác Nhựa), `PollutionFlyBot`, and every human
+  NPC — Ông Sáu as-is, Bà Tư and Tí as recolours of the same farmer mesh.
+- **Source:** https://poly.pizza/m/LyjSUKHKnh · https://poly.pizza/m/UDTM6X1y9a ·
+  https://poly.pizza/m/7pn3R6hPvE (via [Poly Pizza](https://poly.pizza))
+- **Author:** Quaternius — https://quaternius.com
+- **License:** CC0 1.0
+- **Files:** `Assets/Models/ThirdParty/Quaternius/` (GLB + License.txt)
+- **Modifications:** materials converted from glTFast's Shader Graph to URP/Lit so
+  `HitFlash`/`MaterialTint` can drive `_BaseColor`; Bà Tư and Tí are colour variants
+  of the farmer; the flying robot's two **baked-in directional lights were deleted**;
+  a one-state Idle animator controller is generated per model. All by
+  `Assets/Editor/ArtPass.cs` — the source files are untouched.
+
+> Read via `.glb`, which Unity cannot import on its own — hence the
+> **`com.unity.cloud.gltfast`** package added to `Packages/manifest.json` in B5.
 
 ## Audio — third-party
 
