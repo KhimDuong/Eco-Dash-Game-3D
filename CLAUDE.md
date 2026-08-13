@@ -45,7 +45,9 @@ per-developer breakdown is [TEAM-TASKS.md](TEAM-TASKS.md). Creative brief
    asset goes in [CREDITS.md](CREDITS.md)**. Source order: **Kenney →
    Quaternius → KayKit → itch.io low-poly**, then other free sources. Greybox
    with ProBuilder first; **only generate models (Coplay 3D gen, billed) as a
-   last resort**. Full rules: [ASSETS.md](ASSETS.md).
+   last resort**. Full rules: [ASSETS.md](ASSETS.md). The art itself is applied
+   by a **generator** (`Eco-Dash → Run the art pass (B5)`), not by hand — add a
+   row to `ArtPass.cs`, never drag a mesh onto a prefab.
 6. **After any script change, verify it compiles** with
    `mcp__coplay-mcp__check_compile_errors` before saying you're done.
 7. **Three devs work in parallel — respect scene ownership.** One owner per
@@ -101,17 +103,18 @@ doesn't bind to it — don't mix in legacy `Input.GetAxis` either.
 ## Current status
 
 See [.claude/docs/roadmap.md](.claude/docs/roadmap.md) for the live backlog.
-**P0 done; A1–A6, B1–B4, C1–C2 done — every scene in the game now exists.** The URP-3D
-project, Tier-0 + Tier-1 scripts, `Player.prefab`, the Cinemachine `CameraRig.prefab`,
-the whole UI layer (`HUD.prefab`, `GameManager.prefab`, `MainMenu` / `Intro_Story` /
-`Ending_Story`), **`Level1_BarrenFarm`** with its 29 `PlasticSlime`s, save/continue
-parity, the **`PollutionFlyBot` + `SmogOrb`** combat kit, **`Level2_FactoryMaze`** with
-its lasers, manholes, keycard chain and boss door, and the
+**P0 done; A1–A6, B1–B5, C1–C2 done — every scene exists and none of them is grey any
+more.** The URP-3D project, Tier-0 + Tier-1 scripts, `Player.prefab`, the Cinemachine
+`CameraRig.prefab`, the whole UI layer (`HUD.prefab`, `GameManager.prefab`,
+`MainMenu` / `Intro_Story` / `Ending_Story`), **`Level1_BarrenFarm`** with its 29
+`PlasticSlime`s, save/continue parity, the **`PollutionFlyBot` + `SmogOrb`** combat kit,
+**`Level2_FactoryMaze`** with its lasers, manholes, keycard chain and boss door, the
 **`Shop_RecyclingStation`** hub with Ông Bear's shop, the crafting bench and the two
-stage portals are all in and play-mode verified.
+stage portals, and **B5's art pass** — five CC0 packs, real models on every prefab, and a
+per-scene lighting/post look — are all in and play-mode verified.
 
 Next up: **C3** (`SlimeKing` + `MegaSmogBoss`) — the last thing between here and a full
-start-to-ending playthrough. Five generated things — **don't hand-edit their output**:
+start-to-ending playthrough. Six generated things — **don't hand-edit their output**:
 
 | What | Menu command | Source |
 |---|---|---|
@@ -120,8 +123,20 @@ start-to-ending playthrough. Five generated things — **don't hand-edit their o
 | The hub | **Eco-Dash → Rebuild the hub** | `Assets/Editor/HubBuilder.cs` |
 | Enemy prefabs | **Eco-Dash → Rebuild enemy prefabs** | `Assets/Editor/EnemyPrefabBuilder.cs` |
 | Factory kit | **Eco-Dash → Rebuild factory kit** | `Assets/Editor/FactoryKitBuilder.cs` |
+| The art | **Eco-Dash → Run the art pass (B5)** | `Assets/Editor/ArtPass.cs` + `ArtKit.cs` + `SceneLook.cs` |
 
-**One rule that keeps biting:** height is presentation, hitting things is XZ. Greenie's
-Seeds fly flat at y ≈ 0.6, so anything that leaves the ground still needs a hurtbox
-reaching the ground plane or it is simply unkillable. See
-[architecture.md](.claude/docs/architecture.md#flying-enemies-need-two-colliders-c2).
+The last three of those rebuild their prefabs from primitives, so each one **re-runs its
+slice of the art pass at the end**. Change art by editing `ArtPass.cs`, never by dragging
+a mesh onto a prefab — the next rebuild would throw it away.
+
+**Two rules that keep biting:**
+
+1. **Height is presentation, hitting things is XZ.** Greenie's Seeds fly flat at y ≈ 0.6,
+   so anything that leaves the ground still needs a hurtbox reaching the ground plane or
+   it is simply unkillable.
+   See [architecture.md](.claude/docs/architecture.md#flying-enemies-need-two-colliders-c2).
+2. **Only the visual is ever swapped.** Colliders, trigger radii and the toggled-child
+   pairs (`Visual_Open`/`Visual_Locked`, `Lid`/`Hole`, `Visual_Unconscious`/`Visual_Awake`)
+   are the gameplay contract. And a `MaterialPropertyBlock` is **per material slot, not
+   per renderer** — the thing that made the new slime's eyes turn green after one hit.
+   See [architecture.md](.claude/docs/architecture.md#the-art-pass-is-generated-too-b5).

@@ -58,6 +58,10 @@ public static class HubBuilder
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
 
+        // These five prefabs were just rebuilt from primitives, which throws B5's art away.
+        // Put it back before the scene instantiates them.
+        log.Line(ArtPass.ReapplyHub().TrimEnd());
+
         BuildScene();
         return log.ToString();
     }
@@ -195,17 +199,8 @@ public static class HubBuilder
 
     static void Lighting()
     {
-        var sun = Object.FindFirstObjectByType<UnityEngine.Light>();
-        if (sun == null) sun = new GameObject("Directional Light").AddComponent<UnityEngine.Light>();
-        sun.type = LightType.Directional;
-        sun.transform.SetPositionAndRotation(new Vector3(0f, 12f, 0f), Quaternion.Euler(50f, -25f, 0f));
-        sun.color = new Color(1f, 0.96f, 0.88f);
-        sun.intensity = 1.05f;
-        sun.shadows = LightShadows.Soft;
-        RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
-        RenderSettings.ambientSkyColor = new Color(0.50f, 0.53f, 0.55f);
-        RenderSettings.ambientEquatorColor = new Color(0.38f, 0.39f, 0.38f);
-        RenderSettings.ambientGroundColor = new Color(0.20f, 0.20f, 0.18f);
+        // B5 owns the look now — bright and even, the one safe room in the game.
+        log.Line("  " + SceneLook.Apply(SceneLook.Look.Hub, "Assets/_Scenes/Shop_RecyclingStation"));
     }
 
     // --- prefabs -------------------------------------------------------------------------

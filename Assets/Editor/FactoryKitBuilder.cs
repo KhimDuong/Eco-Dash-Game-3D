@@ -32,6 +32,8 @@ public static class FactoryKitBuilder
         log += BuildRescueNPC();
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
+        // The prefabs above are rebuilt from primitives, so B5's models have to go back on.
+        log += ArtPass.ReapplyFactory();
         return log;
     }
 

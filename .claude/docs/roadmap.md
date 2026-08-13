@@ -222,8 +222,42 @@ owners in [../../TEAM-TASKS.md](../../TEAM-TASKS.md).
 - [ ] Port gate: full start→ending playthrough possible
 
 ### P3 — Polish (Week 3)
-- [ ] **B5** Free low-poly art pass (farm/factory/hub packs) + lighting/post
-  volumes; no greybox visible; CREDITS complete
+- **B5** Free low-poly art pass + lighting/post volumes — **done**
+  - [x] five CC0 packs imported to `Assets/Models/ThirdParty/`: **Kenney** Nature Kit,
+    Survival Kit, Factory Kit, Cube Pets (one bear) and three **Quaternius** models
+    via Poly Pizza. FBX only — each Kenney zip's OBJ/GLTF/DAE/STL duplicates and
+    isometric sprite renders are dropped, which is most of the download
+  - [x] **the art pass is generated, like everything else**: `Assets/Editor/ArtKit.cs`
+    (size to a height in metres, pivot on the floor, convert materials, strip lights,
+    build an Idle controller) + `Assets/Editor/ArtPass.cs` (one entry per prefab;
+    menu: *Eco-Dash → Run the art pass (B5)*; idempotent) +
+    `Assets/Editor/SceneLook.cs` (sun/ambient/fog + a post-processing volume profile
+    saved beside each scene)
+  - [x] **Greenie is Kenney's `oopi`** — a mint one-eyed robot that already looked the
+    part; `PlasticSlime` and `PollutionFlyBot` are Quaternius' slime and flying-gun
+    robot; every human NPC is one Quaternius farmer mesh, with Bà Tư and Tí as
+    recolours at different heights
+  - [x] per-scene look: Level 1 warm/hazy with fog, Level 2 dark and high-contrast so
+    the lasers and screens are the brightest things on screen, the hub bright and even
+  - [x] Level 1 gained a tiled boundary fence (112 posts) and 181 scattered ground
+    details; Level 2 gained 40 machinery props hugging the maze walls — both
+    deterministic, collider-free, and kept clear of anything interactive
+  - [x] **bug found: a property block is per material slot, not per renderer.**
+    The greybox enemies were one material per renderer, which hid it. The real slime is
+    *one* renderer with a body and an eye material, so `HitFlash` restoring from
+    `sharedMaterial` repainted its eyes body-green after the first hit. Rewritten to
+    walk `sharedMaterials` and use the indexed property-block overload
+  - [x] **trap found: a prefab generator silently undoes the art.** `HubBuilder`,
+    `FactoryKitBuilder` and `EnemyPrefabBuilder` rebuild their prefabs from primitives;
+    each now calls `ArtPass.Reapply*()` at the end
+  - [x] **trap found: models bring luggage.** The Quaternius flying robot ships two
+    baked-in *directional lights* at intensity 4.3 — one per fly-bot would have blown
+    out Level 2. `ArtKit.Spawn` always strips lights
+  - [x] verified: **no `Greybox_*` material is left in any of the three scenes**, every
+    size measured, nothing floating or sunk, and the gameplay probes still pass —
+    slime **31/31**, Level 1 **28/28**, Level 2, hub and fly-bot re-run green
+  - [ ] `.glb` needs the **`com.unity.cloud.gltfast`** package (added to
+    `Packages/manifest.json`) — B and C re-resolve packages on next pull
 - [ ] **C4** Game-feel (knockback, shake, flashes, death/clean VFX — 2D-parity punch)
 - [ ] **C5** Audio ported + rewired; settings sliders verified; `HOW_TO_PLAY.md`
   updated for 3D

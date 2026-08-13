@@ -66,7 +66,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 716f9e357c4d2834f899c753b1accbcc, type: 2}
+  - {fileID: 2100000, guid: f31323cbdf485b04395d0ed11e5c5385, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -99,8 +99,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3145222400056971555}
-  - component: {fileID: 3274443566969690633}
-  - component: {fileID: 6192280235752637383}
   m_Layer: 0
   m_Name: Base
   m_TagString: Untagged
@@ -123,21 +121,54 @@ Transform:
   m_Children: []
   m_Father: {fileID: 2086426185486011565}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!33 &3274443566969690633
+--- !u!1 &6101184941176626792
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6908543597385860306}
+  - component: {fileID: 7516446588679801719}
+  - component: {fileID: 5740751491478863805}
+  m_Layer: 0
+  m_Name: Art_statue_ring
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6908543597385860306
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6101184941176626792}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 3.7669039, y: 3.7669039, z: 3.7669039}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2086426185486011565}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!33 &7516446588679801719
 MeshFilter:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3299687138004188762}
-  m_Mesh: {fileID: 10206, guid: 0000000000000000e000000000000000, type: 0}
---- !u!23 &6192280235752637383
+  m_GameObject: {fileID: 6101184941176626792}
+  m_Mesh: {fileID: 6855248621505188759, guid: e38190c51e98d0b448474912e00f639c, type: 3}
+--- !u!23 &5740751491478863805
 MeshRenderer:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3299687138004188762}
+  m_GameObject: {fileID: 6101184941176626792}
   m_Enabled: 1
   m_CastShadows: 1
   m_ReceiveShadows: 1
@@ -156,7 +187,8 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 7df3d095464f1b545b17911522488dc6, type: 2}
+  - {fileID: 7555185752953191562, guid: e38190c51e98d0b448474912e00f639c, type: 3}
+  - {fileID: -4231637370832951941, guid: e38190c51e98d0b448474912e00f639c, type: 3}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -165,7 +197,7 @@ MeshRenderer:
   m_LightProbeVolumeOverride: {fileID: 0}
   m_ScaleInLightmap: 1
   m_ReceiveGI: 1
-  m_PreserveUVs: 1
+  m_PreserveUVs: 0
   m_IgnoreNormalsForChartDetection: 0
   m_ImportantGI: 0
   m_StitchLightmapSeams: 1
@@ -245,6 +277,7 @@ Transform:
   m_Children:
   - {fileID: 3145222400056971555}
   - {fileID: 7627310163550104489}
+  - {fileID: 6908543597385860306}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!135 &3018165111793107736

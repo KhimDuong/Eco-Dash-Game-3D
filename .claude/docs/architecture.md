@@ -241,6 +241,48 @@ XZ.** Under a fixed ¾ camera the player aims on the ground plane, so anything t
 leaves the ground still needs a ground-plane footprint you can shoot. C3's flying boss
 phases inherit this.
 
+## The art pass is generated too (B5)
+
+Real art arrives the same way the levels do: from a re-runnable generator, not by
+dragging meshes onto prefabs. Three files own it —
+[ArtKit.cs](../../Assets/Editor/ArtKit.cs) (how to turn a model file into a usable
+visual), [ArtPass.cs](../../Assets/Editor/ArtPass.cs) (one entry per prefab: what
+replaces what), and [SceneLook.cs](../../Assets/Editor/SceneLook.cs) (per-scene sun,
+ambient, fog and post volume). Menu: **Eco-Dash → Run the art pass (B5)**.
+
+**Only the visual is replaced.** Colliders, trigger radii, scripts, prompt canvases
+and the toggled-child contracts are gameplay and are never touched. The loose props
+(crate, barrel, rock, fence, hut) are the deliberate exception: their colliders are
+refit from the model's measured bounds, because a real model **pivots on the floor**
+where a primitive is centred on its own origin — which is why `Level1Builder` no
+longer lifts props by hand-measured amounts.
+
+Four things that bite, in the order they bit:
+
+- **A prefab generator undoes the art.** `HubBuilder`, `FactoryKitBuilder` and
+  `EnemyPrefabBuilder` rebuild their prefabs from primitives, so each calls
+  `ArtPass.Reapply*()` at the end. Without it, rebuilding the hub silently reverts
+  Ông Bear to a grey capsule and nothing warns you.
+- **glTF materials are not URP materials.** glTFast assigns its own Shader Graph whose
+  colour property is `baseColorFactor`, not `_BaseColor` — so `HitFlash` and
+  `MaterialTint` become *silent no-ops* on any raw glTF import. `ArtKit` converts them
+  to URP/Lit assets. Models whose colour lives only in a missing texture atlas import
+  pure white and cannot be rescued; check before committing to one.
+- **A property block is per material slot, not per renderer.** The greybox enemies were
+  one material per renderer, which hid this. The real slime is *one* renderer with a
+  body and an eye material, so `HitFlash` restoring from `sharedMaterial` alone
+  repainted the eyes body-green after the first hit. It now walks
+  `sharedMaterials` and uses the indexed `Get/SetPropertyBlock` overload.
+- **Models bring luggage.** The Quaternius flying robot ships two baked-in
+  **directional lights** at intensity 4.3; one per fly-bot would blow out the level.
+  `ArtKit.Spawn` always strips lights, and fits by a requested height in metres because
+  the packs disagree wildly on scale (Kenney Survival is authored at 0.5 m, its Nature
+  Kit at 1 m, one Quaternius character imports 5.6 m tall).
+
+Fit-by-height assumes a roughly cubic model. `rock_largeA` is a flat slab and fitting
+it to 0.55 m tall made it **2.15 m across**, wide enough to close corridors the 2D
+layout leaves open — the pass logs every final size for exactly this reason.
+
 ### Enemy persistence: id by spawn point, not by death spot (C1/A6)
 
 `SceneProgress` ids a placed object by **name + position**, which is fine for a

@@ -34,6 +34,8 @@ public static class EnemyPrefabBuilder
         log += ExcludePlayerFromNavMeshBake();
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
+        // The prefabs above are rebuilt from primitives, so B5's models have to go back on.
+        log += ArtPass.ReapplyEnemies();
         return log;
     }
 

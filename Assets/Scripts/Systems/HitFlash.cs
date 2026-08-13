@@ -28,11 +28,26 @@ public class HitFlash : MonoBehaviour
     static readonly int ColorId = Shader.PropertyToID("_Color");           // unlit & legacy
     static readonly int EmissionId = Shader.PropertyToID("_EmissionColor");
 
+    /// <summary>
+    /// One flashable slot = one renderer *sub-mesh*. A property block is per material slot,
+    /// not per renderer: the real art models are single renderers carrying several materials
+    /// (the slime is one mesh with a body and an eye material), so restoring from
+    /// <c>sharedMaterial</c> alone would repaint every sub-mesh in material 0's colour and
+    /// the slime's eyes would stay body-green after its first hit. The greybox meshes hid
+    /// this — they were one material per renderer.
+    /// </summary>
+    struct Slot
+    {
+        public Renderer renderer;
+        public int index;          // material slot on that renderer
+        public int colorId;        // 0 = no colour property
+        public Color baseColor;
+        public bool hasEmission;
+        public Color emission;
+    }
+
     MaterialPropertyBlock block;
-    int[] colorIds;            // 0 = this renderer has no colour property
-    Color[] baseColors;
-    Color[] emissionColors;
-    bool[] hasEmission;
+    Slot[] slots;
     Coroutine running;
 
     void Awake()
@@ -40,31 +55,36 @@ public class HitFlash : MonoBehaviour
         if (renderers == null || renderers.Length == 0)
             renderers = GetComponentsInChildren<Renderer>(true);
 
-        int n = renderers.Length;
         block = new MaterialPropertyBlock();
-        colorIds = new int[n];
-        baseColors = new Color[n];
-        emissionColors = new Color[n];
-        hasEmission = new bool[n];
 
-        for (int i = 0; i < n; i++)
+        var built = new System.Collections.Generic.List<Slot>();
+        foreach (var r in renderers)
         {
-            var mat = renderers[i] != null ? renderers[i].sharedMaterial : null;
-            if (mat == null) continue;
+            if (r == null) continue;
+            var mats = r.sharedMaterials;
+            for (int m = 0; m < mats.Length; m++)
+            {
+                var mat = mats[m];
+                if (mat == null) continue;
 
-            if (mat.HasProperty(BaseColorId)) colorIds[i] = BaseColorId;
-            else if (mat.HasProperty(ColorId)) colorIds[i] = ColorId;
-            if (colorIds[i] != 0) baseColors[i] = mat.GetColor(colorIds[i]);
+                var slot = new Slot { renderer = r, index = m };
+                if (mat.HasProperty(BaseColorId)) slot.colorId = BaseColorId;
+                else if (mat.HasProperty(ColorId)) slot.colorId = ColorId;
+                if (slot.colorId != 0) slot.baseColor = mat.GetColor(slot.colorId);
 
-            hasEmission[i] = mat.HasProperty(EmissionId);
-            if (hasEmission[i]) emissionColors[i] = mat.GetColor(EmissionId);
+                slot.hasEmission = mat.HasProperty(EmissionId);
+                if (slot.hasEmission) slot.emission = mat.GetColor(EmissionId);
+
+                built.Add(slot);
+            }
         }
+        slots = built.ToArray();
     }
 
     /// <summary>Flash now. Re-flashing while a flash is up just restarts it.</summary>
     public void Flash()
     {
-        if (!isActiveAndEnabled || renderers == null || renderers.Length == 0) return;
+        if (!isActiveAndEnabled || slots == null || slots.Length == 0) return;
         if (running != null) StopCoroutine(running);
         running = StartCoroutine(FlashRoutine());
     }
@@ -79,14 +99,14 @@ public class HitFlash : MonoBehaviour
 
     void Set(bool lit)
     {
-        for (int i = 0; i < renderers.Length; i++)
+        for (int i = 0; i < slots.Length; i++)
         {
-            var r = renderers[i];
-            if (r == null) continue;
-            r.GetPropertyBlock(block);
-            if (colorIds[i] != 0) block.SetColor(colorIds[i], lit ? flashColor : baseColors[i]);
-            if (hasEmission[i]) block.SetColor(EmissionId, lit ? flashEmission : emissionColors[i]);
-            r.SetPropertyBlock(block);
+            var s = slots[i];
+            if (s.renderer == null) continue;
+            s.renderer.GetPropertyBlock(block, s.index);
+            if (s.colorId != 0) block.SetColor(s.colorId, lit ? flashColor : s.baseColor);
+            if (s.hasEmission) block.SetColor(EmissionId, lit ? flashEmission : s.emission);
+            s.renderer.SetPropertyBlock(block, s.index);
         }
     }
 }

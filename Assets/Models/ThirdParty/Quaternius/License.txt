@@ -1,0 +1,21 @@
+Quaternius — CC0 1.0 Universal (Public Domain Dedication)
+https://creativecommons.org/publicdomain/zero/1.0/
+
+Author:  Quaternius  —  https://quaternius.com/
+Fetched: 2026-08-12, via Poly Pizza (https://poly.pizza), which hosts these
+         models as .glb. Unity reads .glb through com.unity.cloud.gltfast.
+
+| File                      | Poly Pizza page                  | Tris | Used for                        |
+|---------------------------|----------------------------------|------|---------------------------------|
+| Slime.glb                 | https://poly.pizza/m/LyjSUKHKnh  | 1440 | PlasticSlime (Quái Rác Nhựa)    |
+| RobotEnemyFlyingGun.glb   | https://poly.pizza/m/UDTM6X1y9a  | 4582 | PollutionFlyBot                 |
+| Farmer.glb                | https://poly.pizza/m/7pn3R6hPvE  | 3716 | every human NPC — Ông Sáu as-is, |
+|                           |                                  |      | Bà Tư and Tí recoloured (ArtPass)|
+
+Two other Quaternius characters (Animated Woman, Characters Sam) were tried and dropped:
+Poly Pizza serves them as atlas-textured .glb **without the atlas**, so they import pure
+white with no colour data anywhere — no material factors, no vertex colours. This model
+carries its colours per material instead, which is why the villagers are recolours of it.
+
+CC0 requires no attribution, but we credit anyway — see CREDITS.md at the repo
+root. Do not edit these files in place; they are third-party originals.
