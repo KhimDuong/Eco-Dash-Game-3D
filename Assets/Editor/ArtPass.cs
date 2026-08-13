@@ -126,6 +126,42 @@ public static class ArtPass
             Log.AppendLine("PollutionFlyBot: Quaternius flying robot (0.9 m), lights stripped");
         });
 
+        // C3's bosses. The King is deliberately the same mesh as an ordinary slime, twice the
+        // size and in sicker colours — the 2D bestiary calls him a giant mutated slime, and
+        // reusing the silhouette is what makes "that one is the big one" read instantly.
+        Edit(Enemies + "SlimeKing.prefab", root =>
+        {
+            Kill(root.transform.Find("Body"));
+            for (int i = 0; i < 5; i++) Kill(root.transform.Find("Crown_" + i));
+            var art = ArtKit.Spawn(ArtKit.Quat + "Slime.glb", root.transform, 1.55f, idle: true,
+                                   variant: "King", recolour: SlimeKingPalette);
+            if (art != null) ArtKit.MakeFlashable(art);
+            Log.AppendLine("SlimeKing: Quaternius slime at boss scale (1.55 m), bruised-plastic recolour");
+        });
+
+        // The Mega-Smog is assembled rather than swapped: no single Kenney model is a boss, but
+        // a fortified machine flanked by two industrial hoppers is one. Each piece sits in its
+        // own Art_ holder so ClearArt takes the whole rig away when the pass re-runs.
+        Edit(Enemies + "MegaSmogBoss.prefab", root =>
+        {
+            Kill(root.transform.Find("Plinth"));
+            Kill(root.transform.Find("Body"));
+            Kill(root.transform.Find("Stack_L"));
+            Kill(root.transform.Find("Stack_R"));
+
+            Rig(root.transform, "Hull", Vector3.zero, ArtKit.Factory + "machine-fortified.fbx", 1.90f);
+            Rig(root.transform, "StackL", new Vector3(-1.45f, 0f, 0f),
+                ArtKit.Factory + "hopper-high-round.fbx", 2.20f);
+            Rig(root.transform, "StackR", new Vector3(1.45f, 0f, 0f),
+                ArtKit.Factory + "hopper-high-round.fbx", 2.20f);
+
+            // Core stays a sphere and stays where the builder put it — MegaSmogBoss pulses its
+            // localScale, so anything that replaced the node would have to pulse too.
+            Paint(root.transform.Find("Core"), ArtKit.SolidMaterial(
+                "MegaSmogCore", new Color(0.55f, 0.85f, 0.25f), 0.85f, new Color(0.45f, 1f, 0.20f)));
+            Log.AppendLine("MegaSmogBoss: fortified machine + two hoppers, toxic core re-lit");
+        });
+
         // Projectiles stay spheres on purpose — they are 0.3 m and read by their glow, not
         // their silhouette. They get proper emissive materials instead of the greybox ones.
         Edit(Enemies + "SmogOrb.prefab", root =>
@@ -355,6 +391,13 @@ public static class ArtPass
         ("Beige", new Color(0.78f, 0.77f, 0.73f)),        // grey hair under the nón lá
     };
 
+    /// <summary>Slime Chúa: the same mesh as a Plastic Slime, gone bruised-purple and gold-eyed.</summary>
+    static readonly (string, Color)[] SlimeKingPalette =
+    {
+        ("Body", new Color(0.44f, 0.26f, 0.54f)),
+        ("Eyes", new Color(0.98f, 0.80f, 0.25f)),
+    };
+
     static readonly (string, Color)[] TiPalette =
     {
         ("Brown", new Color(0.88f, 0.72f, 0.20f)),        // bright yellow shirt
@@ -579,6 +622,24 @@ public static class ArtPass
     static void Kill(Transform t)
     {
         if (t != null) UnityEngine.Object.DestroyImmediate(t.gameObject);
+    }
+
+    /// <summary>
+    /// Drop a model at an offset inside a prefab. <see cref="ArtKit.Spawn"/> always grounds and
+    /// centres its model on the node it is given, which is exactly what a single-mesh swap
+    /// wants and useless when a boss is assembled from three pieces — so each piece gets a
+    /// holder of its own. The holder is named <c>Art_*</c> so <see cref="ClearArt"/> takes the
+    /// whole rig away and the pass stays re-runnable.
+    /// </summary>
+    static GameObject Rig(Transform parent, string name, Vector3 local, string model,
+                          float height, float rotY = 0f)
+    {
+        var holder = new GameObject("Art_" + name);
+        holder.transform.SetParent(parent, false);
+        holder.transform.localPosition = local;
+        if (ArtKit.Spawn(model, holder.transform, height, rotY) != null) return holder;
+        UnityEngine.Object.DestroyImmediate(holder);
+        return null;
     }
 
     static void Paint(Transform t, Material mat, bool all = false)

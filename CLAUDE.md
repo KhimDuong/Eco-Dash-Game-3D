@@ -103,18 +103,20 @@ doesn't bind to it — don't mix in legacy `Input.GetAxis` either.
 ## Current status
 
 See [.claude/docs/roadmap.md](.claude/docs/roadmap.md) for the live backlog.
-**P0 done; A1–A6, B1–B5, C1–C2 done — every scene exists and none of them is grey any
-more.** The URP-3D project, Tier-0 + Tier-1 scripts, `Player.prefab`, the Cinemachine
-`CameraRig.prefab`, the whole UI layer (`HUD.prefab`, `GameManager.prefab`,
-`MainMenu` / `Intro_Story` / `Ending_Story`), **`Level1_BarrenFarm`** with its 29
-`PlasticSlime`s, save/continue parity, the **`PollutionFlyBot` + `SmogOrb`** combat kit,
-**`Level2_FactoryMaze`** with its lasers, manholes, keycard chain and boss door, the
-**`Shop_RecyclingStation`** hub with Ông Bear's shop, the crafting bench and the two
-stage portals, and **B5's art pass** — five CC0 packs, real models on every prefab, and a
-per-scene lighting/post look — are all in and play-mode verified.
+**P0 done; A1–A6, B1–B5, C1–C3 done — the game is finishable end to end:** menu → intro →
+farm → hub → factory → boss → outro. The URP-3D project, Tier-0 + Tier-1 scripts,
+`Player.prefab`, the Cinemachine `CameraRig.prefab`, the whole UI layer (`HUD.prefab`,
+`GameManager.prefab`, `MainMenu` / `Intro_Story` / `Ending_Story`),
+**`Level1_BarrenFarm`** with its 29 `PlasticSlime`s and the **`SlimeKing`**'s grove,
+save/continue parity, the **`PollutionFlyBot` + `SmogOrb`** combat kit,
+**`Level2_FactoryMaze`** with its lasers, manholes, keycard chain, boss door and the
+**`MegaSmogBoss`** behind it, the **`Shop_RecyclingStation`** hub with Ông Bear's shop,
+the crafting bench and the two stage portals, and **B5's art pass** — five CC0 packs, real
+models on every prefab, and a per-scene lighting/post look — are all in and play-mode
+verified (271 checks).
 
-Next up: **C3** (`SlimeKing` + `MegaSmogBoss`) — the last thing between here and a full
-start-to-ending playthrough. Six generated things — **don't hand-edit their output**:
+Next up: **C4** (game-feel) and **C5** (audio). Six generated things — **don't hand-edit
+their output**:
 
 | What | Menu command | Source |
 |---|---|---|
@@ -129,14 +131,21 @@ The last three of those rebuild their prefabs from primitives, so each one **re-
 slice of the art pass at the end**. Change art by editing `ArtPass.cs`, never by dragging
 a mesh onto a prefab — the next rebuild would throw it away.
 
-**Two rules that keep biting:**
+**Three rules that keep biting:**
 
 1. **Height is presentation, hitting things is XZ.** Greenie's Seeds fly flat at y ≈ 0.6,
    so anything that leaves the ground still needs a hurtbox reaching the ground plane or
-   it is simply unkillable.
+   it is simply unkillable — and anything that *shoots* him has to fire at his chest, not
+   from the top of its own model.
    See [architecture.md](.claude/docs/architecture.md#flying-enemies-need-two-colliders-c2).
 2. **Only the visual is ever swapped.** Colliders, trigger radii and the toggled-child
    pairs (`Visual_Open`/`Visual_Locked`, `Lid`/`Hole`, `Visual_Unconscious`/`Visual_Awake`)
    are the gameplay contract. And a `MaterialPropertyBlock` is **per material slot, not
    per renderer** — the thing that made the new slime's eyes turn green after one hit.
    See [architecture.md](.claude/docs/architecture.md#the-art-pass-is-generated-too-b5).
+3. **`HitFlash` owns an enemy's resting colour.** It caches that colour in `Awake` and
+   repaints it after every flash, so a lasting tint (the boss's enrage) must go through
+   `HitFlash.SetBaseTint` or the next hit scrubs it off. While you're there: a
+   percentage-of-max-HP gate belongs in whole HP — `40 * 0.35f` is 13.9999998, and that
+   one float cost the Mega-Smog its enrage.
+   See [architecture.md](.claude/docs/architecture.md#bosses-bring-their-own-ui-c3).

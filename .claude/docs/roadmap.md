@@ -142,7 +142,9 @@ owners in [../../TEAM-TASKS.md](../../TEAM-TASKS.md).
     feeds the counter + HUD, chest → core → patch → gate with the objective list
     ticking to `[x] Tìm Lõi Năng Lượng (3/3)` and `[x] Mở cổng dịch chuyển`
   - [x] Ông Sáu's M8 herb quest **7/7**: offer → 3 herbs → `HerbsReady` → antidote
-  - [ ] `SlimeKing` mini-boss and the enemy population wait on **C1/C3**
+  - [x] `SlimeKing` landed with **C3** — a grove in the empty south-west corner, guarding the
+    Mảnh Cổng. It is the third source of a Portal Shard, alongside Cô Lan's recipe and the
+    cleanliness reward
 - **B3** L2 Factory Maze — **done**
   - [x] **generated from the 2D level, like B1** — but Level 2 is authored differently:
     the maze is a pair of **tilemaps** (1 360 floor cells, 926 obstacle cells) and every
@@ -168,7 +170,8 @@ owners in [../../TEAM-TASKS.md](../../TEAM-TASKS.md).
     the door, the sealed arena, walls holding, the keycard → Tí → door chain, manhole
     bite + root, laser telegraph/burn/dark, gas telegraph → live → clear, hovering
     fly-bots, and the whole scene contract
-  - [ ] `MegaSmogBoss` waits on **C3** — its spot is marked `BossSpawn_MegaSmog`
+  - [x] `MegaSmogBoss` landed with **C3** — on the layout's own boss coordinate, so the marker
+    is gone and the sealed arena finally has something in it
 - **B4** Hub (shop, crafting bench, stage portals, side-quest NPC) — **done**
   - [x] `Shop_RecyclingStation` built by `Assets/Editor/HubBuilder.cs` (menu: *Eco-Dash →
     Rebuild the hub*). No CSV — the 2D hub's props are hand-placed, not tilemapped, so
@@ -217,9 +220,52 @@ owners in [../../TEAM-TASKS.md](../../TEAM-TASKS.md).
     out, orb damage + knockback, orbs fizzling on walls but passing through fellow
     enemies, knockback with hover recovery, provoke-from-range, death by real Seed fire →
     2 trash + bestiary, and kill persistence
-- [ ] **C3** `SlimeKing` + `MegaSmogBoss` (ring spray, gas, enrage, boss bar,
-  death → ending flow)
-- [ ] Port gate: full start→ending playthrough possible
+- **C3** `SlimeKing` + `MegaSmogBoss` — **done**
+  - [x] **`IBoss`** — the three events (`OnEngaged` / `OnHealthChanged` / `OnDefeated`) plus
+    name and counters, extracted as a real contract. The 2D `BossHealthBar` held a hard
+    `MegaSmogBoss` reference and `SlimeKing` raised identical events that nothing listened to
+  - [x] **`BossHealthBar` builds itself in code** (like `InventoryUI` / `Hotbar`) and a boss
+    calls `BossHealthBar.Bind(this)` as it wakes. Nothing is wired in any scene, so both
+    bosses share one bar and a boss dropped into a level brings its own. It parents itself
+    under the HUD's canvas when there is one, and drives the fill through the RectTransform's
+    anchor — a Filled `Image` needs a sprite, and a bar built from bare `Image`s has none
+  - [x] **`SlimeKing`** (Tier 2, the Plastic Slime one size up): NavMeshAgent chase, distance-test
+    contact damage, splits into 3 real `PlasticSlime`s at half HP — placed on a ring and sampled
+    onto the mesh, never a random scatter — and drops the **Mảnh Cổng** the hub's Stage-2 portal
+    wants. All 2D stats (20 HP, 2 contact damage, 9 knockback, 2.2 m/s, 7 m aggro)
+  - [x] **the King's grove is the one Level 1 placement not ported from 2D**, because there was
+    nothing to port: the 2D scene's only Slime King is a `TEST_SlimeKing` parked 6 m from the
+    player's spawn with half the prefab's health. The farm's other three corners each hold a
+    guarded chest and the south-west one was empty, so the grove goes there — 7 dead trees with
+    a gap facing the approach, two sludge pools, 30 m from the start. A deliberate detour, which
+    is what the bestiary already said it was
+  - [x] **`MegaSmogBoss`** (Tier 2): stationary, 8-orb ring spray rotated 11° a volley and fired
+    at **Greenie's chest** (a ring leaving the top of a 2.4 m machine sails over his head), gas
+    waves pulled onto the NavMesh so they land on floor he can stand on, enrage under 35 % HP
+    (12 orbs, 0.6× interval, permanent angry tint), then a collapse into
+    `GameManager.CompleteLevel` → **Ending_Story**
+  - [x] **waking up is line-of-sight, not distance.** The machine sits 4 m from the blast door,
+    inside its own 7 m radius, so the 2D check had it firing through a locked door at a player
+    who could not answer. The linecast runs against Obstacle — the layer `BossDoor`'s blocker is
+    on — so it wakes exactly when the door opens and Greenie steps in
+  - [x] **bug found: the enrage never fired on time.** `health <= maxHealth * enrageThreshold` is
+    not what it reads as — `0.35f` is 0.34999999, so `40 * 0.35f` is 13.9999998 and the boss
+    skipped its enrage at 14 HP entirely. Resolved once in `Awake` with `Mathf.CeilToInt`
+  - [x] **bug found: a boss cannot tint itself.** `HitFlash` caches the resting colour in `Awake`
+    and repaints it after every flash, so an enrage tint applied any other way is scrubbed off by
+    the next Seed that lands. `HitFlash.SetBaseTint` now owns it, multiplying the authored colour
+    so a machine built from a dozen materials goes angry rather than flat red
+  - [x] `SlimeKing.prefab` + `MegaSmogBoss.prefab` generated by `EnemyPrefabBuilder`, art applied
+    by `ArtPass` (the King is the same Quaternius slime recoloured; the machine is Kenney's
+    `machine-fortified` flanked by two hoppers). Placed by `Level1Builder` / `Level2Builder`
+  - [x] play-mode verified **37/37** (King) and **41/41** (Mega-Smog): placement and layers, the
+    hurtbox crossing the Seed lane, idle-until-approached, the bar appearing/tracking/hiding, the
+    chase, contact damage, real-Seed damage and knockback, the split landing on the mesh, the
+    ring's 45° spacing at chest height, gas on walkable floor, no wake through a locked door,
+    enrage at exactly 14/40 with the tint surviving a hit flash, and death → `CompleteLevel` →
+    **Ending_Story** with time running again
+  - [x] no regressions: the C1/C2/B2/B3/B4 suite re-run green — **193/193**
+- [x] Port gate: full start→ending playthrough possible
 
 ### P3 — Polish (Week 3)
 - **B5** Free low-poly art pass + lighting/post volumes — **done**
@@ -266,6 +312,33 @@ owners in [../../TEAM-TASKS.md](../../TEAM-TASKS.md).
 
 ## Recent log
 
+- _(2026-08-13)_ **C3 done — both bosses are in, and the game can be finished.** The
+  Slime King and the Mega-Smog are the last two things the port was missing, and with
+  them the whole chain runs: menu → intro → farm → hub → factory → boss → outro.
+  The interesting work was not the bosses' behaviour — that ports almost verbatim — but
+  the three things around them.
+  **The HP bar became a contract.** In 2D it was authored into the Level 2 scene holding a
+  hard `MegaSmogBoss` reference, and `SlimeKing` raised an identical set of events that
+  nothing ever listened to. Now there is an `IBoss`, the bar builds itself in code the way
+  `InventoryUI` does, and a boss calls `BossHealthBar.Bind(this)` on waking. No scene
+  wiring at all, and the Slime King gets a bar he never had.
+  **Where the King fights was a design call, not a port.** The 2D scene's only Slime King
+  is a `TEST_SlimeKing` six metres from the player's spawn with half the prefab's health.
+  The farm's other three corners each hold a guarded chest and the south-west one was
+  empty, so that is where the grove went — and the bestiary line about him guarding a
+  Mảnh Cổng "trong khu rừng độc" is finally true.
+  **Two bugs, and both were invisible.** `health <= maxHealth * enrageThreshold` does not
+  mean what it reads as: `0.35f` is really 0.34999999, so `40 * 0.35f` is 13.9999998 and
+  the boss skipped its enrage at 14 HP entirely — it fired a point later or not at all,
+  depending on the numbers. And a boss **cannot tint itself**: `HitFlash` caches the
+  resting colour in `Awake` and repaints it after every flash, so an enrage tint applied
+  any other way is scrubbed off by the very next Seed that lands. `HitFlash.SetBaseTint`
+  owns the resting colour now, and multiplies rather than replaces so a machine built from
+  a dozen materials goes angry instead of flat red.
+  One thing worth keeping: **waking a boss is line-of-sight, not distance.** The Mega-Smog
+  stands 4 m from the blast door, inside its own 7 m activation radius, so a pure distance
+  check had it spraying orbs through a locked door at a player with no way to answer.
+  Verified **37/37** and **41/41**, with the C1/C2/B2/B3/B4 suite re-run green at 193/193.
 - _(2026-08-11)_ **B4 done — the hub closes the travel loop.** `Shop_RecyclingStation`
   is built by `HubBuilder`, without a CSV: the 2D hub's props are hand-placed rather than
   tilemapped, so its six placements are written out at their 2D coordinates.
