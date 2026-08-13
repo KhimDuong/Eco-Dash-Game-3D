@@ -53,3 +53,9 @@ Thumbs.db
 
 # Coplay scratch output
 /Temp/CoplayExec/
+
+# Claude Code's per-machine permission allowlist. .claude/docs and .claude/commands are
+# project documentation and stay tracked; these two are just whatever each of us happened
+# to approve locally, and they churn every session.
+.claude/settings.json
+.claude/settings.local.json
