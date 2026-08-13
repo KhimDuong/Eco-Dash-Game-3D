@@ -110,9 +110,7 @@ public static class Level2Builder
                 case "npc": FleeingWorker(pos); break;
                 case "flybot": PlaceFlyBot(name, pos); break;
                 case "player": playerStart = pos; break;
-                // The Mega-Smog is C3's. Leave its spot marked so the boss arena reads
-                // correctly and C3 has an anchor to drop the prefab onto.
-                case "boss": Marker("BossSpawn_MegaSmog", pos); break;
+                case "boss": PlaceBoss(pos); break;
                 default: continue;
             }
             n++;
@@ -146,6 +144,24 @@ public static class Level2Builder
         so.FindProperty("talkOnce").boolValue = false;
         so.FindProperty("prompt").objectReferenceValue = go.transform.Find("Prompt").gameObject;
         so.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    // C3: the arena's centrepiece. The 2D layout's own boss coordinate, so the machine lands
+    // exactly where the tilemap's sealed room was built around it.
+    static void PlaceBoss(Vector3 pos)
+    {
+        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Enemies/MegaSmogBoss.prefab");
+        if (prefab == null)
+        {
+            log.AppendLine("  MISSING MegaSmogBoss.prefab — left the spawn marker instead");
+            Marker("BossSpawn_MegaSmog", pos);
+            return;
+        }
+        var go = (GameObject)PrefabUtility.InstantiatePrefab(prefab, enemyRoot);
+        go.name = "MegaSmogBoss";
+        go.transform.position = pos;
+        occupied.Add(new Vector2(pos.x, pos.z));   // B5's dressing keeps out of the arena centre
+        log.AppendLine("  MegaSmogBoss placed at " + pos);
     }
 
     static void Marker(string name, Vector3 pos)

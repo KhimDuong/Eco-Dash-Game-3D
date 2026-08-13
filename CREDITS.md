@@ -41,7 +41,8 @@ row below. We credit anyway, per our policy. Imported in **B5** (the P3 art pass
 - **Modifications:** none to the models; non-FBX format copies dropped on import.
 
 ### Factory Kit — by Kenney
-- **Used for:** **Greenie himself** (the `oopi` robot), Level 2's machinery,
+- **Used for:** **Greenie himself** (the `oopi` robot), the **Mega-Smog boss**
+  (`machine-fortified` flanked by two `hopper-high-round`), Level 2's machinery,
   pipes, screens, crates, warning posts, the sweeping-laser emitter, the manhole
   lid, the stage/return portal doorways and the hub's recycling hopper.
 - **Source:** https://kenney.nl/assets/factory-kit
@@ -61,7 +62,8 @@ row below. We credit anyway, per our policy. Imported in **B5** (the P3 art pass
   is a polar bear and Ông Bear is a brown one.
 
 ### Slime · Robot Enemy Flying Gun · Farmer — by Quaternius
-- **Used for:** `PlasticSlime` (Quái Rác Nhựa), `PollutionFlyBot`, and every human
+- **Used for:** `PlasticSlime` (Quái Rác Nhựa), **`SlimeKing`** (Slime Chúa — the same
+  slime mesh at twice the size in bruised-purple), `PollutionFlyBot`, and every human
   NPC — Ông Sáu as-is, Bà Tư and Tí as recolours of the same farmer mesh.
 - **Source:** https://poly.pizza/m/LyjSUKHKnh · https://poly.pizza/m/UDTM6X1y9a ·
   https://poly.pizza/m/7pn3R6hPvE (via [Poly Pizza](https://poly.pizza))

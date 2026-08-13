@@ -52,6 +52,7 @@ public static class Level1Builder
         BuildWalls();
         int placed = PlaceFromLayout();
         AddExtras();
+        BossGrove();
         WireChestsAndGate();
         Dress();
         PlaceSystems();
@@ -307,6 +308,65 @@ public static class Level1Builder
         Pickup("spring_water", "SpringWater_2", new Vector3(24f, 0f, -6f));
         Pickup("bottle", "Bottle_1", new Vector3(-8f, 0f, 14f));
         Pickup("scrap", "Scrap_1", new Vector3(12f, 0f, 18f));
+    }
+
+    // --- C3: the Slime King's grove -------------------------------------------------------
+
+    /// <summary>
+    /// Level 1's mini-boss and the toxic grove it guards.
+    ///
+    /// <para>This is the one placement in Level 1 that is <b>not</b> ported from the 2D scene,
+    /// because the 2D scene has nothing to port: its only Slime King is a <c>TEST_SlimeKing</c>
+    /// parked at (-6, -5), six metres from where the player spawns and with half the prefab's
+    /// health. That is a test rig, not a level design — a mini-boss you walk into before you
+    /// have met Bà Tư.</para>
+    ///
+    /// <para>So it goes where the level already had a hole. The farm's other three corners
+    /// each hold a chest with its own guard slimes; the south-west one is empty, it is 34 m
+    /// from the player's start, and the bestiary already says the King <i>"canh giữ một Mảnh
+    /// Cổng trong khu rừng độc"</i> — guards a Portal Shard in the toxic grove. A ring of dead
+    /// trees with a gap facing the approach, two pools of sludge, and the King in the middle
+    /// makes that sentence true and makes the fight a deliberate detour.</para>
+    /// </summary>
+    static void BossGrove()
+    {
+        var at = new Vector3(-27f, 0f, -19f);
+
+        // Ring radius stays under 4.5 m: the boundary wall's inner face is at x = -32 / z = -24
+        // and B5's fence posts run just inside that.
+        const float ring = 4.2f;
+        int trees = 0;
+        for (int i = 0; i < 8; i++)
+        {
+            if (i == 1) continue;               // the north-east gap — the way in
+            float a = i * Mathf.PI * 2f / 8f;
+            var p = at + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * ring;
+            Spawn("Greybox_DeadTree", propRoot, p, i * 45f).name = "GroveTree_" + i;
+            trees++;
+        }
+
+        foreach (var (offset, size) in new[]
+        {
+            (new Vector3(2f, 0f, 2f), new Vector3(3f, 1f, 3f)),
+            (new Vector3(-2.2f, 0f, -1.8f), new Vector3(2.5f, 1f, 2.5f)),
+        })
+        {
+            var mud = Spawn("ToxicMud", playRoot, at + offset);
+            mud.name = "GroveSludge";
+            mud.transform.localScale = size;
+        }
+
+        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Enemies/SlimeKing.prefab");
+        if (prefab == null)
+        {
+            log.AppendLine("  MISSING SlimeKing.prefab — grove built without its boss");
+            return;
+        }
+        var king = (GameObject)PrefabUtility.InstantiatePrefab(prefab, enemyRoot);
+        king.name = "SlimeKing";
+        king.transform.position = at;
+        occupied.Add(new Vector2(at.x, at.z));
+        log.AppendLine("  boss grove at " + at + ": SlimeKing, " + trees + " dead trees, 2 sludge pools");
     }
 
     static void Note(string id, Vector3 pos)

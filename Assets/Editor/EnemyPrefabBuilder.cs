@@ -31,6 +31,8 @@ public static class EnemyPrefabBuilder
         string log = BuildPlasticSlime();
         log += BuildSmogOrb();          // before the fly-bot — the bot references it
         log += BuildPollutionFlyBot();
+        log += BuildSlimeKing();        // after the slime — the King splits into them
+        log += BuildMegaSmogBoss();     // after the orb — its spray fires them
         log += ExcludePlayerFromNavMeshBake();
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
@@ -227,6 +229,150 @@ public static class EnemyPrefabBuilder
         so.ApplyModifiedPropertiesWithoutUndo();
 
         string path = PrefabDir + "PollutionFlyBot.prefab";
+        PrefabUtility.SaveAsPrefabAsset(root, path);
+        Object.DestroyImmediate(root);
+        return "built " + path + "\n";
+    }
+
+    // --- SlimeKing (C3) -------------------------------------------------------------------
+
+    // The Level 1 mini-boss is a Plastic Slime one size up, and it is built that way on
+    // purpose: same agent, same hitbox shape, same HitFlash, so anything that works on a
+    // slime works on the King. Only the numbers and the crown differ.
+    static string BuildSlimeKing()
+    {
+        var body = MakeMaterial("Greybox_SlimeKing", new Color(0.42f, 0.30f, 0.52f), 0.75f);
+        var crown = MakeMaterial("Greybox_SlimeKingCrown", new Color(0.90f, 0.78f, 0.30f), 0.9f,
+                                 new Color(0.35f, 0.28f, 0.05f));
+
+        var root = new GameObject("SlimeKing");
+        root.tag = "Enemy";
+        root.layer = LayerMask.NameToLayer("Enemy");
+
+        var mesh = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        mesh.name = "Body";
+        mesh.transform.SetParent(root.transform, false);
+        mesh.transform.localPosition = new Vector3(0f, 0.68f, 0f);
+        mesh.transform.localScale = new Vector3(1.50f, 1.10f, 1.50f);
+        Object.DestroyImmediate(mesh.GetComponent<Collider>());   // the root owns the hitbox
+        mesh.GetComponent<Renderer>().sharedMaterial = body;
+
+        // A crown, so "boss" reads from directly above before the health bar ever appears.
+        for (int i = 0; i < 5; i++)
+        {
+            float a = i * Mathf.PI * 2f / 5f;
+            var spike = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            spike.name = "Crown_" + i;
+            spike.transform.SetParent(root.transform, false);
+            spike.transform.localPosition = new Vector3(Mathf.Cos(a) * 0.42f, 1.24f, Mathf.Sin(a) * 0.42f);
+            spike.transform.localRotation = Quaternion.Euler(0f, -a * Mathf.Rad2Deg, 0f);
+            spike.transform.localScale = new Vector3(0.16f, 0.28f, 0.16f);
+            Object.DestroyImmediate(spike.GetComponent<Collider>());
+            spike.GetComponent<Renderer>().sharedMaterial = crown;
+        }
+
+        var hit = root.AddComponent<SphereCollider>();
+        hit.center = new Vector3(0f, 0.68f, 0f);
+        hit.radius = 0.78f;
+
+        var agent = root.AddComponent<NavMeshAgent>();
+        // radius matches the NavMesh bake's own agent (0.5). A fatter agent than the mesh was
+        // baked for squeezes through nothing and parks itself against the first fence post.
+        agent.radius = 0.5f;
+        agent.height = 1.4f;
+        agent.baseOffset = 0f;
+        agent.speed = 2.2f;              // 2D moveSpeed
+        agent.angularSpeed = 720f;
+        agent.acceleration = 14f;
+        agent.stoppingDistance = 0f;
+        agent.autoBraking = true;
+        agent.obstacleAvoidanceType = ObstacleAvoidanceType.GoodQualityObstacleAvoidance;
+        agent.avoidancePriority = 30;    // the King shoulders its own minions aside
+
+        root.AddComponent<NavMeshModifier>().ignoreFromBuild = true;
+
+        var flash = root.AddComponent<HitFlash>();
+        var king = root.AddComponent<SlimeKing>();
+        var so = new SerializedObject(king);
+        so.FindProperty("flash").objectReferenceValue = flash;
+        var slime = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabDir + "PlasticSlime.prefab");
+        so.FindProperty("minionPrefab").objectReferenceValue =
+            slime != null ? slime.GetComponent<PlasticSlime>() : null;
+        so.ApplyModifiedPropertiesWithoutUndo();
+
+        string path = PrefabDir + "SlimeKing.prefab";
+        PrefabUtility.SaveAsPrefabAsset(root, path);
+        Object.DestroyImmediate(root);
+        return "built " + path + (slime == null ? "  (WARNING: no minion prefab)" : "") + "\n";
+    }
+
+    // --- MegaSmogBoss (C3) ----------------------------------------------------------------
+
+    // Level 2's arena is 24 x 6 m, and that is what sizes the machine: wide is free, deep is
+    // not. 4.4 x 2.8 x 2.1 reads as a wall of machinery while still leaving 2.4 m of dodging
+    // room between it and the boss door, and 1.4 m behind.
+    // Height is measured off the art, not guessed: the two hoppers top out at 2.20 m, so a
+    // 2.8 m box would leave 0.6 m of empty air that still swallows Seeds.
+    const float BossWidth = 4.4f, BossHeight = 2.4f, BossDepth = 2.1f;
+
+    static string BuildMegaSmogBoss()
+    {
+        var hull = MakeMaterial("Greybox_MegaSmog", new Color(0.26f, 0.24f, 0.28f), 0.5f);
+        var trim = MakeMaterial("Greybox_MegaSmogTrim", new Color(0.42f, 0.40f, 0.46f), 0.65f);
+        var coreMat = MakeMaterial("Greybox_MegaSmogCore", new Color(0.55f, 0.85f, 0.25f), 0.85f,
+                                   new Color(0.45f, 1f, 0.20f));
+
+        var root = new GameObject("MegaSmogBoss");
+        root.tag = "Enemy";
+        root.layer = LayerMask.NameToLayer("Enemy");
+
+        Part(root.transform, "Plinth", PrimitiveType.Cube, new Vector3(0f, 0.15f, 0f),
+             Vector3.zero, new Vector3(BossWidth, 0.30f, BossDepth), trim);
+        Part(root.transform, "Body", PrimitiveType.Cube, new Vector3(0f, 1.35f, 0f),
+             Vector3.zero, new Vector3(2.40f, 2.10f, 1.70f), hull);
+        for (int s = -1; s <= 1; s += 2)
+            Part(root.transform, s < 0 ? "Stack_L" : "Stack_R", PrimitiveType.Cylinder,
+                 new Vector3(1.45f * s, 1.30f, 0f), Vector3.zero, new Vector3(0.80f, 1.30f, 0.80f), trim);
+
+        // The core is the one part the script animates — it pulses so the machine reads as
+        // alive, faster once enraged. Keep the node name; the art pass only re-lights it.
+        var core = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        core.name = "Core";
+        core.transform.SetParent(root.transform, false);
+        core.transform.localPosition = new Vector3(0f, 1.55f, -BossDepth * 0.5f);
+        core.transform.localScale = Vector3.one * 0.85f;
+        Object.DestroyImmediate(core.GetComponent<Collider>());
+        core.GetComponent<Renderer>().sharedMaterial = coreMat;
+
+        // ONE solid box, and it is both the wall and the hurtbox. That works here — unlike
+        // the hovering fly-bot, the machine stands on the floor, so a box rising from y = 0
+        // already crosses the y = 0.6 lane Greenie's Seeds fly in. It lives on the ROOT
+        // because projectiles resolve IDamageable off the collider they hit.
+        var box = root.AddComponent<BoxCollider>();
+        box.size = new Vector3(BossWidth, BossHeight, BossDepth);
+        box.center = new Vector3(0f, BossHeight * 0.5f, 0f);
+
+        // Level 2 bakes its NavMesh from physics colliders on every layer, and a 3.8 m box
+        // dropped in a 6 m-deep arena would cut the walkable floor in two — which is also
+        // the floor GasWave() samples to find somewhere to put a gas cloud.
+        root.AddComponent<NavMeshModifier>().ignoreFromBuild = true;
+
+        var flash = root.AddComponent<HitFlash>();
+        var boss = root.AddComponent<MegaSmogBoss>();
+        var so = new SerializedObject(boss);
+        so.FindProperty("flash").objectReferenceValue = flash;
+        so.FindProperty("core").objectReferenceValue = core.transform;
+        so.FindProperty("smogOrbPrefab").objectReferenceValue =
+            AssetDatabase.LoadAssetAtPath<GameObject>(PrefabDir + "SmogOrb.prefab");
+        so.FindProperty("gasZonePrefab").objectReferenceValue =
+            AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Factory/ToxicGasZone.prefab");
+        so.FindProperty("sightBlockers").intValue = 1 << LayerMask.NameToLayer("Obstacle");
+        // Orbs are born clear of the hull (half-width 1.9) and at Greenie's chest.
+        so.FindProperty("sprayRadius").floatValue = 2.4f;
+        so.FindProperty("contactRange").floatValue = 2.4f;
+        so.ApplyModifiedPropertiesWithoutUndo();
+
+        string path = PrefabDir + "MegaSmogBoss.prefab";
         PrefabUtility.SaveAsPrefabAsset(root, path);
         Object.DestroyImmediate(root);
         return "built " + path + "\n";

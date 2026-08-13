@@ -238,8 +238,9 @@ load-bearing:
 
 The general rule for the rest of the port: **height is presentation, hitting things is
 XZ.** Under a fixed ¾ camera the player aims on the ground plane, so anything that
-leaves the ground still needs a ground-plane footprint you can shoot. C3's flying boss
-phases inherit this.
+leaves the ground still needs a ground-plane footprint you can shoot. C3's bosses both
+stand on the floor, so a single box rising from `y = 0` already crosses the Seed lane —
+but the same rule decided where the Mega-Smog's **orbs leave from**; see below.
 
 ## The art pass is generated too (B5)
 
@@ -282,6 +283,49 @@ Four things that bite, in the order they bit:
 Fit-by-height assumes a roughly cubic model. `rock_largeA` is a flat slab and fitting
 it to 0.55 m tall made it **2.15 m across**, wide enough to close corridors the 2D
 layout leaves open — the pass logs every final size for exactly this reason.
+
+## Bosses bring their own UI (C3)
+
+[IBoss.cs](../../Assets/Scripts/Enemies/IBoss.cs) is the whole contract: a name, two
+counters, and `OnEngaged` / `OnHealthChanged` / `OnDefeated`. In 2D there was no
+contract — `BossHealthBar` held a hard `MegaSmogBoss` reference and lived in the Level 2
+scene, and `SlimeKing` raised an identical set of events that nothing ever subscribed to.
+
+[BossHealthBar.cs](../../Assets/Scripts/UI/BossHealthBar.cs) **builds itself in code**,
+like `InventoryUI` and `Hotbar`, and a boss calls `BossHealthBar.Bind(this)` as it wakes.
+Consequences worth knowing:
+
+- **Nothing is wired in any scene.** Drop a boss prefab into a level and it arrives with
+  a working HP bar; delete it and nothing dangles. Both bosses share one implementation.
+- It parents itself under the **HUD's canvas** when the scene has one, so it inherits the
+  same `CanvasScaler`, and falls back to its own overlay canvas at sorting order 85 —
+  above the hotbar, below the bag/codex/quest panels and the tutorial popup.
+- The fill is driven through the RectTransform's **anchor**, not `Image.fillAmount`: a
+  Filled image needs a sprite to fill, and a bar built from bare `Image`s has none.
+
+### Three things C3 had to get right (and two that were quietly wrong)
+
+- **A boss cannot tint itself.** `HitFlash` caches each slot's resting colour in `Awake`
+  and repaints it after every flash, so an "enrage tint" applied through `MaterialTint`
+  survives until the next Seed lands and is then scrubbed off — visible for one frame,
+  in a way that reads as "the tint didn't apply". `HitFlash.SetBaseTint(multiplier)` owns
+  the resting colour instead, and **multiplies** the authored colour rather than replacing
+  it, so a machine assembled from a dozen materials goes angry instead of flat red.
+- **`health <= maxHealth * threshold` is not what it reads as.** `0.35f` is really
+  0.34999999, so `40 * 0.35f` is 13.9999998 and the Mega-Smog skipped its enrage at 14 HP
+  entirely. Any percentage-of-max gate belongs in whole HP, resolved once with
+  `Mathf.CeilToInt`, not recomputed as a float every hit.
+- **Waking a boss is line-of-sight, not distance.** The Mega-Smog stands 4 m from the
+  blast door and its activation radius is 7 m, so a pure distance check had it spraying
+  orbs through a locked door at a player who could not shoot back. The linecast runs
+  against **Obstacle** — the layer `BossDoor`'s blocker sits on, and which the door
+  disables when it opens — so the fight starts exactly when Greenie walks in.
+- **A ring attack fires at the player's chest, not the boss's.** Orbs fly flat
+  (`EnemyProjectile` zeroes Y), so a ring emitted from the top of a 2.4 m machine passes
+  over Greenie's 1.15 m capsule entirely. Same rule as the fly-bot's nozzle, one size up.
+- **Area attacks get sampled onto the NavMesh.** Level 2's arena is 24 × 6 m; a raw ±5 m
+  scatter around the player drops half of every gas wave inside a wall, where it
+  threatens nobody and looks like the attack is broken.
 
 ### Enemy persistence: id by spawn point, not by death spot (C1/A6)
 

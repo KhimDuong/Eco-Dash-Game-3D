@@ -41,7 +41,8 @@ public class HitFlash : MonoBehaviour
         public Renderer renderer;
         public int index;          // material slot on that renderer
         public int colorId;        // 0 = no colour property
-        public Color baseColor;
+        public Color originalColor; // as authored, so re-tinting never compounds
+        public Color baseColor;     // what a flash returns to (originalColor × tint)
         public bool hasEmission;
         public Color emission;
     }
@@ -70,7 +71,7 @@ public class HitFlash : MonoBehaviour
                 var slot = new Slot { renderer = r, index = m };
                 if (mat.HasProperty(BaseColorId)) slot.colorId = BaseColorId;
                 else if (mat.HasProperty(ColorId)) slot.colorId = ColorId;
-                if (slot.colorId != 0) slot.baseColor = mat.GetColor(slot.colorId);
+                if (slot.colorId != 0) slot.originalColor = slot.baseColor = mat.GetColor(slot.colorId);
 
                 slot.hasEmission = mat.HasProperty(EmissionId);
                 if (slot.hasEmission) slot.emission = mat.GetColor(EmissionId);
@@ -87,6 +88,27 @@ public class HitFlash : MonoBehaviour
         if (!isActiveAndEnabled || slots == null || slots.Length == 0) return;
         if (running != null) StopCoroutine(running);
         running = StartCoroutine(FlashRoutine());
+    }
+
+    /// <summary>
+    /// Permanently re-tint what a flash returns <em>to</em> — C3's enrage colour.
+    ///
+    /// <para>This has to live here rather than in the boss, because the flash owns the
+    /// resting colour: <see cref="Awake"/> caches it off <c>sharedMaterial</c> and
+    /// <see cref="Set"/> restores it after every hit. A boss that tinted itself through
+    /// <see cref="MaterialTint"/> would look enraged for exactly one frame and then be
+    /// repainted its original colour by the next Seed that landed.</para>
+    ///
+    /// <para>The tint <b>multiplies</b> the authored colour instead of replacing it, and is
+    /// always applied to the colour as authored, so calling this twice does not compound.
+    /// A machine built from a dozen materials stays readable — it goes angry, not flat red.</para>
+    /// </summary>
+    public void SetBaseTint(Color multiplier)
+    {
+        if (slots == null) return;
+        for (int i = 0; i < slots.Length; i++)
+            slots[i].baseColor = slots[i].originalColor * multiplier;
+        if (running == null) Set(false);   // a flash in flight lands on the new colour anyway
     }
 
     IEnumerator FlashRoutine()
