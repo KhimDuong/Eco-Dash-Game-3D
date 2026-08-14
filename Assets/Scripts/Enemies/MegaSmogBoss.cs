@@ -93,6 +93,9 @@ public class MegaSmogBoss : MonoBehaviour, IDamageable, IBoss
     [SerializeField] AudioClip deathSfx;
     [SerializeField] AudioClip attackSfx;
 
+    // Fallback for the death poof only; the art pass owns the colour it normally reads.
+    static readonly Color DeathTint = new Color(0.38f, 0.40f, 0.42f);
+
     /// <inheritdoc/>
     public event Action OnEngaged;
     /// <inheritdoc/>
@@ -263,6 +266,7 @@ public class MegaSmogBoss : MonoBehaviour, IDamageable, IBoss
     {
         enraged = true;
         if (flash != null) flash.SetBaseTint(enrageTint);
+        GameFeel.Shake(0.4f, 0.2f);      // the machine winding itself up, not a hit landing
         Debug.Log("[Eco-Dash] Mega-Smog enraged.");
     }
 
@@ -275,6 +279,8 @@ public class MegaSmogBoss : MonoBehaviour, IDamageable, IBoss
         if (deathSfx != null) AudioSource.PlayClipAtPoint(deathSfx, transform.position);
         OnDefeated?.Invoke();
         Debug.Log("[Eco-Dash] Mega-Smog destroyed — the valley can breathe.");
+        GameFeel.Shake(0.5f, 0.32f);
+        GameFeel.HitStop(GameFeel.StopBig);
         StartCoroutine(DeathRoutine());
     }
 
@@ -288,7 +294,9 @@ public class MegaSmogBoss : MonoBehaviour, IDamageable, IBoss
         const float dur = 1.1f;
         Vector3 scale0 = transform.localScale;
         Vector3 pos0 = transform.position;
+        var tint = Vfx.ColorOf(gameObject, DeathTint);
         float t = 0f;
+        float nextBurst = 0f;
         while (t < dur)
         {
             t += Time.deltaTime;
@@ -296,6 +304,15 @@ public class MegaSmogBoss : MonoBehaviour, IDamageable, IBoss
             transform.localScale = Vector3.Lerp(scale0, scale0 * 0.2f, u);
             transform.position = pos0 + Vector3.down * (1.6f * u);
             transform.Rotate(0f, 540f * Time.deltaTime, 0f, Space.World);
+
+            // C4: pieces coming off it the whole way down, rather than one puff at the end —
+            // a 2.4 m machine that vanishes silently reads as a bug, not a victory.
+            if (t >= nextBurst)
+            {
+                nextBurst = t + 0.22f;
+                var jitter = UnityEngine.Random.insideUnitCircle * 1.2f;
+                Vfx.Poof(pos0 + new Vector3(jitter.x, 1.2f - 1.6f * u, jitter.y), tint, 1.6f);
+            }
             yield return null;
         }
         if (GameManager.Instance != null) GameManager.Instance.CompleteLevel();

@@ -73,15 +73,19 @@ public static class ItemUse
         }
     }
 
-    // AoE that damages nearby enemies. The trash-clearing half of the Seed Bomb
-    // (game-design §4.7.2) is wired to the cleaning loop in A5/C4 once that
-    // component lands — see m9-tasks K3/A5.
+    // AoE that damages nearby enemies *and* clears the trash inside it — the second half of
+    // the Seed Bomb (game-design §4.7.2), which had been waiting on the cleaning loop since
+    // M9 and lands with C4's <see cref="GroundCleanser"/>.
     static bool DetonateSeedBomb(Vector3 center)
     {
         var hits = Physics.OverlapSphere(center, SeedBombRadius, ~0, QueryTriggerInteraction.Collide);
         foreach (var h in hits)
             if (h.TryGetComponent<IDamageable>(out var dmg))
                 dmg.TakeDamage(SeedBombDamage);
+
+        GroundCleanser.CleanRadius(center, SeedBombRadius);
+        Vfx.Poof(center + Vector3.up * 0.4f, Vfx.CleanGreen, 1.8f);
+        GameFeel.Shake(0.22f, 0.16f);
         return true;
     }
 }

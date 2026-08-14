@@ -69,6 +69,9 @@ public class SlimeKing : MonoBehaviour, IDamageable, IKnockbackable, IBoss
     [SerializeField] HitFlash flash;
     [SerializeField] AudioClip deathSfx;
 
+    // Fallback for the death poof only; the art pass owns the bruised purple it normally reads.
+    static readonly Color DeathTint = new Color(0.44f, 0.26f, 0.54f);
+
     /// <inheritdoc/>
     public event Action OnEngaged;
     /// <inheritdoc/>
@@ -197,6 +200,10 @@ public class SlimeKing : MonoBehaviour, IDamageable, IKnockbackable, IBoss
             if (NavMesh.SamplePosition(at, out var hit, minionRing, NavMesh.AllAreas)) at = hit.position;
             Instantiate(minionPrefab, at, Quaternion.identity);
         }
+        // Half health is the fight's turning point, so it gets the boss-sized punch.
+        Vfx.Poof(transform.position + Vector3.up * 0.6f, Vfx.ColorOf(gameObject, DeathTint), 1.5f);
+        GameFeel.Shake(0.25f, 0.16f);
+        GameFeel.HitStop(GameFeel.StopBig);
         Debug.Log($"[Eco-Dash] Slime Chúa split into {minionCount} slimes.");
     }
 
@@ -213,6 +220,11 @@ public class SlimeKing : MonoBehaviour, IDamageable, IKnockbackable, IBoss
         if (deathSfx != null) AudioSource.PlayClipAtPoint(deathSfx, transform.position);
         OnDefeated?.Invoke();
         Debug.Log("[Eco-Dash] Slime Chúa defeated — Mảnh Cổng dropped.");
+
+        // C4: a boss goes out at twice an ordinary slime's size, and earns the long stop.
+        Vfx.Poof(transform.position + Vector3.up * 0.7f, Vfx.ColorOf(gameObject, DeathTint), 2f);
+        GameFeel.Shake(0.35f, 0.24f);
+        GameFeel.HitStop(GameFeel.StopBig);
         Destroy(gameObject);
     }
 

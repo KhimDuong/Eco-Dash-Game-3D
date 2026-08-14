@@ -35,6 +35,10 @@ public class PlasticSlime : MonoBehaviour, IDamageable, IKnockbackable
     [SerializeField] HitFlash flash;
     [SerializeField] AudioClip deathSfx;
 
+    // Only used if the death poof can't read a colour off the art — the art pass owns the
+    // real one, so this never needs updating when the slime is recoloured.
+    static readonly Color DeathTint = new Color(0.42f, 0.70f, 0.45f);
+
     [Header("Patrol")]
     [SerializeField] float moveSpeed = 1.5f;
     [Tooltip("How far from its spawn the slime will wander.")]
@@ -246,6 +250,12 @@ public class PlasticSlime : MonoBehaviour, IDamageable, IKnockbackable
         if (Random.value < 0.5f) Inventory.TryAdd(Random.value < 0.5f ? "bottle" : "scrap", 1);
         if (GameManager.Instance != null) GameManager.Instance.AddTrash(trashDropped);
         if (deathSfx != null) AudioSource.PlayClipAtPoint(deathSfx, transform.position);
+
+        // C4: burst in its own colour, read live off the art so a recolour in ArtPass
+        // carries through without touching the prefab.
+        Vfx.Poof(transform.position + Vector3.up * 0.35f, Vfx.ColorOf(gameObject, DeathTint));
+        GameFeel.Shake(0.1f, 0.05f);
+        GameFeel.HitStop(GameFeel.StopSmall);
         Destroy(gameObject);
     }
 

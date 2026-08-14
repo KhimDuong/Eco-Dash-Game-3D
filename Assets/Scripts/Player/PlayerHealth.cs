@@ -85,7 +85,7 @@ public class PlayerHealth : MonoBehaviour
             away = away.sqrMagnitude > 0.0001f ? away.normalized : Vector3.forward;
             controller.ApplyKnockback(away * knockbackForce, knockbackDuration);
         }
-        if (CameraFollow.Instance != null) CameraFollow.Instance.Shake(hitShakeDuration, hitShakeMagnitude);
+        GameFeel.Shake(hitShakeDuration, hitShakeMagnitude);
 
         if (CurrentHealth == 0)
         {
@@ -94,9 +94,13 @@ public class PlayerHealth : MonoBehaviour
             OnDied?.Invoke();
             if (GameManager.Instance != null) GameManager.Instance.OnPlayerDied();
         }
-        else if (hurtSfx != null)
+        else
         {
-            AudioSource.PlayClipAtPoint(hurtSfx, transform.position);
+            // C4: the world lurches for a moment. Deliberately not on the killing blow —
+            // GameManager.OnPlayerDied parks the clock at 0 for the lose screen, and a
+            // hit-stop racing that would be invisible at best.
+            GameFeel.HitStop(GameFeel.StopHurt);
+            if (hurtSfx != null) AudioSource.PlayClipAtPoint(hurtSfx, transform.position);
         }
         return true;
     }

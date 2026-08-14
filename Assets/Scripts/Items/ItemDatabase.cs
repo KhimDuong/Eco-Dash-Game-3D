@@ -16,6 +16,21 @@ public static class ItemDatabase
 {
     static Dictionary<string, ItemDef> byId;
 
+    /// <summary>
+    /// Drop the cache when Play is pressed — an editor-only fix for an editor-only trap.
+    ///
+    /// <para>The fallback defs are <see cref="ScriptableObject"/>s created at runtime, and Unity
+    /// destroys those when play mode ends. The project runs with Fast Enter Play Mode, so the
+    /// domain is not reloaded and <see cref="byId"/> survives into the next session still holding
+    /// every one of them — destroyed. <see cref="Get"/> then hands back an object that compares
+    /// equal to null, so from the <b>second</b> Play onwards every id looks unknown: consumables
+    /// refuse to be used, display names fall back to raw ids, and nothing logs a word about it.
+    /// A build never sees this (each run is a fresh process), which is exactly what makes it
+    /// expensive — it only ever bites in the editor, where all the testing happens.</para>
+    /// </summary>
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics() => byId = null;
+
     /// <summary>Resolve an id to its def, or null if the id is unknown.</summary>
     public static ItemDef Get(string id)
     {
