@@ -124,6 +124,10 @@ Knockback on both sides, camera shake via A4's wrapper, hit-stop optional,
 damage flashes, death poofs (particles), cleaning VFX (trash-destroy →
 `Codex.AddCleanliness` radius reveal — parity with the 2D GroundCleanser loop).
 ✅ *Done when: combat "feels" at least as punchy as the 2D build.*
+> **Correction, found while doing it:** there is no 2D `GroundCleanser` to be at parity
+> with. It was specified in `game-design` §4.7.5/§4.7.8 and never written, so nothing in
+> the 2D build ever called `AddCleanliness` and the codex's Độ Sạch tab sat at 0% all
+> game. C4 wrote the loop rather than porting it.
 
 **C5. Audio & credits sweep** *(P3)*
 Copy all `Assets/Audio` from 2D (music, SFX, jingles) and rewire via

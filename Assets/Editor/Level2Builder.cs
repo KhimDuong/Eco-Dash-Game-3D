@@ -40,6 +40,8 @@ public static class Level2Builder
     static StringBuilder log;
     static Transform envRoot, hazardRoot, playRoot, enemyRoot;
     static Vector3 playerStart = new Vector3(-0.5f, 0f, -12.5f);
+    static Vector2 bossArena = new Vector2(float.NaN, float.NaN);
+    static int gameplayOccupied;
     static int botCount;
 
     public static string Execute()
@@ -56,11 +58,17 @@ public static class Level2Builder
         playRoot = new GameObject("Gameplay").transform;
         enemyRoot = new GameObject("Enemies").transform;
         botCount = 0;
+        bossArena = new Vector2(float.NaN, float.NaN);
         walls.Clear(); floors.Clear(); occupied.Clear();
 
         int placed = PlaceFromLayout();
         occupied.Add(new Vector2(playerStart.x, playerStart.z));
+        // Dressing first: it only wants the band along the walls, and litter placed before it
+        // knocks 12 of its 40 props out of the running. Litter has the whole floor to choose
+        // from, so it is the one that can afford to work around the other.
+        gameplayOccupied = occupied.Count;
         Dress();
+        ScatterLitter();
         PlaceSystems();
         SetupLighting();
         int navOk = BakeNavMesh();
@@ -161,7 +169,69 @@ public static class Level2Builder
         go.name = "MegaSmogBoss";
         go.transform.position = pos;
         occupied.Add(new Vector2(pos.x, pos.z));   // B5's dressing keeps out of the arena centre
+        bossArena = new Vector2(pos.x, pos.z);
         log.AppendLine("  MegaSmogBoss placed at " + pos);
+    }
+
+    // --- C4: trash to clean -------------------------------------------------------------
+
+    /// <summary>
+    /// Scatter waste across the factory floor. <b>Not from the 2D layout</b> — the 2D Level 2
+    /// has no litter at all, which was invisible until C4 wired the cleaning loop up and the
+    /// factory's Độ Sạch bar turned out to be one that could never move off 0%. Ten pieces
+    /// puts the stage on the same 50% / 100% payout ladder as the valley, and a polluted
+    /// factory with nothing to clean up in it was the odder reading of the two.
+    ///
+    /// <para>Deterministic, like B5's dressing, and kept off everything the player needs. The
+    /// boss arena is excluded outright: it is sealed until the keycard chain opens it, and
+    /// killing what is inside ends the game — trash in there would be trash nobody can ever
+    /// reach, and the meter would cap below 100%.</para>
+    /// </summary>
+    static void ScatterLitter()
+    {
+        if (floors.Count == 0) return;
+        const int want = 10;
+        const float arenaKeepOut = 11f;   // clear of the sealed room, not just the machine
+        const float spacing = 3.5f;
+
+        var parent = new GameObject("Litter").transform;
+        parent.SetParent(playRoot, false);
+
+        var rng = new System.Random(20260814);
+        var placedAt = new List<Vector2>();
+        for (int attempt = 0; attempt < 8000 && placedAt.Count < want; attempt++)
+        {
+            var (c, s) = floors[rng.Next(floors.Count)];
+            var p = new Vector2(c.x + Lerp(rng, -s.x * 0.5f, s.x * 0.5f),
+                                c.y + Lerp(rng, -s.y * 0.5f, s.y * 0.5f));
+
+            if (InsideWall(p, 0.8f) || Crowded(p)) continue;
+            if (!float.IsNaN(bossArena.x) && (p - bossArena).magnitude < arenaKeepOut) continue;
+            bool tooClose = false;
+            foreach (var q in placedAt) tooClose |= (p - q).sqrMagnitude < spacing * spacing;
+            if (tooClose) continue;
+
+            var go = Spawn(Greybox, "Litter", parent, new Vector3(p.x, 0f, p.y));
+            go.name = $"Litter_{placedAt.Count:00}";     // unique name -> unique SceneProgress id
+            placedAt.Add(p);
+        }
+        log.AppendLine("  litter: " + placedAt.Count + " pieces of factory waste to clean");
+    }
+
+    /// <summary>
+    /// Keep-out test for litter, at two radii. The corridors are narrow enough that treating a
+    /// decorative pipe like a keycard leaves almost nowhere to put anything — with one radius
+    /// for both, ten pieces of trash became two. Gameplay (the entries banked before
+    /// <see cref="Dress"/> ran) keeps its wide berth; the dressing only has to not be stood in.
+    /// </summary>
+    static bool Crowded(Vector2 p)
+    {
+        for (int i = 0; i < occupied.Count; i++)
+        {
+            float r = i < gameplayOccupied ? 2.5f : 1.3f;
+            if ((p - occupied[i]).sqrMagnitude < r * r) return true;
+        }
+        return false;
     }
 
     static void Marker(string name, Vector3 pos)

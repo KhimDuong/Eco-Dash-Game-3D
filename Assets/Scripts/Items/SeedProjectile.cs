@@ -18,6 +18,9 @@ public class SeedProjectile : MonoBehaviour
     [SerializeField] float knockbackForce = 6f;
     [SerializeField] float knockbackDuration = 0.18f;
 
+    /// <summary>Chip colour when a Seed splashes on scenery rather than an enemy.</summary>
+    static readonly Color FizzleColor = new Color(0.62f, 0.82f, 0.45f);
+
     Rigidbody rb;
     Vector3 travelDir = Vector3.forward;
 
@@ -42,6 +45,9 @@ public class SeedProjectile : MonoBehaviour
 
         if (other.TryGetComponent<IDamageable>(out var target))
         {
+            // Chips in the target's own colour, thrown before the hit lands — TakeDamage can
+            // destroy the enemy outright, and there would be nothing left to read a colour off.
+            Vfx.Impact(transform.position, travelDir, Vfx.ColorOf(other.gameObject, Color.white));
             target.TakeDamage(damage);
             if (knockbackForce > 0f && other.TryGetComponent<IKnockbackable>(out var shovable))
                 shovable.ApplyKnockback(travelDir * knockbackForce, knockbackDuration);
@@ -51,6 +57,9 @@ public class SeedProjectile : MonoBehaviour
 
         // Hit a solid obstacle (rusty debris / pipes) → fizzle out.
         if (!other.isTrigger)
+        {
+            Vfx.Impact(transform.position, travelDir, FizzleColor);
             Destroy(gameObject);
+        }
     }
 }

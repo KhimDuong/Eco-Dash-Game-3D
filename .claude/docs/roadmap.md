@@ -286,7 +286,7 @@ owners in [../../TEAM-TASKS.md](../../TEAM-TASKS.md).
   - [x] per-scene look: Level 1 warm/hazy with fog, Level 2 dark and high-contrast so
     the lasers and screens are the brightest things on screen, the hub bright and even
   - [x] Level 1 gained a tiled boundary fence (112 posts) and 181 scattered ground
-    details; Level 2 gained 40 machinery props hugging the maze walls — both
+    details; Level 2 gained 38 machinery props hugging the maze walls — both
     deterministic, collider-free, and kept clear of anything interactive
   - [x] **bug found: a property block is per material slot, not per renderer.**
     The greybox enemies were one material per renderer, which hid it. The real slime is
@@ -304,7 +304,54 @@ owners in [../../TEAM-TASKS.md](../../TEAM-TASKS.md).
     slime **31/31**, Level 1 **28/28**, Level 2, hub and fly-bot re-run green
   - [ ] `.glb` needs the **`com.unity.cloud.gltfast`** package (added to
     `Packages/manifest.json`) — B and C re-resolve packages on next pull
-- [ ] **C4** Game-feel (knockback, shake, flashes, death/clean VFX — 2D-parity punch)
+- **C4** Game-feel (knockback, shake, flashes, death/clean VFX) — **done**
+  - [x] **`Vfx`** — `Poof` / `CleanBurst` / `Impact`, each built from code and destroying itself
+    when it stops, like `UIFactory` builds the windows. No VFX prefab exists, so no generator
+    can throw one away and nothing needs wiring per scene
+  - [x] the particles are **little meshes on URP/Lit, not billboards**: a billboard needs one of
+    the URP *Particles* shaders and no material in this project references one, so
+    `Shader.Find` would return null in a build — perfect in the editor, magenta in the
+    submission. Tint therefore comes from a small material cache keyed on the colour, with
+    matching emission, because mesh particles don't carry `startColor` into URP/Lit
+  - [x] **`Vfx.ColorOf`** reads an enemy's colour off its own art, so a death poof is the right
+    colour with **nothing serialized on any prefab** — recolour a slime in `ArtPass` and its
+    poof follows. Not one enemy prefab had to be rebuilt for C4
+  - [x] **`GameFeel`** — `Shake` (the null-safe wrapper the ported callers were open-coding) and
+    `HitStop`, with the durations as constants in one place rather than serialized fields on
+    four prefabs. Wired into every beat: slime/fly-bot deaths, the King's split and death, the
+    Mega-Smog's enrage and collapse, Seed impacts, and Greenie taking a hit
+  - [x] **hit-stop crawls the clock at 2%, it never parks it at 0.** `Time.timeScale` has six
+    owners here and all of them use exactly 0, so a hit-stop that also used 0 could not tell
+    its own freeze from a dialogue that opened during it — and restoring the wrong one
+    un-pauses a modal under the player. Crawling makes ownership checkable
+  - [x] **`GroundCleanser`** — the cleaning loop `game-design` §4.7.5 has specified since M9 and
+    **nobody ever wrote**: in the 2D build nothing ever called `Codex.AddCleanliness`, so the
+    codex's Độ Sạch tab showed two bars frozen at 0% for the whole game. Clearing trash now
+    greens the ground around it, sparkles, and moves the stage meter — with the 50% / 100%
+    payouts (the 100% one being Level 1's third Portal Shard) finally reachable
+  - [x] the Seed Bomb's **other half** landed with it: §4.7.2 always said it clears trash as
+    well as damaging, and `ItemUse` had carried a comment pointing at the missing component
+    since M9
+  - [x] **the share per piece is derived, not accumulated** — `100 × cleaned / authored`, only
+    the difference handed to the codex. Accumulating would have repeated C3's enrage bug in a
+    new costume: seven pieces at 100/7 sum to 99.99999, and a meter that stops a
+    ten-thousandth short never pays out
+  - [x] **Level 2 gained 10 pieces of waste** (deterministic, like B5's dressing, and kept out
+    of the sealed boss arena). The 2D factory has no litter at all, which was invisible until
+    the loop existed and the factory's meter turned out to be one that could never move
+  - [x] **bug found: the tally reset per level, not per level *load*.** Dying and taking "Chơi
+    lại" reloads the same scene, so the name never changes — sixteen authored pieces in an
+    eight-piece field, every piece worth half, and 100% permanently out of reach
+  - [x] **bug found: `ItemDatabase` had been dying on every Play but the first.** It caches
+    runtime `ScriptableObject`s, Unity destroys those when play mode ends, and Fast Enter Play
+    Mode keeps the dictionary — so from the second Play on, every id looked unknown:
+    consumables refused to be used and display names fell back to raw ids, silently. A build
+    never sees it, which is what made it expensive. `GroundCleanser` / `GameFeel` / `Vfx` clear
+    themselves the same way
+  - [x] play-mode verified **43/43** (Level 1: the kit, hit-stop ownership, the whole cleaning
+    loop to 100% and its rewards, the Seed Bomb, impacts/poofs/stops on real Seed fire, and a
+    revisit that neither forgets its cleaned ground nor pays out twice) and **9/9** (Level 2)
+  - [x] no regressions: Mega-Smog **41/41**, fly-bot, slime, Level 1 and the Slime King re-run green
 - [ ] **C5** Audio ported + rewired; settings sliders verified; `HOW_TO_PLAY.md`
   updated for 3D
 - [ ] Full manual playthrough + ~30-min time-budget check
@@ -312,6 +359,36 @@ owners in [../../TEAM-TASKS.md](../../TEAM-TASKS.md).
 
 ## Recent log
 
+- _(2026-08-14)_ **C4 done — hits land, and cleaning is finally a loop.** The juice itself was
+  the easy half: `Vfx` builds its bursts from code and throws them away when they stop, `GameFeel`
+  holds the shake wrapper and the hit-stop, and both are wired into every beat that deserves one.
+  Not a single prefab had to be rebuilt, because `Vfx.ColorOf` reads an enemy's colour off its own
+  art — recolour the slime in `ArtPass` and its death poof follows.
+  **The particles are meshes on URP/Lit rather than billboards**, and that is a build decision, not
+  a taste one: a billboard needs one of the URP *Particles* shaders, nothing in this project
+  references one, and `Shader.Find` only returns what a build actually kept — so the pretty version
+  would have looked perfect in the editor and shipped as magenta squares.
+  **Hit-stop crawls the clock at 2%; it never parks it at 0.** Six things in this project set
+  `Time.timeScale = 0`, so a hit-stop that used 0 could not tell its own freeze from a dialogue
+  that opened during it, and restoring the wrong one un-pauses a modal under the player. Crawling
+  makes ownership checkable, and at 2% a 60 ms stop still reads as a freeze.
+  **The bigger find was that the cleaning loop never existed.** `game-design` §4.7.5 has specified
+  `GroundCleanser.CleanRadius` since M9 and both `Codex` and `ItemUse` carry comments pointing at
+  it, but nothing in the 2D build ever called `AddCleanliness` — the codex's third tab showed two
+  bars frozen at 0% for the entire game, and the Seed Bomb's "clears trash" half was never wired.
+  Both work now, and Level 2 got 10 pieces of waste of its own, because the factory's meter turned
+  out to be one that could never have moved.
+  **Two bugs, both invisible, both about state that outlives what created it.** The cleanliness
+  tally reset per *level* rather than per level **load**, so dying and taking "Chơi lại" — which
+  reloads the same scene — doubled the authored count and put 100% permanently out of reach. And
+  `ItemDatabase` had been dying on every Play but the first since M9: it caches runtime
+  `ScriptableObject`s, Unity destroys those when play mode ends, and with Fast Enter Play Mode the
+  dictionary survives holding all of them destroyed — so from the second Play onwards every item id
+  looked unknown, consumables silently refused to work, and a build never sees any of it.
+  Verified **43/43** and **9/9**, with the Mega-Smog re-run at **41/41** and the rest of the suite
+  green. Probe lesson to file with C1's and C2's: **check which scene a probe was written for** —
+  `ProbeFlyBot`'s arena is Level 1's open field, and running it on Level 2 drops Greenie off the
+  edge of the floor slab and produces 17 confident, meaningless failures.
 - _(2026-08-13)_ **C3 done — both bosses are in, and the game can be finished.** The
   Slime King and the Mega-Smog are the last two things the port was missing, and with
   them the whole chain runs: menu → intro → farm → hub → factory → boss → outro.

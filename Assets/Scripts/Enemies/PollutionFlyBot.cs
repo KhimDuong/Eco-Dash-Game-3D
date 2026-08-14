@@ -96,6 +96,9 @@ public class PollutionFlyBot : MonoBehaviour, IDamageable, IKnockbackable
     [SerializeField] AudioClip shootSfx;
     [SerializeField] AudioClip deathSfx;
 
+    // Fallback for the death poof only; the art pass owns the colour it normally reads.
+    static readonly Color DeathTint = new Color(0.55f, 0.58f, 0.62f);
+
     enum State { Patrol, Chase }
     State state = State.Patrol;
 
@@ -310,6 +313,12 @@ public class PollutionFlyBot : MonoBehaviour, IDamageable, IKnockbackable
         if (Random.value < 0.5f) Inventory.TryAdd(Random.value < 0.5f ? "bottle" : "scrap", 1);
         if (GameManager.Instance != null) GameManager.Instance.AddTrash(trashDropped);
         if (deathSfx != null) AudioSource.PlayClipAtPoint(deathSfx, transform.position);
+
+        // C4: the poof goes off at the body, up where the bot actually is — this is the one
+        // enemy whose death is not at ground level, and a burst at its feet would look wrong.
+        Vfx.Poof(transform.position, Vfx.ColorOf(gameObject, DeathTint), 1.1f);
+        GameFeel.Shake(0.12f, 0.06f);
+        GameFeel.HitStop(GameFeel.StopSmall);
         Destroy(gameObject);
     }
 

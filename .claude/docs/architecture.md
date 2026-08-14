@@ -356,6 +356,106 @@ an id no freshly-placed slime ever matches, so it is back on the next load.
   agent otherwise carves a hole in the mesh it is standing on. Both
   `PlasticSlime.prefab` and `Player.prefab` set it.
 
+## Game feel is a service; cleaning is a loop (C4)
+
+Two new statics and one new system, all reachable from anywhere and none of them wired
+into a scene:
+
+- [Vfx.cs](../../Assets/Scripts/Systems/Vfx.cs) — `Poof` / `CleanBurst` / `Impact`. Each
+  call builds a `ParticleSystem` in code, plays it once and destroys itself
+  (`stopAction = Destroy`). No VFX prefab exists, so no generator can throw one away.
+- [GameFeel.cs](../../Assets/Scripts/Systems/GameFeel.cs) — `Shake` (a null-safe wrapper
+  over `CameraFollow.Instance.Shake`, so callers stop copying the null check around) and
+  `HitStop`. Durations live here as constants rather than as serialized fields on four
+  enemy prefabs.
+- [GroundCleanser.cs](../../Assets/Scripts/World/GroundCleanser.cs) — clearing trash
+  cleans the ground around it and raises that stage's **Độ Sạch**.
+
+### The particles are meshes, and their colour is in the material
+
+A billboard needs one of the URP *Particles* shaders, and **no material in this project
+references one**. `Shader.Find` can only return shaders a build actually kept, so that
+puff would look perfect in the editor and be a magenta square in the submission build.
+Every burst uses URP/Lit — which is on every material in the game — with little cubes as
+the particle mesh, which suits the low-poly art better than a soft puff anyway.
+
+That choice has a consequence: mesh particles only carry `startColor` into the shader if
+the shader reads the vertex-colour stream, and URP/Lit does not. So tint comes from a
+**small material cache keyed on the colour** (a handful of tints in the whole game), and
+each cached material carries matching emission — the same reason `HitFlash` flashes
+emission alongside base colour. Under the fixed ¾ camera a tint swap barely registers; a
+lit blob pops.
+
+`Vfx.ColorOf(go, fallback)` reads an object's own colour off its first renderer, so an
+enemy poofs in its own colour with **nothing serialized on the prefab**. Recolour the
+slime in `ArtPass` and its death poof follows on the next run.
+
+### Hit-stop slows the clock; it must never park it at 0
+
+`Time.timeScale` has six owners in this project — `PauseController`, `TutorialPopup`,
+`DialogueRunner`, `ShopController`, the end screens and `GameManager` — and every one of
+them uses exactly `0`. A hit-stop that also used 0 could not tell, when its wait ended,
+whether the 0 it was looking at was still its own or a dialogue that had opened in the
+meantime; restoring the wrong one un-pauses a modal under the player. `GameFeel` crawls
+at `StopScale = 0.02` instead, and only restores if the clock is *still* exactly that.
+At 2% speed a 60 ms stop reads as a freeze anyway, and coroutines measuring scaled time
+(the Mega-Smog's collapse) keep inching forward instead of deadlocking.
+
+Two corollaries: the runner is `DontDestroyOnLoad`, because a stop that starts as a boss
+dies has to finish even though that death loads the next scene; and hit-stop is
+deliberately **not** applied on the killing blow to the player, where `OnPlayerDied`
+already pins the clock for the lose screen.
+
+### The cleaning loop was specified in M9 and never written
+
+`game-design.md` §4.7.5/§4.7.8 have called for `GroundCleanser.CleanRadius(pos, r)` since
+M9, `Codex` and `ItemUse` both carry comments pointing at it — and in the 2D build
+**nothing ever called `AddCleanliness`**, so the codex's third tab showed two bars frozen
+at 0% for the whole game. Three things the 3D version had to get right:
+
+- **The share per piece is derived, not accumulated.** The meter is recomputed as
+  `100 × cleaned / authored` and only the difference is handed to the codex. Accumulating
+  a per-piece share would repeat C3's enrage bug in a new costume: seven pieces at 100/7
+  each sum to 99.99999, and a meter one ten-thousandth short of 100 never pays out its
+  Portal Shard.
+- **The authored total is counted in `Awake`.** A `Litter` cleaned on an earlier visit
+  deletes itself in `Start`, so a count taken any later sees only the leftovers and
+  inflates every remaining piece's share. Pieces register themselves in their own `Awake`
+  — before any `Start` runs — and the ones deleting themselves report as already-cleaned
+  on the way out, which keeps the count honest *and* repaints the ground they cleared.
+- **The tally resets per level *load*, not per level.** Keying the reset on the scene name
+  misses the case the player hits most: dying and taking "Chơi lại" reloads the same
+  scene, the name never changes, and the tally carries on counting — sixteen authored
+  pieces in an eight-piece field, and 100% permanently out of reach. Both levels load
+  whole, so every Litter registers in one `Awake` burst; a registration a frame or more
+  after the last one belongs to a new load.
+
+The ground repaint carries a **footprint cap**, and it is load-bearing rather than a
+tweak. Tinting works per renderer, and the two levels build floors completely
+differently: Level 1 lays 192 four-metre tiles, so a cleansed piece greens the tile it
+sits on; Level 2's floor is a *single* 40 × 34 m slab that `export_level2.py` merged out
+of 1 360 cells. Without the cap, one bottle in the factory repaints the entire level in
+one frame. The factory therefore gets the sparkle and the meter but no ground tint —
+correct, and the reason Level 2's cleanse looks quieter than Level 1's.
+
+### Fast Enter Play Mode: statics survive, and one of them was dying quietly
+
+`ProjectSettings` has Fast Enter Play Mode on, so **the domain is not reloaded between
+play sessions** and every static keeps its value from the last run. The persistence
+stores are immune by construction — they re-read themselves from PlayerPrefs — but a
+plain counter is not, so `GroundCleanser`, `GameFeel` and `Vfx` each clear themselves
+from a `[RuntimeInitializeOnLoadMethod(SubsystemRegistration)]`.
+
+C4 found one that had been broken since M9: **`ItemDatabase` caches runtime
+`ScriptableObject`s**, which Unity destroys when play mode ends. Its dictionary survived
+into the next session still holding all of them, destroyed, so `Get` returned an object
+that compares equal to null and from the **second** Play onwards every id looked unknown
+— consumables refused to be used, display names fell back to raw ids, and nothing logged
+a word. A build never sees it (each run is a fresh process), which is exactly what made
+it expensive: it only bites in the editor, where all the testing happens. Same
+`SubsystemRegistration` reset. **Any static holding a runtime-created Unity object needs
+one.**
+
 ## Communication patterns (unchanged — frozen contract)
 
 - `GameManager` static-instance + C# events (`OnCoresChanged`,
