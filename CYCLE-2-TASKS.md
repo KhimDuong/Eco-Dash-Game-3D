@@ -32,9 +32,9 @@ specify, you prioritise. The backlog you produce is what cycle 2 then builds.
 
 | Role | Slot | Owns | Hard deliverable |
 |---|---|---|---|
-| **Tester / QA lead** | *(assign)* | Finding what's broken, and proving it's broken | `QA/test-report-cycle2.md` + filed defects |
-| **Product Owner** | *(assign)* | Deciding what "finished" means and in what order | `PRODUCT-BACKLOG.md`, prioritised |
-| **Business Analyst** | *(assign)* | Scope, spec-vs-build gaps, submission risk | `GAP-ANALYSIS.md` + the asset shopping list |
+| **Tester / QA lead** | *Đức Anh* | Finding what's broken, and proving it's broken | `QA/test-report-cycle2.md` + filed defects |
+| **Product Owner** | *Thanh Tùng* | Deciding what "finished" means and in what order | `PRODUCT-BACKLOG.md`, prioritised |
+| **Business Analyst** | *Gia Khang* | Scope, spec-vs-build gaps, submission risk | `GAP-ANALYSIS.md` + the asset shopping list |
 
 The three roles overlap on purpose. The Tester says *"the shop feels pointless"*, the
 BA says *"because the design gave it 4 minutes of the 31-minute budget and the build
