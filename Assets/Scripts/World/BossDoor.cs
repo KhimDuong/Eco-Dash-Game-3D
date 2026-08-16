@@ -64,7 +64,7 @@ public class BossDoor : MonoBehaviour
         if (open) return;
         open = true;
         SetLights(openColor);
-        if (openSfx != null) AudioSource.PlayClipAtPoint(openSfx, transform.position);
+        if (openSfx != null) Sfx.Play(openSfx, transform.position);
         Debug.Log("[Eco-Dash] Boss door unlocked — the Mega-Smog awaits.");
         StartCoroutine(OpenRoutine());
     }

@@ -77,7 +77,7 @@ MonoBehaviour:
   lid: {fileID: 6423536514210551348}
   hole: {fileID: 5896860965968497874}
   rattleAmount: 0.05
-  openSfx: {fileID: 0}
+  openSfx: {fileID: 8300000, guid: f49f3784da1a96344af84b08fcf1c9da, type: 3}
 --- !u!1 &3518142429519357170
 GameObject:
   m_ObjectHideFlags: 0

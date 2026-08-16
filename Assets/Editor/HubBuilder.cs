@@ -58,9 +58,10 @@ public static class HubBuilder
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
 
-        // These five prefabs were just rebuilt from primitives, which throws B5's art away.
-        // Put it back before the scene instantiates them.
+        // These five prefabs were just rebuilt from primitives, which throws B5's art away —
+        // and C5's clips with it. Put both back before the scene instantiates them.
         log.Line(ArtPass.ReapplyHub().TrimEnd());
+        log.Line(AudioPass.ReapplyHub().TrimEnd());
 
         BuildScene();
         return log.ToString();

@@ -67,7 +67,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 26e2733d80fab8748a16577434e9298a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::QuestItemPickup
-  pickupSound: {fileID: 0}
+  pickupSound: {fileID: 8300000, guid: 85f8fe2dd10192b4d91739e89240c15c, type: 3}
   bobSpeed: 2
   bobHeight: 0.1
 --- !u!1 &9103837783931767649

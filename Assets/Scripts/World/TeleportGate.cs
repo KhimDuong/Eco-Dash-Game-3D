@@ -96,7 +96,7 @@ public class TeleportGate : MonoBehaviour
         active = true;
         ApplyColor(activeColor);
         if (pad != null) pad.Reveal();
-        if (activateSfx != null) AudioSource.PlayClipAtPoint(activateSfx, transform.position);
+        if (activateSfx != null) Sfx.Play(activateSfx, transform.position);
         Debug.Log("[Eco-Dash] Teleport gate online — walk in to advance.");
     }
 

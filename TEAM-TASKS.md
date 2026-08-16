@@ -129,11 +129,17 @@ damage flashes, death poofs (particles), cleaning VFX (trash-destroy →
 > the 2D build ever called `AddCleanliness` and the codex's Độ Sạch tab sat at 0% all
 > game. C4 wrote the loop rather than porting it.
 
-**C5. Audio & credits sweep** *(P3)*
+**C5. Audio & credits sweep** *(P3)* — **done**
 Copy all `Assets/Audio` from 2D (music, SFX, jingles) and rewire via
 `MusicVolume`/`GameSettings`. New ambience only if free-first sourcing finds
 something better. Final `CREDITS.md` + `HOW_TO_PLAY.md` update for 3D.
 ✅ *Done when: every scene has music + SFX obeying the settings sliders.*
+> **Two corrections, found while doing it.** The copy had already happened in A5 — what was
+> missing was the wiring, and *most of it had never existed*: only `HUD.prefab` had any clip
+> assigned, and half the scenes had no music. And `MusicVolume` turned out to be the wrong
+> shape for three of the six scenes, which are **generated** and lose anything placed in them
+> at the next Rebuild; `MusicPlayer` owns the track instead, which also stops it restarting on
+> every scene load. No new audio was sourced — the eight 2D clips are the whole soundtrack.
 
 ---
 

@@ -347,7 +347,7 @@ MonoBehaviour:
   maxHealth: 6
   invulnDuration: 0.8
   rendererToFlash: {fileID: 0}
-  hurtSfx: {fileID: 0}
+  hurtSfx: {fileID: 8300000, guid: 625212299118cc14ebe12146bddafec5, type: 3}
   deathSfx: {fileID: 0}
   hitShakeMagnitude: 0.18
   hitShakeDuration: 0.18
@@ -368,7 +368,7 @@ MonoBehaviour:
   firePoint: {fileID: 9126859163914895709}
   fireCooldown: 0.35
   spreadAngle: 12
-  shootSfx: {fileID: 0}
+  shootSfx: {fileID: 8300000, guid: cd162a874d1113c4eabbd8d9b7a26430, type: 3}
 --- !u!114 &1572063898719045729
 MonoBehaviour:
   m_ObjectHideFlags: 0

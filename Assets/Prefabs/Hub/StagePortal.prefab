@@ -79,8 +79,8 @@ MonoBehaviour:
   prompt: {fileID: 5714002551207597652}
   lockedVisual: {fileID: 1938236922718115532}
   openVisual: {fileID: 4589936037343189842}
-  travelSfx: {fileID: 0}
-  powerSfx: {fileID: 0}
+  travelSfx: {fileID: 8300000, guid: 976d7e4b4dfc98c4cb40aee1f1e73edb, type: 3}
+  powerSfx: {fileID: 8300000, guid: ac31dfd1a0f6a0a4cb887b99a15e7964, type: 3}
 --- !u!1 &1438722250550691620
 GameObject:
   m_ObjectHideFlags: 0

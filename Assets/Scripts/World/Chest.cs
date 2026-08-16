@@ -98,7 +98,7 @@ public class Chest : MonoBehaviour, IInteractable
             if (reward == Reward.Trash) GameManager.Instance.AddTrash(trashAmount);
             else GameManager.Instance.CollectCore();
         }
-        if (openSfx != null) AudioSource.PlayClipAtPoint(openSfx, transform.position);
+        if (openSfx != null) Sfx.Play(openSfx, transform.position);
         if (patch != null) patch.Reveal();
 
         StartCoroutine(OpenRoutine());
@@ -148,6 +148,6 @@ public class Chest : MonoBehaviour, IInteractable
             coreVisual.localScale = coreScale;
         }
 
-        if (coreSfx != null) AudioSource.PlayClipAtPoint(coreSfx, transform.position);
+        if (coreSfx != null) Sfx.Play(coreSfx, transform.position);
     }
 }

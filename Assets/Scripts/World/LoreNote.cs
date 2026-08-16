@@ -61,7 +61,7 @@ public class LoreNote : MonoBehaviour, IInteractable
         if (isNew && note != null && note.stageId == Codex.StageFactory && QuestLog.IsActive(QuestCatalog.LanIntel))
             QuestLog.AddProgress(QuestCatalog.LanIntel);
 
-        if (foundSfx != null) AudioSource.PlayClipAtPoint(foundSfx, transform.position);
+        if (foundSfx != null) Sfx.Play(foundSfx, transform.position);
 
         var runner = DialogueRunner.Instance;
         if (runner != null && note != null)

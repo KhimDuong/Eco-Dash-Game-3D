@@ -388,7 +388,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CraftingBench
   prompt: {fileID: 5982813961273359547}
-  openSfx: {fileID: 0}
+  openSfx: {fileID: 8300000, guid: 85f8fe2dd10192b4d91739e89240c15c, type: 3}
 --- !u!1 &5982813961273359547
 GameObject:
   m_ObjectHideFlags: 0

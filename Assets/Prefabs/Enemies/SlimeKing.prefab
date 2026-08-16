@@ -142,7 +142,7 @@ MonoBehaviour:
   dropItemId: portal_shard
   dropAmount: 1
   flash: {fileID: 6922402368980916511}
-  deathSfx: {fileID: 0}
+  deathSfx: {fileID: 8300000, guid: f49f3784da1a96344af84b08fcf1c9da, type: 3}
 --- !u!1 &1319602215401167435
 GameObject:
   m_ObjectHideFlags: 0

@@ -1563,8 +1563,8 @@ MonoBehaviour:
   - {fileID: 6594292968651528808}
   closeButton: {fileID: 2651076191844605930}
   backButton: {fileID: 5440978280954947188}
-  openSfx: {fileID: 0}
-  buySfx: {fileID: 0}
+  openSfx: {fileID: 8300000, guid: 85f8fe2dd10192b4d91739e89240c15c, type: 3}
+  buySfx: {fileID: 8300000, guid: 976d7e4b4dfc98c4cb40aee1f1e73edb, type: 3}
 --- !u!1 &5497732218526679128
 GameObject:
   m_ObjectHideFlags: 0

@@ -38,6 +38,8 @@ public static class EnemyPrefabBuilder
         AssetDatabase.Refresh();
         // The prefabs above are rebuilt from primitives, so B5's models have to go back on.
         log += ArtPass.ReapplyEnemies();
+        // ...and C5's clips with them, for exactly the same reason.
+        log += AudioPass.ReapplyEnemies();
         return log;
     }
 

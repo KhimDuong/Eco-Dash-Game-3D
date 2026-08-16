@@ -352,12 +352,88 @@ owners in [../../TEAM-TASKS.md](../../TEAM-TASKS.md).
     loop to 100% and its rewards, the Seed Bomb, impacts/poofs/stops on real Seed fire, and a
     revisit that neither forgets its cleaned ground nor pays out twice) and **9/9** (Level 2)
   - [x] no regressions: Mega-Smog **41/41**, fly-bot, slime, Level 1 and the Slime King re-run green
-- [ ] **C5** Audio ported + rewired; settings sliders verified; `HOW_TO_PLAY.md`
-  updated for 3D
+- **C5** Audio ported + rewired; settings sliders verified; `HOW_TO_PLAY.md` for 3D — **done**
+  - [x] the eight clips came over in A5 and had been sitting unused: only `HUD.prefab` had any
+    of them, three of six scenes had **no music at all**, and every other `AudioClip` field in
+    the game was empty. C5 is the wiring
+  - [x] **`Sfx`** — one pooled service every sound goes out through. `AudioSource.PlayClipAtPoint`,
+    which every ported caller used, builds a **3D** sound (measured: `spatialBlend = 1`,
+    logarithmic rolloff, `minDistance = 1`), and the listener rides the camera 12.4 m behind
+    Greenie — a gain of about **0.08**, so the whole game would have played at 8% volume. The
+    2D build had already met a milder version and hand-patched two call sites to play at
+    `Camera.main.position`
+  - [x] sounds are **2D, attenuated by distance from Greenie**: under a fixed camera real 3D
+    audio tells the player nothing (10 m away is 15.9 m from the camera against 12.4 m at his
+    feet), and moving the listener onto Greenie would make the stereo image **rotate with him**,
+    since his visual turns to face travel. Full volume within 9 m, silent past 34 m
+  - [x] a service, not a component, for `GameFeel`'s reason: **the sound outlives the thing that
+    made it**, and a slime's own `AudioSource` dies with it on the frame its death sound starts
+  - [x] **bug found (mine): cosmetic randomness was spending the gameplay RNG.** The ±7% pitch
+    scatter drew from `UnityEngine.Random` — the same single sequence `PlasticSlime` takes its
+    wander target and repath timer from. One draw per sound shifted every draw after it: a
+    wandering slime moved 1.8 m → 2.4 m off its spawn and failed a combat test that had nothing
+    to do with audio. `Sfx` now owns a private `System.Random`
+  - [x] **`MusicPlayer`** — one `DontDestroyOnLoad` owner reading `Resources/MusicKit.asset`,
+    replacing the per-scene sources. The three generated scenes had no music *because* a source
+    placed in them dies at the next Rebuild; and a per-scene source **restarts the track on every
+    load**, which in a build that portals hub ↔ L1 ↔ L2 constantly means one loop forever starting
+    over. A scene change is now inaudible — same object, same playhead
+  - [x] **`AudioPass`** (menu: *Eco-Dash → Run the audio pass (C5)*) — 26 fields written from one
+    table, the same way `ArtPass` writes the art and for the same reason: the enemy, factory and
+    hub prefabs are rebuilt from primitives, so a hand-dragged clip vanishes at the next Rebuild.
+    All three builders now call `AudioPass.Reapply*` beside their `ArtPass.Reapply*`
+  - [x] two fields deliberately left empty: `PlayerHealth.deathSfx` (the lose jingle already fires
+    that frame) and `HealthPickup`/`SpeedBoostPickup.collectSfx` (no prefab uses those scripts)
+  - [x] **bug found: the settings panel was overwriting the player's settings with the prefab's.**
+    `SettingsPanel.Awake` attached its callbacks *before* syncing the widgets, and the prefab was
+    saved with mute **ON** and music at **100%** — the project's stored settings were found sitting
+    at exactly that. Sync-then-listen makes the panel a view of the store, never a second source
+    of truth
+  - [x] **bug found: camera shake had been dead.** `CameraFollow` is `[ExecuteAlways]`, so its
+    `Awake` ran when the scene was *opened* in edit mode and correctly declined to claim
+    `Instance`; Fast Enter Play Mode then reuses those objects rather than reloading them, so it
+    never ran again and `Instance` stayed **null all session**. Every `GameFeel.Shake` silently
+    did nothing while the impulse chain underneath was healthy. Claiming in `OnEnable` too fixes it
+  - [x] `HOW_TO_PLAY.md` ported from the 2D repo and brought up to the 3D build; `CREDITS.md`
+    audio section now says what each of the eight clips actually plays
+  - [x] play-mode verified **64/64** (the pool and its 2D voices, the attenuation curve, clips
+    reaching live scene objects, a near kill heard and a far one not, music volume vs both
+    sliders and mute, the panel not writing the store, a scene reload that does not restart the
+    track, and the menu no longer double-playing it)
+  - [x] no regressions: C4 **43/43**, Mega-Smog **41/41**, fly-bot **52/52**, slime **31/31**,
+    Slime King **37/37**, Level 1 **28/28**, Level 2 cleaning **9/9** — 305 checks green
 - [ ] Full manual playthrough + ~30-min time-budget check
 - [ ] Submission build
 
 ## Recent log
+
+- _(2026-08-15)_ **C5 done — the game makes noise, and three things that were silently broken
+  aren't.** The clips had been in the repo since A5 doing nothing: one prefab used three of
+  them, half the scenes had no music, and every other sound field was empty.
+  **`AudioSource.PlayClipAtPoint` is a 3D sound** — measured, not assumed — and the listener
+  rides the camera 12.4 m behind Greenie, so every sound in the game would have played at **8%
+  volume**. The 2D build had already been bitten by a milder version of this and worked around
+  it twice by playing sounds at the camera's position, which reads as nonsense until you know
+  what it is for. `Sfx` plays flat and does the distance itself, measured from Greenie, because
+  under a fixed camera real 3D audio has nothing to say — and putting the listener on Greenie to
+  give it something would rotate the stereo image every time he turned around.
+  **`MusicPlayer` owns the soundtrack now**, one object across every scene. The three generated
+  scenes had no music precisely because anything placed in them dies at the next Rebuild, and a
+  per-scene source restarts the track on every load — in a build with portals in both directions
+  and a reload on death, that is one thirty-second loop starting over all night. Now a scene
+  change is inaudible.
+  Three bugs fell out. **The pitch jitter was spending the gameplay RNG** — `UnityEngine.Random`
+  is one sequence and the slimes draw their wander from it, so adding one draw per sound moved a
+  slime 1.8 m → 2.4 m off its spawn and broke a combat test; cosmetic randomness gets its own
+  generator now. **The settings panel was writing the prefab's values over the player's** — it
+  attached its callbacks before syncing its widgets, and the prefab was saved muted at 100%
+  music, which is exactly what the stored settings were found sitting at. And **camera shake had
+  been dead**: `CameraFollow` is `[ExecuteAlways]`, so its `Awake` ran at scene-open in edit mode
+  and declined to claim `Instance`, and Fast Enter Play Mode never ran it again — `GameFeel.Shake`
+  had been a no-op with a perfectly healthy impulse chain underneath it. That one is the C4 rule's
+  sibling: Fast Enter Play Mode changes which **lifecycle callbacks** you may assume, not just how
+  long statics live.
+  64/64 on the new surface, 241 regression checks green.
 
 - _(2026-08-14)_ **C4 done — hits land, and cleaning is finally a loop.** The juice itself was
   the easy half: `Vfx` builds its bursts from code and throws them away when they stop, `GameFeel`

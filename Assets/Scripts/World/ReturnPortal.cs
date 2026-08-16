@@ -45,7 +45,7 @@ public class ReturnPortal : MonoBehaviour, IInteractable
 
     void Travel()
     {
-        if (travelSfx != null) AudioSource.PlayClipAtPoint(travelSfx, transform.position);
+        if (travelSfx != null) Sfx.Play(travelSfx, transform.position);
         Time.timeScale = 1f;
         SceneManager.LoadScene(hubScene);
     }

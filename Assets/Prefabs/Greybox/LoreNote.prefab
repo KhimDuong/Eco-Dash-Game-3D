@@ -373,6 +373,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::LoreNote
   noteId: ln_valley_1
   prompt: {fileID: 705002311584742773}
-  foundSfx: {fileID: 0}
+  foundSfx: {fileID: 8300000, guid: 85f8fe2dd10192b4d91739e89240c15c, type: 3}
   bobHeight: 0.08
   bobSpeed: 2.5

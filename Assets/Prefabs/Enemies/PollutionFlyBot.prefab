@@ -1195,8 +1195,8 @@ MonoBehaviour:
   bobAmplitude: 0.09
   bobSpeed: 1.6
   turnSpeed: 540
-  shootSfx: {fileID: 0}
-  deathSfx: {fileID: 0}
+  shootSfx: {fileID: 8300000, guid: cd162a874d1113c4eabbd8d9b7a26430, type: 3}
+  deathSfx: {fileID: 8300000, guid: f49f3784da1a96344af84b08fcf1c9da, type: 3}
 --- !u!1 &9098220578518868793
 GameObject:
   m_ObjectHideFlags: 0

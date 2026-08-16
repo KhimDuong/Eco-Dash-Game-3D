@@ -68,6 +68,26 @@ public class CameraFollow : MonoBehaviour
         if (Application.isPlaying) Instance = this;
     }
 
+    /// <summary>
+    /// Claim <see cref="Instance"/> here as well as in <c>Awake</c>, because on this project
+    /// <c>Awake</c> cannot be relied on to run when Play is pressed.
+    ///
+    /// <para>This class is <see cref="ExecuteAlways"/> so the framing updates live in the scene
+    /// view, which means its <c>Awake</c> already ran back when the scene was <i>opened</i> in
+    /// edit mode — and declined to claim Instance, correctly, because nothing was playing yet.
+    /// Fast Enter Play Mode then reuses the scene's existing objects instead of reloading them,
+    /// so that one edit-mode <c>Awake</c> is the only one there is: Instance stays null for the
+    /// entire play session and every <see cref="GameFeel.Shake"/> in the game quietly does
+    /// nothing. <c>OnEnable</c> does run on the play-mode transition, so the claim goes here
+    /// too. Same family as the statics rule in CLAUDE.md — Fast Enter Play Mode changes which
+    /// lifecycle callbacks you are allowed to assume, not just how long statics live.</para>
+    /// </summary>
+    void OnEnable()
+    {
+        Cache();
+        if (Application.isPlaying) Instance = this;
+    }
+
     void OnDestroy() { if (Instance == this) Instance = null; }
 
     void Cache()

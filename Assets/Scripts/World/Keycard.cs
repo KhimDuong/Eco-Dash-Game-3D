@@ -58,7 +58,7 @@ public class Keycard : MonoBehaviour, IInteractable
         SceneProgress.Consume(gameObject);
         if (prompt != null) prompt.SetActive(false);
         if (GameManager.Instance != null) GameManager.Instance.CollectCore();
-        if (grabSfx != null) AudioSource.PlayClipAtPoint(grabSfx, transform.position);
+        if (grabSfx != null) Sfx.Play(grabSfx, transform.position);
         StartCoroutine(GrabRoutine());
     }
 

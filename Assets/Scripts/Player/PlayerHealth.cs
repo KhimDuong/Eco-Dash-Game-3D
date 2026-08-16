@@ -90,7 +90,7 @@ public class PlayerHealth : MonoBehaviour
         if (CurrentHealth == 0)
         {
             isDead = true;
-            if (deathSfx != null) AudioSource.PlayClipAtPoint(deathSfx, transform.position);
+            if (deathSfx != null) Sfx.Play(deathSfx, transform.position);
             OnDied?.Invoke();
             if (GameManager.Instance != null) GameManager.Instance.OnPlayerDied();
         }
@@ -100,7 +100,7 @@ public class PlayerHealth : MonoBehaviour
             // GameManager.OnPlayerDied parks the clock at 0 for the lose screen, and a
             // hit-stop racing that would be invisible at best.
             GameFeel.HitStop(GameFeel.StopHurt);
-            if (hurtSfx != null) AudioSource.PlayClipAtPoint(hurtSfx, transform.position);
+            if (hurtSfx != null) Sfx.Play(hurtSfx, transform.position);
         }
         return true;
     }

@@ -98,7 +98,7 @@ public class ItemPickup : MonoBehaviour, IInteractable
         SceneProgress.Consume(gameObject);
         Inventory.TryAdd(itemId, amount);
         if (trashBonus > 0 && GameManager.Instance != null) GameManager.Instance.AddTrash(trashBonus);
-        if (collectSfx != null) AudioSource.PlayClipAtPoint(collectSfx, transform.position);
+        if (collectSfx != null) Sfx.Play(collectSfx, transform.position);
 
         if (popVisual != null) StartCoroutine(PopRoutine());
         else Destroy(gameObject);
