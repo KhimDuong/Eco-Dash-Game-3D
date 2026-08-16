@@ -80,7 +80,7 @@ public class ManholeTrap : MonoBehaviour
             case Phase.Telegraph:
                 phase = Phase.Open; phaseTimer = openTime;
                 if (lid != null) lid.transform.localPosition = lidBase;
-                if (openSfx != null) AudioSource.PlayClipAtPoint(openSfx, transform.position);
+                if (openSfx != null) Sfx.Play(openSfx, transform.position);
                 break;
             case Phase.Open:
                 phase = Phase.Closed; phaseTimer = closedTime; break;

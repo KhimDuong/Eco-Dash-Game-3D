@@ -82,11 +82,16 @@ row below. We credit anyway, per our policy. Imported in **B5** (the P3 art pass
 ## Audio — third-party
 
 `Assets/Audio/` was copied verbatim from the 2D repo during **A5** (the migrated
-`HUD.prefab` and the menu/story scenes reference these clips by GUID). Rewiring
-them per scene and any new ambience remains **Dev C, task C5**.
+`HUD.prefab` and the menu/story scenes reference these clips by GUID). **C5 wired
+them up**: every sound now goes out through `Sfx`, and the music through
+`MusicPlayer` reading `Assets/Resources/MusicKit.asset`. No new audio was sourced
+or generated — the eight files below are the whole soundtrack, which is why
+several of them do double duty (see `Assets/Editor/AudioPass.cs` for the table of
+what plays where).
 
 ### "Good Morning" — by You're Perfect Studio (composer: Cakeflaps)
-- **Used for:** background music (Main Menu, story scenes, Level 1 — looping).
+- **Used for:** the background music, in **every** scene — menu, both story
+  scenes, both levels and the hub — looping continuously across scene changes.
   File: `Assets/Audio/Music/good_morning.ogg`.
 - **Source:** https://opengameart.org/content/good-morning (OpenGameArt.org)
 - **License:** CC-BY 4.0 / OGA-BY 3.0 / CC0 (multi-licensed). We credit per CC-BY.
@@ -106,14 +111,14 @@ and reused here as project-original. Per [ASSETS.md](ASSETS.md), generation stay
 a last resort — these are already paid for, so they carry over rather than
 being regenerated.
 
-| File | Used for |
+| File | Used for (after C5's audio pass) |
 |------|----------|
-| `Assets/Audio/SFX/seed_shoot.wav` | Seed projectile fire |
-| `Assets/Audio/SFX/core_collect.wav` | Energy Core pickup |
+| `Assets/Audio/SFX/seed_shoot.wav` | Greenie's Seed, the fly-bot's orb, the Mega-Smog's spray, the sweeping laser |
+| `Assets/Audio/SFX/core_collect.wav` | Energy Core, keycard, chest core, both portals, the boss door, the shop till |
 | `Assets/Audio/SFX/player_hurt.wav` | Greenie takes damage |
-| `Assets/Audio/SFX/slime_death.wav` | Plastic Slime defeated |
-| `Assets/Audio/SFX/item_pickup.wav` | pickup / story-slide advance cue |
-| `Assets/Audio/SFX/win_fanfare.wav` | Level-clear victory cue |
+| `Assets/Audio/SFX/slime_death.wav` | every enemy death (slime, King, fly-bot, boss) and the manhole trap |
+| `Assets/Audio/SFX/item_pickup.wav` | pickups, cleaning trash, chests, lore notes, the crafting bench, dialogue blips, story-slide advance |
+| `Assets/Audio/SFX/win_fanfare.wav` | Level-clear victory cue, and powering a stage portal open |
 
 ## Original (made for this project)
 

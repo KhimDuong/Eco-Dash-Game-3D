@@ -7,9 +7,11 @@ using UnityEngine;
 /// so any scene can read/write it without scene wiring; it loads lazily.
 ///
 /// <para><b>Master volume</b> drives <see cref="AudioListener.volume"/>, so it
-/// affects everything, including SFX played through <c>AudioSource.PlayClipAtPoint</c>.
-/// <b>Music volume</b> additionally scales the looping background track via
-/// <see cref="MusicVolume"/> components, letting players balance the soundtrack
+/// affects everything, including every sound effect — they all go out through
+/// <see cref="Sfx"/>, whose voices are ordinary AudioSources feeding that listener.
+/// <b>Music volume</b> additionally scales the looping background track, which
+/// <see cref="MusicPlayer"/> owns (and <see cref="MusicVolume"/> still handles for
+/// any music source placed by hand), letting players balance the soundtrack
 /// against the SFX. Settings are applied at startup
 /// (<see cref="RuntimeInitializeOnLoadMethodAttribute"/>) and whenever a value
 /// changes, and persist across scene loads and app restarts.</para>

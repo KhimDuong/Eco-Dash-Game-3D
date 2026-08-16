@@ -186,7 +186,7 @@ MonoBehaviour:
     m_Bits: 256
   telegraphColor: {r: 1, g: 0.45, b: 0.45, a: 0.35}
   activeColor: {r: 0.6, g: 1, b: 0.4, a: 0.95}
-  fireSfx: {fileID: 0}
+  fireSfx: {fileID: 8300000, guid: cd162a874d1113c4eabbd8d9b7a26430, type: 3}
 --- !u!1 &7709337262102050915
 GameObject:
   m_ObjectHideFlags: 0

@@ -275,7 +275,7 @@ public class PollutionFlyBot : MonoBehaviour, IDamageable, IKnockbackable
         Vector3 dir = AimDirection(firePoint.position, out _);
         var orb = Instantiate(smogOrbPrefab, firePoint.position, Quaternion.LookRotation(dir, Vector3.up));
         if (orb.TryGetComponent<EnemyProjectile>(out var proj)) proj.Launch(dir);
-        if (shootSfx != null) AudioSource.PlayClipAtPoint(shootSfx, transform.position);
+        if (shootSfx != null) Sfx.Play(shootSfx, transform.position);
     }
 
     void TryContactDamage()
@@ -312,7 +312,7 @@ public class PollutionFlyBot : MonoBehaviour, IDamageable, IKnockbackable
         Codex.RecordKill(BestiaryCatalog.PollutionFlyBot);
         if (Random.value < 0.5f) Inventory.TryAdd(Random.value < 0.5f ? "bottle" : "scrap", 1);
         if (GameManager.Instance != null) GameManager.Instance.AddTrash(trashDropped);
-        if (deathSfx != null) AudioSource.PlayClipAtPoint(deathSfx, transform.position);
+        if (deathSfx != null) Sfx.Play(deathSfx, transform.position);
 
         // C4: the poof goes off at the body, up where the bot actually is — this is the one
         // enemy whose death is not at ground level, and a burst at its feet would look wrong.

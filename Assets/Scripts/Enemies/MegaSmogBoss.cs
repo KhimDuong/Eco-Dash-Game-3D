@@ -203,7 +203,7 @@ public class MegaSmogBoss : MonoBehaviour, IDamageable, IBoss
     void SprayVolley()
     {
         if (smogOrbPrefab == null) return;
-        if (attackSfx != null) AudioSource.PlayClipAtPoint(attackSfx, transform.position);
+        if (attackSfx != null) Sfx.Play(attackSfx, transform.position);
 
         sprayAngleOffset += spinPerVolley;
         int n = enraged ? sprayBullets + 4 : sprayBullets;
@@ -276,7 +276,7 @@ public class MegaSmogBoss : MonoBehaviour, IDamageable, IBoss
         dead = true;
         SceneProgress.MarkConsumed(sceneName, spawnId);
         Codex.RecordKill(BestiaryCatalog.MegaSmog);
-        if (deathSfx != null) AudioSource.PlayClipAtPoint(deathSfx, transform.position);
+        if (deathSfx != null) Sfx.Play(deathSfx, transform.position);
         OnDefeated?.Invoke();
         Debug.Log("[Eco-Dash] Mega-Smog destroyed — the valley can breathe.");
         GameFeel.Shake(0.5f, 0.32f);

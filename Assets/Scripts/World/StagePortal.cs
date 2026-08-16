@@ -75,7 +75,7 @@ public class StagePortal : MonoBehaviour, IInteractable
             Inventory.TryRemove(shardItemId, shardCost);
             sessionPowered = true;
             if (!string.IsNullOrEmpty(poweredFlag)) QuestLog.SetFlag(poweredFlag);
-            if (powerSfx != null) AudioSource.PlayClipAtPoint(powerSfx, transform.position);
+            if (powerSfx != null) Sfx.Play(powerSfx, transform.position);
             RefreshVisual();
             Travel();
         }
@@ -84,7 +84,7 @@ public class StagePortal : MonoBehaviour, IInteractable
 
     void Travel()
     {
-        if (travelSfx != null) AudioSource.PlayClipAtPoint(travelSfx, transform.position);
+        if (travelSfx != null) Sfx.Play(travelSfx, transform.position);
         Time.timeScale = 1f;
         SceneManager.LoadScene(targetScene);
     }

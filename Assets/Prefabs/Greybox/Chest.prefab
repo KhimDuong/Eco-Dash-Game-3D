@@ -375,8 +375,8 @@ MonoBehaviour:
   coreVisual: {fileID: 6541347208346923065}
   patch: {fileID: 0}
   prompt: {fileID: 2510526565748926794}
-  openSfx: {fileID: 0}
-  coreSfx: {fileID: 0}
+  openSfx: {fileID: 8300000, guid: 85f8fe2dd10192b4d91739e89240c15c, type: 3}
+  coreSfx: {fileID: 8300000, guid: 976d7e4b4dfc98c4cb40aee1f1e73edb, type: 3}
   corePopHeight: 1.1
   corePopDuration: 0.6
   openPunch: 0.18

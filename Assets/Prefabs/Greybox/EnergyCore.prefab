@@ -157,7 +157,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 971c00cf4b08027429965fbc44174c9b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnergyCore
-  collectSfx: {fileID: 0}
+  collectSfx: {fileID: 8300000, guid: 976d7e4b4dfc98c4cb40aee1f1e73edb, type: 3}
   bobHeight: 0.12
   bobSpeed: 2
   spinSpeed: 60

@@ -217,7 +217,7 @@ public class SlimeKing : MonoBehaviour, IDamageable, IKnockbackable, IBoss
         SceneProgress.MarkConsumed(sceneName, spawnId);
         Codex.RecordKill(BestiaryCatalog.SlimeKing);
         if (!string.IsNullOrEmpty(dropItemId)) Inventory.TryAdd(dropItemId, dropAmount);
-        if (deathSfx != null) AudioSource.PlayClipAtPoint(deathSfx, transform.position);
+        if (deathSfx != null) Sfx.Play(deathSfx, transform.position);
         OnDefeated?.Invoke();
         Debug.Log("[Eco-Dash] Slime Chúa defeated — Mảnh Cổng dropped.");
 

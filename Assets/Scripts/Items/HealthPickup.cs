@@ -44,7 +44,7 @@ public class HealthPickup : MonoBehaviour
         if (skipIfFull && hp.CurrentHealth >= hp.MaxHealth) return;
 
         hp.Heal(healAmount);
-        if (collectSfx != null) AudioSource.PlayClipAtPoint(collectSfx, transform.position);
+        if (collectSfx != null) Sfx.Play(collectSfx, transform.position);
         Destroy(gameObject);
     }
 }

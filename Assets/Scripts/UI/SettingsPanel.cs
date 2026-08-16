@@ -27,6 +27,17 @@ public class SettingsPanel : MonoBehaviour
     void Awake()
     {
         if (panel != null) panel.SetActive(false);
+
+        // Match the controls to the store BEFORE wiring the callbacks, not after. The widgets
+        // are authored with whatever values the prefab happened to be saved at — in this
+        // project a mute toggle that is ON and a music slider at 100%, neither of which is
+        // what GameSettings defaults to — and a Toggle or Slider that reports its own value
+        // through OnMute/OnMusic writes that value straight into the store and saves it to
+        // PlayerPrefs. That is a one-way door: the player's settings are now the prefab's,
+        // the game is muted, and nothing on screen explains why. Syncing first means the
+        // controls can only ever echo the store, never define it.
+        SyncFromSettings();
+
         if (masterSlider != null) masterSlider.onValueChanged.AddListener(OnMaster);
         if (musicSlider != null) musicSlider.onValueChanged.AddListener(OnMusic);
         if (muteToggle != null) muteToggle.onValueChanged.AddListener(OnMute);

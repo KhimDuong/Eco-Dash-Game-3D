@@ -456,6 +456,110 @@ it expensive: it only bites in the editor, where all the testing happens. Same
 `SubsystemRegistration` reset. **Any static holding a runtime-created Unity object needs
 one.**
 
+## Audio is two services and a generated table (C5)
+
+The eight clips came over from the 2D repo in A5 and then sat there: only
+`HUD.prefab` had any of them wired, three of the six scenes had no music at all, and
+**every other `AudioClip` field in the game was empty**. C5 is the wiring, and it needed
+two runtime services and one editor pass.
+
+### `PlayClipAtPoint` is a 3D sound, and the listener is 12 m away
+
+Every ported caller played its sound with `AudioSource.PlayClipAtPoint(clip, pos)`. In
+2D that was fine. Measured in play mode here, that call builds a source with
+`spatialBlend = 1`, logarithmic rolloff and `minDistance = 1` — a **fully 3D** sound —
+and the `AudioListener` rides the camera, which the ¾ rig parks **12.4 m** behind and
+above Greenie. Logarithmic rolloff at 12.4 m is a gain of about **0.08**: the whole game
+would have played at 8% volume. The 2D build had already met a milder version of this and
+patched two call sites by hand (`QuestItemPickup` and `EndScreenController` both played at
+`Camera.main.position`, i.e. right on top of the listener) — a workaround that reads as
+noise until you know what it is working around.
+
+`Sfx` fixes the cause. Sounds are **2D (`spatialBlend = 0`), attenuated by distance from
+Greenie** rather than from the camera. Real 3D audio has nothing to tell the player under
+a fixed camera — the listener sits at a constant offset, so a slime 10 m away is 15.9 m
+from the camera against 12.4 m for one at your feet, a difference the ear cannot use. And
+moving the listener onto Greenie to fix *that* would make the stereo image **rotate with
+him**, because his visual child turns to face travel: a sound on the left of the screen
+would pan right the moment he walked south. So panning is dropped and only the useful half
+kept. Full volume within 9 m, silent past 34 m, and a sound past the cutoff never even
+claims a voice.
+
+It is a pooled service rather than a component for the same reason `GameFeel` is one:
+**the sound has to outlive the thing that made it**, and a slime's own `AudioSource` dies
+with the slime on the frame its death sound starts. Eight voices, because `PlayOneShot`
+reads the source's pitch when it starts — two sounds sharing a source must share a pitch,
+and the pool is what lets each one carry its own.
+
+### Cosmetic randomness must not spend the gameplay RNG
+
+`Sfx` scatters pitch by ±7% so the slime death does not sound like one clip looping 29
+times. Drawing that from `UnityEngine.Random` — the obvious thing — **changed where the
+slimes walked**. That generator is one global sequence and gameplay is spending it:
+`PlasticSlime` takes its wander target and repath timer from it, `Litter` and the enemies
+roll their drops from it. One extra draw per sound effect shifts every draw after it.
+Measured: it moved a wandering slime from 1.8 m to 2.4 m off its spawn and failed a combat
+test that had nothing to do with audio. `Sfx` now owns a private `System.Random`.
+**Anything cosmetic that needs a random number should.**
+
+### One music player, not one per scene
+
+`MusicPlayer` is a `DontDestroyOnLoad` singleton that bootstraps itself from
+`RuntimeInitializeOnLoadMethod` and reads `Assets/Resources/MusicKit.asset` for the track
+each scene wants. Two reasons it is not an `AudioSource` per scene, the way the 2D build
+did it:
+
+- Three of the six scenes are **generated** (`Level1_BarrenFarm`, `Level2_FactoryMaze`,
+  `Shop_RecyclingStation`), so a source placed in them survives until the next *Rebuild*.
+  That is exactly why they had no music.
+- A per-scene source **restarts the track on every load**. This build portals hub ↔ L1 ↔ L2
+  constantly and reloads on death, so one thirty-second loop would be forever starting over.
+  A scene change is now inaudible: same object, same playhead.
+
+The kit lives in `Resources` so it resolves from whatever scene the editor started in —
+levels are entered directly all day during development, and music that only exists if you
+came from the main menu is music nobody hears while building a level. The three
+hand-built scenes had their own `Music` objects removed so there is exactly one owner.
+`MusicVolume` survives as the helper for any music source placed by hand.
+
+### The clips are laid down by a generator, like the art
+
+`AudioPass` (menu: **Eco-Dash → Run the audio pass (C5)**) holds the table of
+(prefab, component, field, clip) and writes it with `SerializedObject`. Same reason
+`ArtPass` exists: most prefabs that need a clip are rebuilt from primitives by
+`EnemyPrefabBuilder` / `FactoryKitBuilder` / `HubBuilder`, so a hand-dragged clip lives
+until the next rebuild and then vanishes silently. Those three builders call
+`AudioPass.Reapply*` right where they already call `ArtPass.Reapply*`. **Add a row to
+`AudioPass.cs`; never drag a clip onto a prefab.**
+
+Two fields are left empty on purpose and should stay that way: `PlayerHealth.deathSfx`
+(`EndScreenController` already plays `lose_jingle` on the same frame, and two cues on one
+frame just smear each other) and `HealthPickup`/`SpeedBoostPickup.collectSfx` (no prefab
+uses those scripts — the 3D build folded both into the generic `ItemPickup`).
+
+### A settings panel is a view, not a second source of truth
+
+`SettingsPanel.Awake` wired its slider/toggle callbacks and *then* left the widgets showing
+whatever the prefab was saved with — in this project a mute toggle that is **ON** and a
+music slider at **100%**, neither of which is what `GameSettings` defaults to. A `Toggle`
+or `Slider` that reports its own value through those callbacks writes it into the store and
+saves it to `PlayerPrefs`, and this actually happened: the project's saved settings were
+found sitting at exactly `muted=1, music=1.0` — the prefab's values, not any player's
+choice. The fix is one line of ordering: **sync the widgets from the store before attaching
+the listeners**, so the controls can only ever echo the store, never define it.
+
+### `[ExecuteAlways]` + Fast Enter Play Mode = `Awake` may never run
+
+`CameraFollow` is `[ExecuteAlways]` so the framing updates live in the scene view, and it
+claimed `CameraFollow.Instance` in `Awake` under `if (Application.isPlaying)`. That `Awake`
+already ran when the scene was **opened** in edit mode, where it correctly declined to
+claim — and Fast Enter Play Mode reuses the scene's existing objects instead of reloading
+them, so that one edit-mode call is the only one there is. `Instance` stayed **null for the
+whole session** and every `GameFeel.Shake` in the game silently did nothing; the impulse
+chain underneath was healthy the entire time, which is why nothing looked broken. Claiming
+in `OnEnable` as well fixes it. Same family as the statics rule below: **Fast Enter Play
+Mode changes which lifecycle callbacks you may assume, not only how long statics live.**
+
 ## Communication patterns (unchanged — frozen contract)
 
 - `GameManager` static-instance + C# events (`OnCoresChanged`,

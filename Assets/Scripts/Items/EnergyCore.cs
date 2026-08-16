@@ -42,7 +42,7 @@ public class EnergyCore : MonoBehaviour
 
         SceneProgress.Consume(gameObject);
         if (GameManager.Instance != null) GameManager.Instance.CollectCore();
-        if (collectSfx != null) AudioSource.PlayClipAtPoint(collectSfx, transform.position);
+        if (collectSfx != null) Sfx.Play(collectSfx, transform.position);
         Destroy(gameObject);
     }
 }

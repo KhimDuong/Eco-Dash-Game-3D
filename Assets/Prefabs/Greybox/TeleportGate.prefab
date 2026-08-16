@@ -325,5 +325,5 @@ MonoBehaviour:
   activeSpinSpeed: 150
   pulseAmount: 0.12
   pulseSpeed: 4
-  activateSfx: {fileID: 0}
+  activateSfx: {fileID: 8300000, guid: 976d7e4b4dfc98c4cb40aee1f1e73edb, type: 3}
   overrideTargetScene: 

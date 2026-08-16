@@ -78,12 +78,11 @@ public class EndScreenController : MonoBehaviour
         Time.timeScale = 0f;
     }
 
-    static void PlayCue(AudioClip clip)
-    {
-        if (clip == null) return;
-        Vector3 at = Camera.main != null ? Camera.main.transform.position : Vector3.zero;
-        AudioSource.PlayClipAtPoint(clip, at);
-    }
+    // The jingles are UI, not something happening in the valley, so they play flat rather than
+    // attenuated. It also matters here that Sfx's voices are DontDestroyOnLoad: the win path
+    // above loads Ending_Story a moment later, and PlayClipAtPoint's throwaway "One shot audio"
+    // object was an ordinary scene object, so the fanfare used to be cut off by its own victory.
+    static void PlayCue(AudioClip clip) => Sfx.Play2D(clip);
 
     // --- Button targets (3D) --------------------------------------------------
     // In the 2D build the win/lose buttons pointed straight at the scene's

@@ -103,8 +103,8 @@ doesn't bind to it — don't mix in legacy `Input.GetAxis` either.
 ## Current status
 
 See [.claude/docs/roadmap.md](.claude/docs/roadmap.md) for the live backlog.
-**P0 done; A1–A6, B1–B5, C1–C4 done — the game is finishable end to end:** menu → intro →
-farm → hub → factory → boss → outro. The URP-3D project, Tier-0 + Tier-1 scripts,
+**P0 done; A1–A6, B1–B5, C1–C5 done — the game is finishable end to end, with sound:**
+menu → intro → farm → hub → factory → boss → outro. The URP-3D project, Tier-0 + Tier-1 scripts,
 `Player.prefab`, the Cinemachine `CameraRig.prefab`, the whole UI layer (`HUD.prefab`,
 `GameManager.prefab`, `MainMenu` / `Intro_Story` / `Ending_Story`),
 **`Level1_BarrenFarm`** with its 29 `PlasticSlime`s and the **`SlimeKing`**'s grove,
@@ -112,11 +112,17 @@ save/continue parity, the **`PollutionFlyBot` + `SmogOrb`** combat kit,
 **`Level2_FactoryMaze`** with its lasers, manholes, keycard chain, boss door and the
 **`MegaSmogBoss`** behind it, the **`Shop_RecyclingStation`** hub with Ông Bear's shop,
 the crafting bench and the two stage portals, **B5's art pass** — five CC0 packs, real
-models on every prefab, and a per-scene lighting/post look — and **C4's game-feel layer**
+models on every prefab, and a per-scene lighting/post look — **C4's game-feel layer**
 (`Vfx` bursts, `GameFeel` shake + hit-stop, and the `GroundCleanser` cleaning loop that
-finally makes the codex's Độ Sạch tab move) are all in and play-mode verified (323 checks).
+finally makes the codex's Độ Sạch tab move) and **C5's audio layer** (`Sfx`'s pooled,
+distance-attenuated one-shots, the `MusicPlayer` that keeps one track running across every
+scene, and the `AudioPass` that puts a clip in all 26 sound fields) are all in and
+play-mode verified (305 checks).
 
-Next up: **C5** (audio). Six generated things — **don't hand-edit their output**:
+Next up: the three unplaced side-quest NPCs (Bé Mây, Ông Tài, Cô Lan), a full manual
+playthrough + ~30-min time-budget check, and the submission build.
+
+Seven generated things — **don't hand-edit their output**:
 
 | What | Menu command | Source |
 |---|---|---|
@@ -126,12 +132,14 @@ Next up: **C5** (audio). Six generated things — **don't hand-edit their output
 | Enemy prefabs | **Eco-Dash → Rebuild enemy prefabs** | `Assets/Editor/EnemyPrefabBuilder.cs` |
 | Factory kit | **Eco-Dash → Rebuild factory kit** | `Assets/Editor/FactoryKitBuilder.cs` |
 | The art | **Eco-Dash → Run the art pass (B5)** | `Assets/Editor/ArtPass.cs` + `ArtKit.cs` + `SceneLook.cs` |
+| The sound | **Eco-Dash → Run the audio pass (C5)** | `Assets/Editor/AudioPass.cs` (+ `Resources/MusicKit.asset`) |
 
-The last three of those rebuild their prefabs from primitives, so each one **re-runs its
-slice of the art pass at the end**. Change art by editing `ArtPass.cs`, never by dragging
-a mesh onto a prefab — the next rebuild would throw it away.
+The enemy, factory and hub builders rebuild their prefabs from primitives, so each one
+**re-runs its slice of the art pass and the audio pass at the end**. Change art by editing
+`ArtPass.cs` and sound by editing `AudioPass.cs`, never by dragging a mesh or a clip onto a
+prefab — the next rebuild would throw it away.
 
-**Four rules that keep biting:**
+**Five rules that keep biting:**
 
 1. **Height is presentation, hitting things is XZ.** Greenie's Seeds fly flat at y ≈ 0.6,
    so anything that leaves the ground still needs a hurtbox reaching the ground plane or
@@ -158,3 +166,13 @@ a mesh onto a prefab — the next rebuild would throw it away.
    **`Time.timeScale = 0` has six owners; never add a seventh** — `GameFeel`'s hit-stop crawls
    at 2% precisely so it can tell its own freeze from a modal's.
    See [architecture.md](.claude/docs/architecture.md#game-feel-is-a-service-cleaning-is-a-loop-c4).
+5. **Fast Enter Play Mode also decides which lifecycle callbacks run.** It reuses the scene's
+   existing objects instead of reloading them, so on an `[ExecuteAlways]` component `Awake`
+   already ran at scene-open in *edit* mode and **never runs again** — which is how
+   `CameraFollow.Instance` stayed null and every `GameFeel.Shake` in the game silently did
+   nothing while the impulse chain under it was perfectly healthy. Claim singletons in
+   `OnEnable`, not just `Awake`. And while you're picking a random number: `UnityEngine.Random`
+   is **one global sequence that gameplay is spending** — the slimes draw their wander from it —
+   so anything cosmetic (audio pitch, particle scatter) needs its own generator or it will
+   quietly change what the enemies do.
+   See [architecture.md](.claude/docs/architecture.md#audio-is-two-services-and-a-generated-table-c5).

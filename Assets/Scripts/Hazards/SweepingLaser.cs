@@ -94,7 +94,7 @@ public class SweepingLaser : MonoBehaviour
                 phase = Phase.Telegraph; phaseTimer = telegraphTime; break;
             case Phase.Telegraph:
                 phase = Phase.Active; phaseTimer = activeTime;
-                if (fireSfx != null) AudioSource.PlayClipAtPoint(fireSfx, transform.position);
+                if (fireSfx != null) Sfx.Play(fireSfx, transform.position);
                 break;
             case Phase.Active:
                 phase = Phase.Off; phaseTimer = offTime; break;

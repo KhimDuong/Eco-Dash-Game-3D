@@ -34,6 +34,8 @@ public static class FactoryKitBuilder
         AssetDatabase.Refresh();
         // The prefabs above are rebuilt from primitives, so B5's models have to go back on.
         log += ArtPass.ReapplyFactory();
+        // ...and C5's clips with them, for exactly the same reason.
+        log += AudioPass.ReapplyFactory();
         return log;
     }
 

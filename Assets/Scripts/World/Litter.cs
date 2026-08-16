@@ -83,7 +83,7 @@ public class Litter : MonoBehaviour
         // Cleaning trash yields a crafting material.
         if (dropPool != null && dropPool.Length > 0 && Random.value <= dropChance)
             Inventory.TryAdd(dropPool[Random.Range(0, dropPool.Length)], 1);
-        if (cleanSfx != null) AudioSource.PlayClipAtPoint(cleanSfx, transform.position);
+        if (cleanSfx != null) Sfx.Play(cleanSfx, transform.position);
 
         GroundCleanser.Clean(transform.position);
         Destroy(gameObject);

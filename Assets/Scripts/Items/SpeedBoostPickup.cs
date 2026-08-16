@@ -43,7 +43,7 @@ public class SpeedBoostPickup : MonoBehaviour
         if (!other.TryGetComponent<PlayerController>(out var player)) return;
 
         player.ApplySpeedBoost(speedMultiplier, duration);
-        if (collectSfx != null) AudioSource.PlayClipAtPoint(collectSfx, transform.position);
+        if (collectSfx != null) Sfx.Play(collectSfx, transform.position);
         Destroy(gameObject);
     }
 }

@@ -236,7 +236,7 @@ MonoBehaviour:
   amount: 1
   mode: 0
   trashBonus: 0
-  collectSfx: {fileID: 0}
+  collectSfx: {fileID: 8300000, guid: 85f8fe2dd10192b4d91739e89240c15c, type: 3}
   prompt: {fileID: 2478944059396755514}
   popVisual: {fileID: 0}
   popHeight: 0.5

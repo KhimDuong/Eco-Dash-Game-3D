@@ -249,7 +249,7 @@ public class PlasticSlime : MonoBehaviour, IDamageable, IKnockbackable
         Codex.RecordKill(BestiaryCatalog.PlasticSlime);
         if (Random.value < 0.5f) Inventory.TryAdd(Random.value < 0.5f ? "bottle" : "scrap", 1);
         if (GameManager.Instance != null) GameManager.Instance.AddTrash(trashDropped);
-        if (deathSfx != null) AudioSource.PlayClipAtPoint(deathSfx, transform.position);
+        if (deathSfx != null) Sfx.Play(deathSfx, transform.position);
 
         // C4: burst in its own colour, read live off the art so a recolour in ArtPass
         // carries through without touching the prefab.

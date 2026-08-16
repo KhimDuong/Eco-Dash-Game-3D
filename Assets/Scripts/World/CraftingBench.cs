@@ -35,7 +35,7 @@ public class CraftingBench : MonoBehaviour, IInteractable
     {
         EnsureUI();
         if (prompt != null) prompt.SetActive(false);
-        if (openSfx != null) AudioSource.PlayClipAtPoint(openSfx, transform.position);
+        if (openSfx != null) Sfx.Play(openSfx, transform.position);
         ui.Open();
     }
 

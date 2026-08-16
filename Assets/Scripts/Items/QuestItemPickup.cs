@@ -44,9 +44,10 @@ public class QuestItemPickup : MonoBehaviour
         if (QuestProgress.Stage != QuestStage.HerbsInProgress) return;
 
         isCollected = true;
-        if (pickupSound != null)
-            AudioSource.PlayClipAtPoint(pickupSound, Camera.main != null
-                ? Camera.main.transform.position : transform.position);
+        // Was played at the *camera* rather than the herb, which is how the 2D build worked
+        // around PlayClipAtPoint's 3D attenuation one call site at a time. Sfx handles the
+        // distance itself, so this can say where the sound actually happens again.
+        Sfx.Play(pickupSound, transform.position);
 
         SceneProgress.Consume(gameObject);
         QuestProgress.AddHerb();

@@ -387,7 +387,7 @@ MonoBehaviour:
   trashDropped: 1
   contactKnockback: 7
   flash: {fileID: 9142789897295574500}
-  deathSfx: {fileID: 0}
+  deathSfx: {fileID: 8300000, guid: f49f3784da1a96344af84b08fcf1c9da, type: 3}
   moveSpeed: 1.5
   wanderRadius: 3
   minRepathTime: 1.5

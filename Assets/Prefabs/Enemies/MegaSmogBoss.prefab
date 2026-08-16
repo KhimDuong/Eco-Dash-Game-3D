@@ -588,5 +588,5 @@ MonoBehaviour:
   flash: {fileID: 7234680916258683718}
   core: {fileID: 953068823058488660}
   enrageTint: {r: 1, g: 0.55, b: 0.55, a: 1}
-  deathSfx: {fileID: 0}
-  attackSfx: {fileID: 0}
+  deathSfx: {fileID: 8300000, guid: f49f3784da1a96344af84b08fcf1c9da, type: 3}
+  attackSfx: {fileID: 8300000, guid: cd162a874d1113c4eabbd8d9b7a26430, type: 3}

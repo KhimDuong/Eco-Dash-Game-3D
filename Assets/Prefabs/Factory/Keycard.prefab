@@ -143,7 +143,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Keycard
   prompt: {fileID: 214190014105596752}
-  grabSfx: {fileID: 0}
+  grabSfx: {fileID: 8300000, guid: 976d7e4b4dfc98c4cb40aee1f1e73edb, type: 3}
   cardRenderer: {fileID: 7018321346118635284}
   popHeight: 0.6
   popDuration: 0.5

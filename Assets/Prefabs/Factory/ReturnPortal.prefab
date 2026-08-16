@@ -73,7 +73,7 @@ MonoBehaviour:
   hubScene: Shop_RecyclingStation
   walkOver: 1
   prompt: {fileID: 5014380208086496211}
-  travelSfx: {fileID: 0}
+  travelSfx: {fileID: 8300000, guid: 976d7e4b4dfc98c4cb40aee1f1e73edb, type: 3}
 --- !u!1 &2605500341491238494
 GameObject:
   m_ObjectHideFlags: 0
