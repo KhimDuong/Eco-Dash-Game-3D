@@ -1,0 +1,453 @@
+# Cycle 2 — Team Tasks: Validate, Finish, Ship
+
+> Companion to [TEAM-TASKS.md](TEAM-TASKS.md) (cycle 1). **Cycle 1 built the game.
+> Cycle 2 has to prove it works, finish what the design already promised, and get it
+> out of the editor.**
+>
+> Read [HOW_TO_PLAY.md](HOW_TO_PLAY.md) before you touch anything else. It is the
+> player-facing manual and it is currently the only document that describes the game
+> as a *player* meets it rather than as a build order.
+
+---
+
+## 0. Why this cycle has different roles
+
+Cycle 1 was three implementation lanes (Core / World / Combat) run against a spec.
+Every task closed with an automated play-mode probe, and **305 checks are green**.
+That is a real result, and it is also the exact shape of its own blind spot:
+
+**A probe proves a mechanic does what the code says. It cannot tell you the game is
+any good, that a stranger can finish it, or that a feature nobody wired is missing.**
+
+Three of cycle 1's most expensive bugs make the point. The codex's *Độ Sạch* tab sat
+frozen at 0% for the entire 2D project and the whole port, because nothing ever called
+`AddCleanliness` — every test passed, because no test knew the call should exist.
+`ItemDatabase` handed back destroyed objects on every Play but the first, so consumables
+silently refused to work. And camera shake was a **no-op for the whole project**, with a
+perfectly healthy impulse chain underneath it. None of those are failures of coding. All
+three are failures of *nobody having played the thing with fresh eyes and a checklist*.
+
+So cycle 2 opens with the three of you **not writing gameplay code**. You play, you
+specify, you prioritise. The backlog you produce is what cycle 2 then builds.
+
+| Role | Slot | Owns | Hard deliverable |
+|---|---|---|---|
+| **Tester / QA lead** | *(assign)* | Finding what's broken, and proving it's broken | `QA/test-report-cycle2.md` + filed defects |
+| **Product Owner** | *(assign)* | Deciding what "finished" means and in what order | `PRODUCT-BACKLOG.md`, prioritised |
+| **Business Analyst** | *(assign)* | Scope, spec-vs-build gaps, submission risk | `GAP-ANALYSIS.md` + the asset shopping list |
+
+The three roles overlap on purpose. The Tester says *"the shop feels pointless"*, the
+BA says *"because the design gave it 4 minutes of the 31-minute budget and the build
+gives it 40 seconds"*, and the PO decides whether that gets fixed before the deadline.
+**One person doing all three would just re-derive cycle 1's assumptions.**
+
+---
+
+## 1. Day 0 — everyone: get it running and agree on the words (½ day)
+
+Nobody files anything until all three of you have finished the game once.
+
+1. **Clone and open.** Unity **6000.3.16f1**, URP 3D. First open takes ~4 minutes
+   (packages resolve, shaders compile). Run the one-time Smart Merge setup in
+   [unity-workflow.md § clone setup](.claude/docs/unity-workflow.md) — three people
+   editing scenes without it will produce unmergeable conflicts.
+2. **Play from `MainMenu`, not from the level you're testing.** Half of cycle 1's
+   false alarms came from entering a scene directly and finding state that only the
+   menu → intro path sets up.
+3. **Play it to the ending once, no notes, no pausing to investigate.** You are
+   measuring first impressions and you only get one.
+4. **Then start again with the checklist**
+   ([HOW_TO_PLAY.md § 13](HOW_TO_PLAY.md)) and take notes properly.
+5. **Agree severity language** before anyone files anything, or you will spend the
+   cycle arguing about the word "critical":
+
+| Severity | Means | Example |
+|---|---|---|
+| **S1 — Blocker** | The game cannot be finished, or crashes | Portal won't open with the shards you're holding |
+| **S2 — Major** | A designed feature doesn't work or is unreachable | A crafting recipe that nothing can ever unlock |
+| **S3 — Minor** | Works, but wrong | Wrong Vietnamese string, sound plays twice |
+| **S4 — Polish** | Works and is correct, but feels bad | Enemy death has no weight; Greenie slides |
+
+**Two things about this project that will waste your day if you don't know them.**
+`Time.timeScale = 0` has **six owners** (pause, dialogue, tutorial, win, lose, hit-stop) —
+so "physics stopped, triggers are broken" almost always means *a modal is holding the
+clock*, not that triggers are broken. And **Fast Enter Play Mode is on**: the domain is
+not reloaded between play sessions, so a bug that only appears on your *second* Play is
+a real bug (that is exactly how `ItemDatabase` failed), and it will not reproduce if you
+restart the editor first. Note which Play it was.
+
+---
+
+## 2. Role T — Game Tester / QA lead
+
+Your output is evidence. "The boss feels unfair" is a feeling; **"the boss killed me
+four times out of five arriving with 4/8 HP and no consumables, because the corridor
+before the door has no health pickup"** is a defect with a fix attached.
+
+**T1. Structured playthroughs ×5.** Not five casual runs — five *different players*:
+
+| Run | Play as | Watching for |
+|---|---|---|
+| 1 | **Blind first-timer** (do it before you read anything) | Where you got confused, lost, or stuck |
+| 2 | **Completionist** — 100% cleanliness both stages, every lore note, every quest | Unreachable content, rewards that never pay out |
+| 3 | **Speedrunner** — ignore all side content, rush the ending | Can you skip a gate? Does the shard economy soft-lock a rusher? |
+| 4 | **Bad player** — die on purpose, repeatedly, in every scene | Death/reload state corruption. This is where cycle 1's tally bug lived |
+| 5 | **Vandal** — walk into walls, spam E and J, open every panel at once, pause during a boss volley, quit mid-dialogue | Modal/timescale conflicts |
+
+Record the **wall-clock time** of every run and where it went. The design budgets
+**~31 minutes** ([game-design § 4.7.7](.claude/docs/game-design.md)) and **nobody has
+ever measured the real number.** If the honest figure is 12 minutes, that is the single
+most important fact in this cycle and it changes the whole backlog.
+
+**T2. Verify the pre-seeded defect list in § 5.** Those were found by *reading the
+code*, not by playing. Some may not reproduce; a couple may be worse than they look.
+Confirm or kill each one, and attach the reproduction.
+
+**T3. Save/load abuse.** Quit and continue at eleven points: mid-dialogue, mid-quest,
+holding shards, after the boss door opens, after 50% clean, after 100% clean, in each
+of the three playable scenes, with a full bag, mid-hit-stop, after dying but before
+clicking "Chơi lại". A6 verified persistence with a simulated relaunch; **nobody has
+quit the application and come back.** There is one save slot and it is PlayerPrefs.
+
+**T4. Build parity pass** — *this is the one that scares me*, do it early.
+Ask for a desktop build in **week 1**, not at the end. Things that work in the editor
+and break in a build, ranked by how likely they are here:
+- **Vietnamese diacritics.** The whole UI renders through TMP's *dynamic* font atlas
+  and a fallback (`LiberationSans SDF - Fallback`). Dynamic atlases are built at
+  runtime from what the font can supply, and a build strips differently than the
+  editor. **Check every screen for `□` boxes or missing tone marks** — menu, intro
+  slides, dialogue, shop, crafting, codex, quest log, objectives, ending.
+- **Magenta materials.** Anything resolved by `Shader.Find` only exists in a build if
+  the build kept the shader. C4 already dodged this once by refusing to use the URP
+  Particles shaders. Look at every VFX: death poofs, clean bursts, impacts.
+- **Audio.** `Sfx` builds its voice pool at runtime; confirm sound survives a scene
+  change and that music does not restart at every portal.
+- **Resolution & aspect.** Test 1920×1080, 1280×720, and one ultrawide **windowed**.
+  Nobody has ever looked at this UI at any size but the editor's Game view.
+
+**T5. Combat & balance data.** Fight each enemy ten times and log: hits to kill, damage
+taken, whether you could dodge it at all. Specifically:
+- `PlasticSlime` — 2 HP, chases at 2.5 m/s against Greenie's 5 m/s. **Can it ever
+  actually catch you?** If not, the 29 of them in Level 1 are scenery, not encounters.
+- `PollutionFlyBot` — kites at 4 m and fires every 1.6 s. Is that readable or annoying?
+- `SlimeKing` — 20 HP, splits into 3 at half. Does the split feel like an escalation
+  or like a mess?
+- `MegaSmogBoss` — 40 HP, 8-orb ring, enrages to 12 orbs under 14 HP. **Is the ring
+  dodgeable?** Log your HP on arrival and how many attempts it took.
+
+**T6. The onboarding minute.** Watch someone who has never seen it play the first 60
+seconds *without you talking*. Write down every question they ask out loud. This is the
+cheapest usability data that exists and you can only collect it once per person.
+
+**T7. Deliverable — `QA/test-report-cycle2.md`.** One table of defects using the
+template in § 7, sorted by severity, each with a reproduction, plus the timing data
+from T1 and the balance table from T5.
+
+---
+
+## 3. Role P — Product Owner
+
+You own the answer to *"what does 'done' mean, and what are we cutting?"* This is a
+graded course project with a fixed deadline; the enemy is not bugs, it's scope.
+
+**P1. Play it and write the honest verdict.** One page, no diplomacy: what is genuinely
+good, what is thin, what would embarrass you in a demo. Cycle 1 was measured against
+*the 2D original* — port parity. **Nobody has yet asked whether the 2D original was
+worth porting**, or where the 3D version should stop imitating it. That is your call
+and it is overdue.
+
+**P2. Rank the pillars by how well they actually land.** The design claims six systems
+(combat, cleaning loop, inventory, crafting, codex/collectibles, quests). Score each
+**1–5 on "would a player notice if we deleted it"**, then again on **"how close to
+finished is it"**. Anything scoring low-and-unfinished is a **cut candidate** — say so
+out loud. The design has already cut Auto-Clean and the quest board; cutting is normal
+and it is cheaper than a half-built feature.
+
+**P3. Decide the shard economy.** This is the most concrete decision on your desk and it
+is genuinely blocking (evidence in § 5, D2/D4):
+- The design ([§ 4.7.1](.claude/docs/game-design.md)) says the Stage-2 portal costs
+  **3 Portal Shards**, from three sources: the Slime King, Level 1's cleanliness reward,
+  and Ông Tài's pond quest.
+- The build sets the cost to **1**, because **Ông Tài was never placed** and only two of
+  the three sources exist.
+- The design's stated anti-soft-lock fallback — craft a shard from Energy Shards — is
+  **unreachable**, because its recipe unlocks from Cô Lan's quest and Cô Lan was never
+  placed either.
+
+So: place the missing NPCs and restore the cost to 3 (the mid-game goal the design wants,
+and the reason to engage with side content at all), or keep the cost at 1 and accept that
+the "repair the broken gate" beat is decorative. **Either is defensible. Silently shipping
+cost-1 while the design doc says 3 is not.**
+
+**P4. Decide the three missing NPCs.** Bé Mây, Ông Tài and Cô Lan are three of the design's
+five side quests. Their quest definitions, reward flags, dialogue hooks and log entries
+all exist and work — **only the NPCs in the world are missing.** This is the highest
+value-per-hour work in the project: roughly a day of placement and dialogue turns three
+dead entries in the quest log into real content, and it is the difference between a
+12-minute game and something near the 31-minute budget. Note that the 2D original never
+placed them either, so **this is a design decision, not a port task** — you have to
+actually decide it.
+
+**P5. Write the demo script.** Five minutes, for whoever grades this. Which scenes, in
+what order, showing what. Then check whether the build can actually do that in five
+minutes — if the demo needs 12 minutes of walking to reach the boss, that's a finding.
+
+**P6. Deliverable — `PRODUCT-BACKLOG.md`.** Every item as *"As a player, I want… so that…"*
+with an acceptance criterion, ordered, with a **line drawn across it** marking what ships
+if the cycle runs out of time. The line is the deliverable. A backlog without one is a wish list.
+
+---
+
+## 4. Role BA — Business Analyst
+
+You own the gap between what the documents promise and what the build does, and the
+risk register for actually submitting this.
+
+**BA1. Requirements traceability matrix.** One row per requirement in
+[game-design.md](.claude/docs/game-design.md) § 4–4.7.8 and the brief
+([Eco-Dash-Game.md](Eco-Dash-Game.md)). Columns: **requirement · where the design says
+it · implemented? · where in code · evidence · gap**. This is tedious and it is the single
+most valuable artifact you can produce, because it is how you find features that were
+specified, never built, and *never missed* — which is precisely how the cleaning loop
+went unwritten across two entire projects. Start from § 5 below; I found five more of
+these by reading, and I was not being exhaustive.
+
+**BA2. Audit the flag economy.** Every `QuestLog` flag: who grants it, who consumes it,
+and is that grant reachable? **This already found two dead recipes** (§ 5, D1/D2). Do the
+same for item ids, quest ids, and the codex's lore-note ids — check that every note the
+design counts actually exists in a scene.
+
+**BA3. Check the brief's requirements, not just the design's.** The course brief
+([Eco-Dash-Game.md](Eco-Dash-Game.md)) is what gets graded. Two clauses in
+[game-design § 5](.claude/docs/game-design.md) are stated as technical guidance and are
+now **structurally impossible in 3D**: Unity Tilemap + `TilemapCollider2D` map building,
+and 4-direction Up/Down/Left/Right Animator switching. The 3D port replaced both
+deliberately and correctly. **Write down that justification now**, while the reasoning is
+fresh — a grader reading the brief against the build will otherwise read it as two missing
+requirements.
+
+**BA4. Submission risk register.** Rank by *probability × damage*. Starting set, all of
+which are real:
+- **No build has ever been produced.** There is no `Builds/` folder in the repo. The
+  first build is always the one that finds the missing shader, the stripped font and
+  the platform setting nobody set. Do it in week 1.
+- `SampleScene` (Dev A's sandbox) is still in Build Settings, disabled. Decide whether
+  it ships.
+- One PlayerPrefs save slot, no versioning — a rebuild with different keys silently
+  invalidates a grader's save.
+- Six things own `Time.timeScale`; a modal opening during a hit-stop is a plausible
+  soft-lock and nobody has tried it (T1 run 5).
+- No gamepad and no key rebinding — input is direct `Keyboard.current` polling by
+  design contract. Fine, but say so in the manual rather than leaving it discovered.
+- The whole soundtrack is **eight clips**, several doing triple duty (`slime_death` is
+  every enemy death *and* the manhole trap). Cheap to fix, currently unnoticed.
+
+**BA5. The asset shopping list** — see § 6. Free-first, CC0-preferred, every row logged
+in [CREDITS.md](CREDITS.md) **as it is imported**, per [ASSETS.md](ASSETS.md).
+
+**BA6. Deliverable — `GAP-ANALYSIS.md`**: the traceability matrix, the flag audit, the
+risk register, and the asset list.
+
+---
+
+## 5. Pre-seeded defect list — found by reading the code, not by playing
+
+**Confirm each of these in play mode before anyone fixes it.** They are static-analysis
+findings from a sweep of the cycle-1 tree; the file and line are real, the *player-facing
+consequence* is inferred. This list is your worked example of what BA1 and T2 should be
+producing more of.
+
+---
+
+**D1 — NOT A DEFECT. Kept here deliberately, because finding out why is your job in miniature.**
+I first filed this as *"`Bình Hồi Phục Lớn` can never be crafted"*: `Crafting.cs:62` gates
+the `large_heal` recipe behind `QuestLog.FlagRecipeLargeHeal`, and a grep for that flag
+turned up only a declaration and that one consumer — no grant anywhere. It looked identical
+to D2.
+
+**It was wrong.** The grant lives in `QuestLog.cs:61` and `:180`, in the one file the grep
+had excluded. The flag is never stored by a quest turn-in at all; it is **bridged from
+legacy state** — `SyncLegacy()` grants it at load, and `HasFlag()` re-resolves it lazily on
+every check, both keyed on `QuestProgress.Stage == QuestStage.TiSaved`. So Ông Sáu does
+teach the recipe the moment Tí is saved, exactly as [§ 4.7.3](.claude/docs/game-design.md)
+says. The lazy re-check exists because `QuestLog` caches its data — without it the recipe
+would stay locked for the rest of the session after the save that granted it.
+
+**Three things to take from this, all of which apply directly to BA2:**
+- **Grep proves presence, never absence.** Every "nothing sets this" claim needs the flag's
+  *consumer* traced too, not just its name counted.
+- **This project bridges old state into new systems in more than one place.** M8's
+  `QuestProgress` state machine predates `QuestLog`, so some flags are *derived* rather
+  than stored, and they will never appear in a save file. Expect more of these.
+- **A finding that dies under verification is a good outcome, not a wasted hour.** That is
+  precisely what T2 is asking you to do to the rest of this list — including, if you can,
+  to D2.
+
+**D2 — `Mảnh Cổng` can never be crafted either, which removes the anti-soft-lock. (S2)**
+`Crafting.cs:66` gates the `portal_shard` recipe behind `FlagRecipePortal`, granted
+**only** by the `lan_intel` quest (`QuestCatalog.cs:64`) — and Cô Lan has no NPC in any
+scene. The design introduced this recipe explicitly so *"a player short on quest-drop
+shards can still power the Stage 2 portal by grinding Energy Shards — **no soft-lock**"*.
+That safety net does not exist in the build.
+
+**This one survived the check that killed D1**: `FlagRecipePortal` has no legacy bridge in
+`QuestLog` — three hits in the whole project, being the declaration, this consumer, and
+Cô Lan's grant. There is no second path.
+→ *Blocked on P4.* Currently masked by D4 (cost is 1, and two sources exist).
+
+**D3 — Three side-quest NPCs are missing from the world. (S2)**
+`may_pet` and `tai_pond` (Level 1) and `lan_intel` (Level 2) are fully defined in
+`QuestCatalog` — titles, Vietnamese descriptions, targets, reward flags, lore-note
+back-fill — and `SideQuestNPC` appears in exactly **one** placement in the whole project
+(`HubBuilder.cs:243`, Ông Bear's recycling counter). Three of the four side quests are
+therefore un-offerable, and the quest log has three entries that can never appear.
+Known and logged in [roadmap.md](.claude/docs/roadmap.md); it is listed here because it
+is the root cause of D2 and D4 rather than an isolated gap.
+
+**D4 — The Stage-2 portal costs 1 shard; the design says 3. (S3, escalates on P3)**
+`HubBuilder.cs:93` → `ConfigurePortal(toL2, "Level2_FactoryMaze", 1, …)`.
+[§ 4.7.1](.claude/docs/game-design.md) specifies three. Almost certainly a deliberate
+cycle-1 accommodation — only two of the three sources exist — but it is undocumented, and
+it means the mid-game "gather shards" goal resolves the first time you kill the Slime King.
+→ *Decide in P3, then make the doc and the build agree.*
+
+**D5 — Every character in the game is frozen in an idle pose. (S4, highest visible payoff)**
+`ArtKit.cs:329` builds a **one-state Idle controller** per model, and its own comment
+says the models *"ship a full clip set but no controller"*. So Greenie **slides** across
+the farm without a walk cycle, enemies glide, and NPCs stand still — while walk, run and
+death clips sit unused inside the FBX/GLB files **already in the repo**.
+→ This is the biggest visual upgrade available in cycle 2 and it needs **no new assets**.
+Locomotion blend tree driven by `CharacterController.velocity`, one state machine reused
+across the humanoids. Half a day for a dramatic result.
+
+**D6 — `MusicVolume.cs` is dead code. (S4)**
+C5 replaced per-scene music sources with the persistent `MusicPlayer`. `MusicVolume` is
+now referenced by nothing — not one scene, not one prefab, only a stale doc comment in
+`GameSettings.cs:13`. Delete it, or repurpose it as the SFX-slider component the settings
+panel doesn't have.
+
+**D7 — Two designed hub features were never built. (S3)**
+[§ 4.7.1](.claude/docs/game-design.md) gives the hub a **codex stand**, and
+[§ 4.7.6](.claude/docs/game-design.md) says freed villagers **relocate to the hub** as you
+help them — *"the valley reviving, a Stardew community-center feel"*. Neither exists.
+The relocation is the design's main payoff for doing side quests at all, and it becomes
+buildable the moment D3 is fixed (the quest-complete flags it would read already persist).
+
+---
+
+## 6. Asset shopping list — what to find next
+
+Order of preference is unchanged: **Kenney → Quaternius → KayKit → itch.io low-poly**,
+CC0 first, every pack logged in [CREDITS.md](CREDITS.md) *as it is imported*, FBX only
+(drop the OBJ/GLTF/DAE duplicates — that is most of a Kenney download). Generation stays
+a last resort and is **billed**; ask before spending it. Full policy: [ASSETS.md](ASSETS.md).
+
+| Need | Why | Where to look first |
+|---|---|---|
+| **Character animations** | D5 — but check the shipped clips first; you may need nothing | Mixamo (free, needs an account), Quaternius character packs |
+| **3 NPC models** | Bé Mây (child), Ông Tài (old fisherman), Cô Lan (worker) — currently every human is one recoloured Quaternius farmer | Quaternius *Ultimate Modular Characters*, KayKit *Character Pack* |
+| **UI sound set** | There is no click, no hover, no panel open/close. The menus are silent | Kenney *Interface Sounds* / *UI Audio* (CC0) |
+| **Ambience loops** | Two 30-second beds — farm wind/birds, factory hum — would do more for atmosphere than any model | OpenGameArt, Freesound (check licence per file) |
+| **Footsteps** | Greenie is silent on three different surfaces | Kenney *Impact Sounds*, Freesound |
+| **1–2 more music tracks** | One track loops for the entire game. A distinct factory/boss theme is the single biggest atmosphere win | OpenGameArt (filter CC0/CC-BY) |
+| **Skybox / distant scenery** | Both levels end at a wall with nothing beyond it | Unity's built-in procedural sky, or a CC0 low-poly skybox |
+| **Particle textures** | Only if you first solve C4's shader problem — see the warning below | — |
+
+⚠️ **Before you touch particles, read C4's note in
+[architecture.md](.claude/docs/architecture.md).** Billboard particles need a URP
+*Particles* shader; nothing in this project references one, so `Shader.Find` returns null
+in a **build** — perfect in the editor, magenta in the submission. C4's particles are
+meshes on URP/Lit specifically to avoid this. Don't undo that without adding the shader
+to Always Included.
+
+---
+
+## 7. Templates
+
+**Defect** — one per entry in `QA/test-report-cycle2.md`:
+
+```markdown
+### D## — <one-line summary>
+- **Severity:** S1 / S2 / S3 / S4
+- **Scene / system:** Level1_BarrenFarm · Crafting
+- **Which Play was it?** first / second+ in the same editor session   ← matters here
+- **Steps:** 1. … 2. … 3. …
+- **Expected:** …
+- **Actual:** …
+- **Evidence:** screenshot / clip / console log / save state
+- **Guess at cause (optional):** file:line if you have one
+```
+
+**Feedback** — for anything that works but feels wrong. Keep it separate from defects;
+mixing them is how S4 polish drowns out S1 blockers:
+
+```markdown
+### F## — <what felt wrong>
+- **Where:** …
+- **What I expected as a player:** …
+- **What actually happened:** …
+- **Severity of the feeling:** confusing / boring / frustrating / unfair / unclear
+- **Cheapest fix I can imagine:** …
+```
+
+---
+
+## 8. Suggested order (2 weeks)
+
+```
+Week 1  ── everyone: Day 0 (finish the game once)
+        ├─ T: T1 playthroughs ×5, T4 build parity  ← ask for the build on day 1
+        ├─ P: P1 verdict, P2 pillar scoring
+        └─ BA: BA1 traceability matrix, BA2 flag audit
+        ↓
+        MID-CYCLE REVIEW ── the three of you meet, merge findings, and P3/P4 get
+        decided in that meeting. Nothing gets built before this.
+        ↓
+Week 2  ├─ P: P5 demo script, P6 backlog with the ship-line drawn
+        ├─ BA: BA3 brief compliance, BA4 risk register, BA5 asset list
+        ├─ T: T2 verify § 5, T3 save abuse, T5 balance data, T6 onboarding
+        └─ implementation starts on the top of the backlog, in parallel
+```
+
+**The mid-cycle review is the important box.** Cycle 1's lesson is that the expensive
+bugs were never coding failures — they were *nobody comparing the spec to the build with
+fresh eyes*. That meeting is the entire point of this cycle.
+
+---
+
+## 9. Exit gate — cycle 2 is done when
+
+- [ ] A **desktop build** exists, runs on a machine that has never had Unity installed,
+      and can be finished start → ending without the editor.
+- [ ] Vietnamese renders correctly **in that build**, on every screen.
+- [ ] The full playthrough has been **timed** by three people, and the number is written
+      down next to the design's ~31-minute estimate — whatever it turns out to be.
+- [ ] Zero **S1**. Every **S2** is fixed *or* explicitly deferred in writing by the PO.
+- [ ] `PRODUCT-BACKLOG.md`, `GAP-ANALYSIS.md` and `QA/test-report-cycle2.md` are in the
+      repo and the ship-line is drawn.
+- [ ] The design doc and the build **agree** — or every deviation is recorded, the way
+      cycle 1 recorded the Slime King's grove and the hub's missing walls.
+- [ ] [CREDITS.md](CREDITS.md) covers every asset added this cycle.
+- [ ] `check_compile_errors` clean, and the cycle-1 probe suite (**305 checks**) still green.
+
+---
+
+## 10. Ground rules carried over from cycle 1
+
+These are not negotiable and they will bite anyone who ignores them — all of them are
+written up in [CLAUDE.md](CLAUDE.md) and [architecture.md](.claude/docs/architecture.md):
+
+1. **Seven things are generated. Don't hand-edit their output.** Levels 1 and 2, the hub,
+   the enemy prefabs, the factory kit, the art pass and the audio pass all rebuild from
+   code. Drag a mesh or a clip onto a prefab and the next Rebuild throws it away — change
+   `ArtPass.cs` / `AudioPass.cs` instead.
+2. **One owner per scene.** Everything placed in a scene is a prefab instance. Shared
+   contracts (interfaces, `GameManager` events, tags, layers) change through one person.
+3. **Height is presentation; hitting things is XZ.** Anything that leaves the ground still
+   needs a hurtbox reaching the ground plane, or it is unkillable.
+4. **Statics survive Play, and `[ExecuteAlways]` + Fast Enter Play Mode means `Awake` may
+   never run.** Claim singletons in `OnEnable`.
+5. **`UnityEngine.Random` is one sequence that gameplay is spending.** Anything cosmetic
+   needs its own generator, or it will quietly change what the enemies do.
+6. **Never add a seventh owner of `Time.timeScale = 0`.**
+7. **After any script change, `check_compile_errors` before you say you're done.**

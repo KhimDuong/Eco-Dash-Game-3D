@@ -122,6 +122,11 @@ play-mode verified (305 checks).
 Next up: the three unplaced side-quest NPCs (Bé Mây, Ông Tài, Cô Lan), a full manual
 playthrough + ~30-min time-budget check, and the submission build.
 
+**Cycle 2 is a validation cycle before it is a build cycle** — the other two devs take
+QA / Product-Owner / Business-Analyst roles, play the cycle-1 build and produce the
+backlog. Assignments, the pre-seeded defect list and the exit gate:
+[CYCLE-2-TASKS.md](CYCLE-2-TASKS.md).
+
 Seven generated things — **don't hand-edit their output**:
 
 | What | Menu command | Source |

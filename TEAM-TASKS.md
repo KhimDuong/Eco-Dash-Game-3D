@@ -1,5 +1,9 @@
 # Eco-Dash 3D — Team Tasks (3 developers)
 
+> **This file is cycle 1, and cycle 1 is complete** — A1–A6, B1–B5 and C1–C5 are all
+> done. The next cycle's assignments (QA / Product Owner / Business Analyst, then the
+> backlog they produce) live in **[CYCLE-2-TASKS.md](CYCLE-2-TASKS.md)**. Start there.
+>
 > Companion to [3D-CONVERSION-PLAN.md](3D-CONVERSION-PLAN.md). Each dev
 > vibe-codes with Claude + the Unity Coplay MCP. Every task ends with:
 > `check_compile_errors` clean → Play-mode smoke test → save scene **in place**
