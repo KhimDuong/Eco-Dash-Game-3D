@@ -454,3 +454,68 @@ the diff. They are reproducible and were checked for drift: the prefab diffs are
 churn plus exactly the six transforms listed in E10, and both scenes come back with an
 identical object count (Level 1: 584 GameObjects / 363 prefab instances; Level 2: 87 / 54).
 `AudioPass` writes to prefabs only, so a level rebuild cannot drop the C5 sound layer.
+
+---
+
+## Final verification pass — 2026-08-18, after the E1–E10 fix commits
+
+One more full run, **on top of the committed fixes** (`d3ab59e`, `43fb430`), specifically to
+close out E10 and confirm nothing else regressed: `MainMenu → Chơi Mới → Intro (5 slides,
+incl. the how-to-play tutorial popup) → Level 1 → Hub → Level 2 → Ti rescued → boss →
+Ending (6 slides) → MainMenu`, driven the same way as the original pass (component APIs,
+one Play session) plus two additions the first pass didn't need: `PlayerHealth.Heal` to keep
+Greenie alive between diagnostic calls (headless driving still can't dodge — see the top of
+this document — so an idle Greenie next to live slimes is chip-killed for free within a few
+seconds of real time), and direct `PlayerPrefs` writes to fast-forward the antidote side
+quest so Tí's rescue and the mandatory 3rd keycard were reachable without hand-building the
+herb-gathering quest. Neither changes game code; both are documented in the driver script.
+
+**Every fix from the table at the top of this document re-verified positive:**
+
+| # | Re-check | Result |
+|---|---|---|
+| E1 | Hotbar renders as 4 slots, bottom-centre, not a smudge on Greenie | Confirmed every gameplay screenshot (`final_05` onward) |
+| E2 | Pause during dialogue | Toggled pause twice while Bà Tư's line was up — `timeScale` stayed **0** through both toggles |
+| E3 | Hub HUD vs shop wallet | Both read `Rác: 0` together (started this run with 0 trash collected) — no mismatch |
+| E4 | `✕`/`🔒` glyphs | Shop and crafting close buttons both render `×`; locked recipes show plain text, no tofu (`final_16_shop`, `final_17_crafting`) |
+| E5 | Legacy `UI.Text` | `FindObjectsByType<UnityEngine.UI.Text>()` returned **0** on both the Level 1 and Level 2 lose screens (hit twice, incidentally, by chip-death — see below) |
+| E6 | "← Menu" vs HP bar | No overlap in the hub (`final_15_hub`) |
+| E7 | Shop price vs MUA button | Clear gap, not overlapping (`final_16_shop`) |
+| E8 | Menu title centring | "ECO-DASH" dead-centre on the title screen reached via the ending's loop back to `MainMenu` |
+| E9 | Hub empty objective panel | Not present in `final_15_hub` (hub HUD has no objective list at all now) |
+| E10 | Art-vs-hurtbox alignment | **0.000 m** in Level 1 and Level 2 (renderer-bounds-vs-`CharacterController.center`, not the raw mesh pivot — see the false alarm below), and an authentic Slime King contact hit landed exactly on the visible overlap (`final_13_slimeking_contact`: HP 6→4, the robot and the boss touching on screen) |
+
+**One false alarm, caught before it was written up as a defect.** A first pass at the E10
+re-check measured 1.276 m for `Player.prefab` and looked like a regression. It wasn't: the
+check was reading `Art_oopi`'s own transform (its *pivot*, wherever the source FBX put it)
+instead of its renderer's world-space bounds (where the mesh actually draws) — exactly the
+pivot-vs-bounds distinction E10's root cause was about. Dumping the full hierarchy showed the
+renderer bounds centred exactly on the `CharacterController` (0.000 m) while the transform
+pivot sat 1.28 m away, consistent with a corner-pivoted mesh under a 270° `rotY`. Measuring
+bounds instead of the raw transform gave 0.000 m, matching E10's original fix evidence. Left
+in here as a note for whoever re-runs this check next: **measure the renderer's bounds, not
+the art transform's `.position`.**
+
+**Two incidental lose-screen hits, not defects.** Headless driving can't simulate WASD, so
+Greenie stood motionless at spawn and near the boss arena for several real seconds between
+diagnostic calls while the world was unpaused — long enough for ordinary slime contact (twice
+in Level 1) and the Mega-Smog's spray/gas (once in Level 2) to kill him outright from full
+HP. Each time: the lose panel correctly froze `Time.timeScale` at 0 with no legacy `UI.Text`
+anywhere in the scene, and `GameManager.RestartLevel()` cleanly reloaded with cores/keycards
+intact (`SceneProgress` persistence holding). Confirms the lose→restart loop and E5's fix
+under a condition this pass didn't intend to create, but is fair game for T3 (save/load
+abuse) to note: **an idle player at full aggro range dies for free** — worth a look for T5's
+"can a `PlasticSlime` ever actually catch you?" once a keyboard-driven pass can compare it
+to a player who's actually moving.
+
+**Console:** zero errors or exceptions across the whole run. The only warning is the
+pre-existing, unrelated Coplay editor-toolbar warning noted in the original pass.
+
+**`check_compile_errors`:** clean.
+
+**Not covered by this pass either** (unchanged from the top of this document): real keyboard
+input, wall-clock timing, any aspect ratio but the editor Game view, and a real build.
+
+**Nothing was changed in this pass** — no defects survived investigation, so there is no fix
+log entry to add. `git status` after the run shows only the new `QA/screenshots/final_*.png`
+evidence files.
