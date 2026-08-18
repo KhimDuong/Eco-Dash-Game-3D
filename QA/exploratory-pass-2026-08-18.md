@@ -46,6 +46,8 @@ the run and restored; the TMP dynamic atlas that grew during play was reverted.
 | E7 | S4 | Shop price text runs underneath the MUA button | `ShopUpgradeRow.cs` | **fixed** |
 | E8 | S4 | Main-menu title "ECO-DASH" sits ~134 px right of centre | `MainMenu.unity` | **fixed** |
 | E9 | S4 | Hub objective panel is an empty black box | `ObjectiveTracker` | **fixed** |
+| E10 | `ArtKit.Fit` applies `rotY` **before** it measures, so grounding and centring both run on the final orientation; re-ran **Run the art pass (B5)**, **Rebuild Level 1** and **Rebuild Level 2** to carry it into the 6 affected prefabs and the two scenes | art-vs-hurtbox distance is **0.000 m at every yaw** through a full turn (was 1.80 m); on screen the model sits 1 px from the capsule centre; walked him into a slime — HP fell 6/6 → 5/6 with the two bodies visibly touching (0.12 m overlap) · `e10_01`–`e10_04` |
+| E10 | **S2** | Greenie's model is drawn 1.80 m from the body that takes damage | `ArtKit.cs:189` | **fixed** |
 
 > All nine were fixed on the same day — see [Fix log](#fix-log--2026-08-18) at the bottom for
 > what changed, and re-test them with the T2 procedure before closing anything. The finding
@@ -72,6 +74,7 @@ in play order — this is also the screenshot set BA6 asked T for.
 | E7 shop layout | `19_shop` |
 | E8 menu title | `01_mainmenu` |
 | E9 empty panel | `18_hub` |
+| E10 art vs hurtbox | `e10_01_player_centred`, `e10_03_contact` (after the fix — there is no "before" shot, it was measured not eyeballed) |
 | Journey works | `01` → `26` end to end |
 
 ---
@@ -287,6 +290,69 @@ hide entirely.
 
 ---
 
+## E10 — Greenie's model is drawn 1.80 m from the body that takes damage *(S2)*
+
+**Reported by Khiêm after the fix pass above**, and the more serious half of what E1 looked
+like: with the hotbar moved out of the way, the robot is still not where the player is.
+
+`ArtKit.Fit` — the shared helper every generated prop, NPC and enemy goes through — did its
+work in the wrong order:
+
+```csharp
+var after = Measure(go);                       // centre the mesh on the node...
+go.transform.position += ...;
+if (!Mathf.Approximately(rotY, 0f))            // ...then turn it
+    go.transform.localRotation = Quaternion.Euler(0f, rotY, 0f);
+```
+
+Several of the borrowed models — oopi and the whole Kenney factory kit — pivot on a **tile
+corner**, not on the mesh centre. Centring moves the *node* so the mesh lands on it, which
+leaves the node offset from the mesh by `d`. Rotating afterwards spins the mesh about that
+node, so the mesh swings back off by exactly `R·d − d`. Every model given a `rotY` came out
+displaced; every model without one was fine, which is why this survived the art pass.
+
+Greenie is the worst case because he is the only 270° caller *and* `PlayerController` turns
+his `Visual` toward travel every frame — so the offset **rotated with him**, orbiting his
+real position at a radius of 1.80 m.
+
+Measured, before:
+
+```
+Player.prefab  Art_oopi   1.80 m from the Visual node   (dx=-1.80, dz=0.00)
+```
+
+His `CharacterController` is `radius 0.35, height 1.15` — a body 0.70 m across. At 1.80 m
+the visible robot had **no overlap at all** with the capsule that takes contact damage,
+which is exactly the "hitbox is off centre by a big distance" that was reported. On screen
+it was ~70 px, about twice his own width.
+
+Six other prefabs were displaced by the same bug, less badly:
+
+| Prefab | Was off by |
+|---|---|
+| `Player.prefab` (Greenie) | **1.80 m** |
+| `RescueNPC_Ti.prefab` (standing Tí) | 0.18 m |
+| `PollutionFlyBot.prefab` | 0.44 m |
+| `MrBear.prefab` | 0.25 m |
+| `NPC_Villager.prefab` | 0.24 m |
+| `NPC_VillagerWoman.prefab` (Bà Tư) | 0.22 m |
+
+…plus everything the two level builders bake straight into a scene with a rotation:
+Level 1's 112 fence posts and 173 ground details, and Level 2's 38 factory props, which are
+placed against walls with 90/180/270° turns and could be pushed *into* the wall by the
+offset. Note the clearance tests (`TooClose`, `InsideWall`, `NearGameplay`) all check the
+position **before** the offset was applied, so they were being checked against a spot the
+prop did not end up in.
+
+Two things that look like this bug but are not, and should be left alone:
+
+- `MegaSmogBoss`'s `Art_StackL` / `Art_StackR` at ±1.45 m — `Rig()` places those holders
+  deliberately, they are the two flanking smokestacks.
+- `RescueNPC_Ti`'s *unconscious* Tí at 0.99 m — hand-posed by the caller at −78° about X
+  with a −0.30 nudge. A body lying on the floor should not be centred on its stand-point.
+
+---
+
 ## Findings that died under verification — please don't re-spend these hours
 
 **Vietnamese diacritics render correctly. Do not chase this.**
@@ -381,3 +447,10 @@ now that it is a TMP object.
 Rebuilding the hub (**Eco-Dash → Rebuild the hub**) is what carries E4/E6/E7 into
 `Shop_RecyclingStation.unity`; it was run, so the scene and the five hub prefabs are
 regenerated in the same change.
+
+E10 is a fix to `ArtKit`, which every generated thing goes through, so the **art pass** and
+**both level rebuilds** were run for the same reason. Those three regenerations are most of
+the diff. They are reproducible and were checked for drift: the prefab diffs are fileID
+churn plus exactly the six transforms listed in E10, and both scenes come back with an
+identical object count (Level 1: 584 GameObjects / 363 prefab instances; Level 2: 87 / 54).
+`AudioPass` writes to prefabs only, so a level rebuild cannot drop the C5 sound layer.

@@ -178,6 +178,14 @@ public static class ArtKit
             }
         }
 
+        // Turn before measuring. Grounding and centring both read world-space bounds, and a
+        // model whose pivot is not its own centre orbits that pivot as it turns — so a centring
+        // done first is simply undone by the turn, leaving the art displaced by R*d - d. That is
+        // how Greenie ended up 1.8 m from his own CharacterController, orbiting it as
+        // PlayerController swung Visual toward travel (QA E10).
+        if (!Mathf.Approximately(rotY, 0f))
+            go.transform.localRotation = Quaternion.Euler(0f, rotY, 0f);
+
         var fitted = Measure(go);
         float dy = go.transform.position.y - fitted.min.y + lift;
         go.transform.position += new Vector3(0f, dy, 0f);
@@ -186,9 +194,6 @@ public static class ArtKit
         var after = Measure(go);
         go.transform.position += new Vector3(
             go.transform.position.x - after.center.x, 0f, go.transform.position.z - after.center.z);
-
-        if (!Mathf.Approximately(rotY, 0f))
-            go.transform.localRotation = Quaternion.Euler(0f, rotY, 0f);
     }
 
     static float Safe(float f) => Mathf.Approximately(f, 0f) ? 1f : f;

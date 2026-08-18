@@ -155,6 +155,9 @@ prefab — the next rebuild would throw it away.
    pairs (`Visual_Open`/`Visual_Locked`, `Lid`/`Hole`, `Visual_Unconscious`/`Visual_Awake`)
    are the gameplay contract. And a `MaterialPropertyBlock` is **per material slot, not
    per renderer** — the thing that made the new slime's eyes turn green after one hit.
+   `ArtKit.Fit` **turns a model before it measures it**: centring a corner-pivoted mesh
+   and rotating afterwards leaves it displaced by `R·d − d`, which is how Greenie's art
+   ended up orbiting his own hitbox at 1.8 m while every `rotY: 0` prop looked fine.
    See [architecture.md](.claude/docs/architecture.md#the-art-pass-is-generated-too-b5).
 3. **`HitFlash` owns an enemy's resting colour.** It caches that colour in `Awake` and
    repaints it after every flash, so a lasting tint (the boss's enrage) must go through

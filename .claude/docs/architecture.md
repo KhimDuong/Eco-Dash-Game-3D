@@ -258,7 +258,7 @@ refit from the model's measured bounds, because a real model **pivots on the flo
 where a primitive is centred on its own origin — which is why `Level1Builder` no
 longer lifts props by hand-measured amounts.
 
-Four things that bite, in the order they bit:
+Five things that bite, in the order they bit:
 
 - **A prefab generator undoes the art.** `HubBuilder`, `FactoryKitBuilder` and
   `EnemyPrefabBuilder` rebuild their prefabs from primitives, so each calls
@@ -279,6 +279,21 @@ Four things that bite, in the order they bit:
   `ArtKit.Spawn` always strips lights, and fits by a requested height in metres because
   the packs disagree wildly on scale (Kenney Survival is authored at 0.5 m, its Nature
   Kit at 1 m, one Quaternius character imports 5.6 m tall).
+
+- **`Fit` must turn the model before it measures.** Grounding and horizontal centring
+  both read world-space bounds, so they have to run on the *final* orientation. `Fit`
+  used to centre first and apply `rotY` last, and several borrowed models — oopi, the
+  whole Kenney factory kit — pivot on a **tile corner** rather than the mesh centre.
+  Centring moves the node so the mesh lands on it, which leaves the node offset from
+  the mesh by `d`; the later rotation then spins the mesh about that node and puts it
+  back off by `R·d − d`. Only `rotY` callers were affected, which is why it hid for so
+  long. Greenie was the worst of them: he is the only 270° caller *and*
+  `PlayerController` turns his `Visual` toward travel every frame, so the offset
+  **orbited** his real position at 1.80 m — against a `CharacterController` 0.70 m
+  across, the robot you saw never overlapped the body that took damage. Anything a
+  builder bakes straight into a scene with a rotation is affected too, and its
+  clearance test (`TooClose`, `InsideWall`, `NearGameplay`) checks the position
+  *before* the offset, so it was vetting a spot the prop did not end up in.
 
 Fit-by-height assumes a roughly cubic model. `rock_largeA` is a flat slab and fitting
 it to 0.55 m tall made it **2.15 m across**, wide enough to close corridors the 2D
