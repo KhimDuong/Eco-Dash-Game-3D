@@ -101,6 +101,8 @@ public class InventoryUI : MonoBehaviour
         hlg.spacing = spacing; hlg.padding = new RectOffset(20, 20, 4, 4);
         hlg.childAlignment = TextAnchor.MiddleLeft;
         hlg.childForceExpandWidth = false; hlg.childForceExpandHeight = false;
+        // Keep MakeSlot's explicit cellSize — see the note in Hotbar.Build (QA E1).
+        hlg.childControlWidth = false; hlg.childControlHeight = false;
     }
 
     // --- Refresh ------------------------------------------------------------

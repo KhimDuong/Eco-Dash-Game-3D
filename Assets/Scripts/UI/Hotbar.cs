@@ -60,6 +60,10 @@ public class Hotbar : MonoBehaviour
         var hlg = root.gameObject.AddComponent<HorizontalLayoutGroup>();
         hlg.spacing = spacing; hlg.childAlignment = TextAnchor.MiddleCenter;
         hlg.childForceExpandWidth = false; hlg.childForceExpandHeight = false;
+        // childControl* defaults to TRUE, which would size each slot to its PREFERRED
+        // size — and a sprite-less Image prefers 0, so the explicit cellSize below was
+        // being scrubbed every layout pass and the slots rendered 0x0 (QA E1).
+        hlg.childControlWidth = false; hlg.childControlHeight = false;
 
         for (int i = 0; i < Slots; i++)
         {

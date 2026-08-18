@@ -341,9 +341,11 @@ public static class HubBuilder
         root.AddComponent<GraphicRaycaster>();
         root.AddComponent<AudioSource>().playOnAwake = false;
 
-        // Always-visible "back to menu" button, as in the 2D hub.
+        // Always-visible "back to menu" button, as in the 2D hub. It sits BELOW the HUD's
+        // left column (HP bar ends at y -84, "Rác" at -194) — at the old y -44 it was drawn
+        // straight over the HP bar (QA E6).
         var back = Button(root.transform, "BackButton", "← Menu", new Vector2(0f, 1f),
-                          new Vector2(120f, 56f), new Vector2(90f, -44f));
+                          new Vector2(120f, 56f), new Vector2(90f, -232f));
 
         var panel = new GameObject("Panel", typeof(RectTransform), typeof(Image));
         panel.transform.SetParent(root.transform, false);
@@ -360,7 +362,7 @@ public static class HubBuilder
         var trash = UIFactory.Text("TrashText", panel.transform, "Rác: 0", 32f);
         Anchor(trash.rectTransform, new Vector2(0.5f, 1f), new Vector2(720f, 44f), new Vector2(0f, -104f));
 
-        var close = Button(panel.transform, "CloseButton", "✕", new Vector2(1f, 1f),
+        var close = Button(panel.transform, "CloseButton", "×", new Vector2(1f, 1f),
                            new Vector2(56f, 56f), new Vector2(-46f, -40f));
 
         var rows = new List<ShopUpgradeRow>();
@@ -401,7 +403,9 @@ public static class HubBuilder
         Anchor(tierText.rectTransform, new Vector2(0f, 0.5f), new Vector2(340f, 32f), new Vector2(190f, -18f));
 
         var costText = UIFactory.Text("Cost", row.transform, "10 rác", 26f, TextAlignmentOptions.Right);
-        Anchor(costText.rectTransform, new Vector2(1f, 0.5f), new Vector2(200f, 40f), new Vector2(-230f, 0f));
+        // Ends 20px clear of the MUA button's left edge (-160); the old 200-wide box at
+        // -230 reached -130 and the word "rác" disappeared under the button (QA E7).
+        Anchor(costText.rectTransform, new Vector2(1f, 0.5f), new Vector2(180f, 40f), new Vector2(-270f, 0f));
 
         var buy = Button(row.transform, "Buy", "MUA", new Vector2(1f, 0.5f), new Vector2(140f, 56f), new Vector2(-90f, 0f));
 

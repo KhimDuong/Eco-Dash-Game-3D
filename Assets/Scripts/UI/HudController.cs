@@ -38,20 +38,27 @@ public class HudController : MonoBehaviour
         if (GameManager.Instance != null)
         {
             GameManager.Instance.OnCoresChanged += UpdateCores;
-            GameManager.Instance.OnTrashChanged += UpdateTrash;
             UpdateCores(GameManager.Instance.CoresCollected, GameManager.Instance.RequiredCores);
-            UpdateTrash(GameManager.Instance.TrashCollected);
         }
+        else if (coreText != null)
+        {
+            // No level manager here (the hub) — there is no core objective to count.
+            coreText.gameObject.SetActive(false);
+        }
+
+        // Trash is PlayerProgress's, not the level's (GameManager.TrashCollected just
+        // forwards to it). Reading the wallet directly keeps the counter honest in the
+        // hub, which has no GameManager at all, and makes it drop when the player spends
+        // at Ông Bear's shop — neither worked while this hung off GameManager (QA E3).
+        PlayerProgress.OnChanged += UpdateTrashFromWallet;
+        UpdateTrashFromWallet();
     }
 
     void OnDestroy()
     {
         if (playerHealth != null) playerHealth.OnHealthChanged -= UpdateHealth;
-        if (GameManager.Instance != null)
-        {
-            GameManager.Instance.OnCoresChanged -= UpdateCores;
-            GameManager.Instance.OnTrashChanged -= UpdateTrash;
-        }
+        if (GameManager.Instance != null) GameManager.Instance.OnCoresChanged -= UpdateCores;
+        PlayerProgress.OnChanged -= UpdateTrashFromWallet;
     }
 
     void UpdateHealth(int current, int max)
@@ -69,8 +76,8 @@ public class HudController : MonoBehaviour
             : $"{objectiveLabel}: {collected}/{required}";
     }
 
-    void UpdateTrash(int total)
+    void UpdateTrashFromWallet()
     {
-        if (trashText != null) trashText.text = $"Rác: {total}";
+        if (trashText != null) trashText.text = $"Rác: {PlayerProgress.Trash}";
     }
 }

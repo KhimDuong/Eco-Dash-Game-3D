@@ -61,7 +61,7 @@ public class CraftingUI : MonoBehaviour
         var crt = (RectTransform)close.transform;
         crt.anchorMin = crt.anchorMax = new Vector2(1f, 1f); crt.pivot = new Vector2(1f, 1f);
         crt.anchoredPosition = new Vector2(-16f, -16f); crt.sizeDelta = new Vector2(48f, 48f);
-        var clabel = UIFactory.Text("X", close.transform, "✕", 28f);
+        var clabel = UIFactory.Text("X", close.transform, "×", 28f);
         UIFactory.Fill(clabel.rectTransform);
         close.GetComponent<Button>().onClick.AddListener(Close);
 
@@ -106,7 +106,7 @@ public class CraftingUI : MonoBehaviour
         var sb = new StringBuilder();
         if (!unlocked)
         {
-            sb.Append("🔒 Chưa mở khóa — hoàn thành nhiệm vụ liên quan.");
+            sb.Append("Chưa mở khóa — hoàn thành nhiệm vụ liên quan.");
         }
         else
         {

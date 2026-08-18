@@ -35,17 +35,21 @@ the run and restored; the TMP dynamic atlas that grew during play was reverted.
 
 ## Summary
 
-| # | Severity | What | Where |
-|---|---|---|---|
-| E1 | **S2** | Hotbar renders at screen centre, on top of Greenie, with 0×0 slots | `HUD.prefab` + `Hotbar.cs:60` |
-| E2 | **S2** | Pause during dialogue un-freezes the world while you stay locked in the dialogue | `PauseController.cs:35` |
-| E3 | **S2** | Hub HUD shows the wrong Rác wallet (says 0, shop says 1) | `Shop_RecyclingStation.unity` |
-| E4 | S3 | Three UI glyphs have no font glyph and render as `□` | 4 `file:line` below |
-| E5 | S3 | Pause / Win / Lose / Settings use legacy `UI.Text`, not TMP | `HUD.prefab` |
-| E6 | S3 | "← Menu" button overlaps the HP bar in the hub | `HubBuilder.cs` |
-| E7 | S4 | Shop price text runs underneath the MUA button | `ShopUpgradeRow.cs` |
-| E8 | S4 | Main-menu title "ECO-DASH" sits ~134 px right of centre | `MainMenu.unity` |
-| E9 | S4 | Hub objective panel is an empty black box | `ObjectiveTracker` |
+| # | Severity | What | Where | Status |
+|---|---|---|---|---|
+| E1 | **S2** | Hotbar renders at screen centre, on top of Greenie, with 0×0 slots | `HUD.prefab` + `Hotbar.cs:60` | **fixed** |
+| E2 | **S2** | Pause during dialogue un-freezes the world while you stay locked in the dialogue | `PauseController.cs:35` | **fixed** |
+| E3 | **S2** | Hub HUD shows the wrong Rác wallet (says 0, shop says 1) | `Shop_RecyclingStation.unity` | **fixed** |
+| E4 | S3 | Three UI glyphs have no font glyph and render as `□` | 4 `file:line` below | **fixed** |
+| E5 | S3 | Pause / Win / Lose / Settings use legacy `UI.Text`, not TMP | `HUD.prefab` | **fixed** |
+| E6 | S3 | "← Menu" button overlaps the HP bar in the hub | `HubBuilder.cs` | **fixed** |
+| E7 | S4 | Shop price text runs underneath the MUA button | `ShopUpgradeRow.cs` | **fixed** |
+| E8 | S4 | Main-menu title "ECO-DASH" sits ~134 px right of centre | `MainMenu.unity` | **fixed** |
+| E9 | S4 | Hub objective panel is an empty black box | `ObjectiveTracker` | **fixed** |
+
+> All nine were fixed on the same day — see [Fix log](#fix-log--2026-08-18) at the bottom for
+> what changed, and re-test them with the T2 procedure before closing anything. The finding
+> write-ups below are left as they were written, so the evidence trail still reads straight.
 
 **Cleared** (findings that died under verification — see the bottom section, and please
 don't re-spend the hours): Vietnamese diacritics are fine, there are no missing shaders,
@@ -336,3 +340,44 @@ the boss health bar and the death/restart loop all work.
   stood in it, and idling at the Level 1 spawn was enough to be killed by the slimes,
   which is at least a hint for T5's "can a `PlasticSlime` ever actually catch you?"
 - The three missing NPCs (D3) — not re-checked, already logged
+
+---
+
+## Fix log — 2026-08-18
+
+Applied after the pass above, by the same (unassigned) person. **Nothing here has been
+re-tested by a second pair of eyes**, and the same limitation applies as to the pass
+itself: no key binding was exercised, one aspect ratio only, no build. Each row says how
+it was verified so T knows what is *not* covered.
+
+| # | Change | Verified by |
+|---|---|---|
+| E1 | `HUD.prefab` → `InventorySystem` stretched to fill the canvas (was a 100×100 rect pinned at screen centre); `Hotbar.cs` + `InventoryUI.cs` set `childControlWidth/Height = false` on their `HorizontalLayoutGroup` | runtime rect dump — four 88×88 slots, centred on x, 24 px off the bottom · `fix_02` |
+| E2 | `PauseController.Update` returns early while `DialogueRunner.IsActive` (mirrors the existing `TutorialPopup.IsOpen` guard); `SetPaused` now restores `0f` rather than `1f` when a dialogue still owns the clock | drove `TogglePause` twice inside Bà Tư's opening line — `timeScale` stayed **0** where it used to go to 1 |
+| E3 | `HudController` reads `PlayerProgress.Trash` and subscribes to `PlayerProgress.OnChanged` instead of `GameManager.OnTrashChanged`, and hides the core counter when there is no `GameManager` | hub HUD reads "Rác: 1" matching the shop panel · buying an upgrade moved the HUD from 21 → 11, which never worked before · `fix_04`, `fix_05` |
+| E4 | `✕` → `×` (`HubBuilder.cs`, `CraftingUI.cs`); the `🔒` prefix dropped from the locked-recipe line; `ObjectiveTracker`'s dead `•`/`✓` defaults replaced with the `[ ]`/`[x]` the prefab already serialises | both close buttons and all four locked rows render clean · `fix_05`, `fix_06` |
+| E5 | All 13 legacy `UnityEngine.UI.Text` labels in `HUD.prefab` converted to `TextMeshProUGUI` with `LiberationSans SDF` pinned explicitly; the white button plates repainted to the accent green the rest of the game uses; the four pause buttons spaced 120 apart instead of 105 | `FindObjectsByType<Text>()` returns **0** at runtime · `fix_03`, `fix_07`, `fix_08` |
+| E6 | `HubBuilder` back button y −44 → −232, i.e. under the Rác counter instead of over the HP bar | `fix_04` |
+| E7 | `HubBuilder` shop cost label 200 wide @ −230 → 180 wide @ −270, ending 20 px clear of the MUA button | `fix_05` |
+| E8 | The stray `margin = (0, 0, -267.88, -40.46)` on `MainMenu.unity`'s title zeroed. A scan of all scenes found this was the **only** non-zero TMP margin in the project | `fix_01` |
+| E9 | `ObjectiveTracker.RefreshPanelVisibility` hides the backing plate, title and list while no row is visible | panel gone in the hub, still drawn in Level 1 · `fix_03`, `fix_04` |
+
+Two things were changed that are not in the list above, both noticed while fixing E5 and
+both in the settings window: the mute toggle's checkbox hung ~20 px outside the window's
+left edge (moved to line up with the sliders), and `Text (Legacy)` was renamed to `Text`
+now that it is a TMP object.
+
+**Not changed, on purpose:**
+
+- **D4** (`Hub_Portal_To_Stage2` wants 1 Portal Shard, the design says 3) is a balance
+  number, not a defect — P's call which one is right.
+- **The pause overlay's z-order.** Pausing mid-dialogue leaves the dialogue box drawn
+  through the pause menu. E2's guard makes that state unreachable with the keyboard, so
+  it is cosmetic and only visible if something calls `TogglePause` directly.
+- **The report's "neither screen dims the world" line.** Re-shot after the fix, both the
+  pause and the lose overlay clearly darken the world — that sub-claim did not reproduce.
+- Everything under "Not covered by this pass" is still not covered.
+
+Rebuilding the hub (**Eco-Dash → Rebuild the hub**) is what carries E4/E6/E7 into
+`Shop_RecyclingStation.unity`; it was run, so the scene and the five hub prefabs are
+regenerated in the same change.

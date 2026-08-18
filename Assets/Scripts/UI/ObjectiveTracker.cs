@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 /// <summary>
 /// Mission tracker HUD widget (M7). Shows the active mission title plus a checklist of
@@ -44,8 +45,11 @@ public class ObjectiveTracker : MonoBehaviour
     [Header("Look")]
     [SerializeField] Color pendingColor = new Color(0.92f, 0.92f, 0.92f);
     [SerializeField] Color doneColor = new Color(0.5f, 1f, 0.55f);
-    [SerializeField] string pendingBullet = "•";
-    [SerializeField] string doneBullet = "✓";
+    // ASCII on purpose: LiberationSans SDF has no glyph for a check mark, so the old
+    // "✓" default rendered as a tofu box for anyone who added a tracker without
+    // overriding it in the inspector. These match what HUD.prefab already serialises.
+    [SerializeField] string pendingBullet = "[ ]";
+    [SerializeField] string doneBullet = "[x]";
 
     readonly List<TMP_Text> rows = new();
     bool[] done;
@@ -67,6 +71,7 @@ public class ObjectiveTracker : MonoBehaviour
 
         QuestProgress.OnChanged += HandleQuestProgress;
         HandleQuestProgress();
+        RefreshPanelVisibility();
     }
 
     void OnDestroy()
@@ -159,5 +164,23 @@ public class ObjectiveTracker : MonoBehaviour
         rows[i].text = $"{bullet} {label}";
         rows[i].color = done[i] ? doneColor : pendingColor;
         rows[i].fontStyle = done[i] ? FontStyles.Strikethrough : FontStyles.Normal;
+        RefreshPanelVisibility();
+    }
+
+    /// <summary>
+    /// Hide the backing plate and the title while no objective row is visible. The hub
+    /// has no objectives at all, so the panel used to draw as an empty black rectangle
+    /// in the corner (QA E9). The component stays enabled so it can come back.
+    /// </summary>
+    void RefreshPanelVisibility()
+    {
+        bool any = false;
+        for (int i = 0; i < rows.Count; i++)
+            if (rows[i] != null && rows[i].gameObject.activeSelf) { any = true; break; }
+
+        var plate = GetComponent<Graphic>();
+        if (plate != null) plate.enabled = any;
+        if (titleText != null && titleText.gameObject != gameObject) titleText.gameObject.SetActive(any);
+        if (listParent != null && listParent.gameObject != gameObject) listParent.gameObject.SetActive(any);
     }
 }

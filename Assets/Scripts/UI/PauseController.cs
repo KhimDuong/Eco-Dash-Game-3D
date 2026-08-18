@@ -32,6 +32,13 @@ public class PauseController : MonoBehaviour
         // don't also toggle the pause menu underneath it.
         if (TutorialPopup.IsOpen) return;
 
+        // A dialogue owns the clock while it is up (DialogueRunner sets timeScale = 0).
+        // Without this, Esc-Esc through a conversation restarts the world while the
+        // player is still locked in the dialogue: PlayerController and PlayerShooter
+        // early-out on IsActive, but PlayerHealth does not, so he takes contact damage
+        // he cannot avoid (QA E2).
+        if (DialogueRunner.IsActive) return;
+
         if (kb.escapeKey.wasPressedThisFrame && !GameIsOver())
         {
             // Esc backs out of the settings sub-panel first, then toggles pause.
@@ -75,6 +82,7 @@ public class PauseController : MonoBehaviour
         isPaused = paused;
         if (pausePanel != null) pausePanel.SetActive(paused);
         if (!paused && settingsPanel != null) settingsPanel.Close();
-        Time.timeScale = paused ? 0f : 1f;
+        // Never hand the clock back to a world another modal still owns (QA E2).
+        Time.timeScale = paused || DialogueRunner.IsActive ? 0f : 1f;
     }
 }
