@@ -45,9 +45,12 @@ per-developer breakdown is [TEAM-TASKS.md](TEAM-TASKS.md). Creative brief
    asset goes in [CREDITS.md](CREDITS.md)**. Source order: **Kenney →
    Quaternius → KayKit → itch.io low-poly**, then other free sources. Greybox
    with ProBuilder first; **only generate models (Coplay 3D gen, billed) as a
-   last resort**. Full rules: [ASSETS.md](ASSETS.md). The art itself is applied
-   by a **generator** (`Eco-Dash → Run the art pass (B5)`), not by hand — add a
-   row to `ArtPass.cs`, never drag a mesh onto a prefab.
+   last resort — ask first, it costs money**. Full rules: [ASSETS.md](ASSETS.md).
+   The art itself is applied by a **generator**
+   (`Eco-Dash → Run the art pass (B5)`), not by hand — add a row to `ArtPass.cs`,
+   never drag a mesh onto a prefab. When importing a new Kenney pack, check that
+   its texture file is named what its FBX materials ask for (`colormap.png`), or
+   Unity binds all of it to a *different* pack's atlas without warning.
 6. **After any script change, verify it compiles** with
    `mcp__coplay-mcp__check_compile_errors` before saying you're done.
 7. **Three devs work in parallel — respect scene ownership.** One owner per
@@ -119,8 +122,16 @@ distance-attenuated one-shots, the `MusicPlayer` that keeps one track running ac
 scene, and the `AudioPass` that puts a clip in all 26 sound fields) are all in and
 play-mode verified (305 checks).
 
-Next up: the three unplaced side-quest NPCs (Bé Mây, Ông Tài, Cô Lan), a full manual
-playthrough + ~30-min time-budget check, and the submission build.
+**Cycle 2's environment pass is in** ([PRODUCT-BACKLOG.md](PRODUCT-BACKLOG.md) B1–B5): the
+Nature Kit's broken material palette is re-authored (Level 1's vegetation was rendering
+cyan), Level 1 has a 4.2 m rock mesa, a spring, hills and a lake beyond every wall, a real
+village of Fantasy Town cottages around the 2D layout's four huts, living trees, denser
+ground cover and a tuned procedural sky; the hub has a dressed yard instead of five objects
+in a grey box, and Level 2 no longer shows skybox through the gaps in its maze floor.
+
+Next up: the three unplaced side-quest NPCs (Bé Mây, Ông Tài, Cô Lan — the village district
+B4 built is where they would live), a full manual playthrough + ~30-min time-budget check,
+the A2 demo video, and the submission build.
 
 **Cycle 2 is a validation cycle before it is a build cycle** — the other two devs take
 QA / Product-Owner / Business-Analyst roles, play the cycle-1 build and produce the
@@ -131,7 +142,7 @@ Seven generated things — **don't hand-edit their output**:
 
 | What | Menu command | Source |
 |---|---|---|
-| Level 1 | **Eco-Dash → Rebuild Level 1** | [Tools/level1_layout.csv](Tools/level1_layout.csv) |
+| Level 1 | **Eco-Dash → Rebuild Level 1** | [Tools/level1_layout.csv](Tools/level1_layout.csv) + `Assets/Editor/TerrainKit.cs` |
 | Level 2 | **Eco-Dash → Rebuild Level 2** | [Tools/level2_layout.csv](Tools/level2_layout.csv) |
 | The hub | **Eco-Dash → Rebuild the hub** | `Assets/Editor/HubBuilder.cs` |
 | Enemy prefabs | **Eco-Dash → Rebuild enemy prefabs** | `Assets/Editor/EnemyPrefabBuilder.cs` |
@@ -144,7 +155,21 @@ The enemy, factory and hub builders rebuild their prefabs from primitives, so ea
 `ArtPass.cs` and sound by editing `AudioPass.cs`, never by dragging a mesh or a clip onto a
 prefab — the next rebuild would throw it away.
 
-**Five rules that keep biting:**
+**Six rules that keep biting:**
+
+0. **A model's imported colours are not the colours the pack means.** Kenney's Nature
+   Kit ships **no texture at all** — every model is flat-shaded off its material colour —
+   and the values baked into its FBX files are a pastel placeholder set: `leafsGreen`
+   imports as turquoise `(0.44, 0.90, 0.84)`, `dirt` and `stone` as near-white. Level 1's
+   grass, trees and rocks rendered *cyan* for the whole of cycle 1 and nobody spotted it,
+   because each asset looks plausible alone. `ArtKit.NaturePalette` re-authors all 23,
+   keyed by material name so 300 models keep sharing one "grass" and stay in one batch —
+   which means a prop that wants its own colour (the dead tree) must pass `recolour` and a
+   `variant`, or it repaints every other model using that material. A textured pack is the
+   opposite hazard: Unity's recursive-up search binds a pack whose texture is named
+   anything but `colormap.png` to **another pack's** atlas, silently.
+
+
 
 1. **Height is presentation, hitting things is XZ.** Greenie's Seeds fly flat at y ≈ 0.6,
    so anything that leaves the ground still needs a hurtbox reaching the ground plane or
@@ -158,6 +183,13 @@ prefab — the next rebuild would throw it away.
    `ArtKit.Fit` **turns a model before it measures it**: centring a corner-pivoted mesh
    and rotating afterwards leaves it displaced by `R·d − d`, which is how Greenie's art
    ended up orbiting his own hitbox at 1.8 m while every `rotY: 0` prop looked fine.
+   `Fit` also **centres what it places**, which is right for a one-mesh swap and fatal for a
+   modular kit — Fantasy Town's wall panel sits on the −X edge of its cell on purpose, so
+   four of them rotated 0/90/180/270° enclose it; centring each would stack all four in the
+   middle. Modular pieces go through `ArtKit.SpawnModule`, which keeps their own pivot.
+   And **fitting by height only works on a model roughly as tall as it is wide**: a 5 cm
+   ground tile asked for a 3 m height scales 60×, and a 2 m fountain basin asked for 0.9 m
+   comes out 6.4 m across.
    See [architecture.md](.claude/docs/architecture.md#the-art-pass-is-generated-too-b5).
 3. **`HitFlash` owns an enemy's resting colour.** It caches that colour in `Awake` and
    repaints it after every flash, so a lasting tint (the boss's enrage) must go through

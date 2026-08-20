@@ -297,7 +297,75 @@ Five things that bite, in the order they bit:
 
 Fit-by-height assumes a roughly cubic model. `rock_largeA` is a flat slab and fitting
 it to 0.55 m tall made it **2.15 m across**, wide enough to close corridors the 2D
-layout leaves open — the pass logs every final size for exactly this reason.
+layout leaves open — the pass logs every final size for exactly this reason. Cycle 2
+added two more: a Fantasy Town fountain basin is 2 × 0.28 × 2 m, so asking for 0.9 m
+tall gave a **6.4 m** bowl, and the Nature Kit's ground tiles are 5 cm thick, so a
+height request scales them by 60×. Flat things are placed by `SpawnModule` at an
+explicit scale instead.
+
+### The palette a pack ships is not the palette it means (cycle 2)
+
+Kenney's Nature Kit is the one pack here with an **empty `Textures/` folder** — it is
+flat-shaded by design, so its per-material colours *are* its art. Those colours import
+wrong: `leafsGreen` is `(0.44, 0.90, 0.84)` (turquoise), `grass` `(0.45, 0.93, 0.87)`,
+`dirt` and `stone` near-white. Level 1's trees, grass, rocks, bushes and fences rendered
+cyan for the whole of cycle 1 and no one caught it, because any one asset looks plausible
+in isolation and the whole scene shifting together reads as "a look".
+
+`ArtKit.NaturePalette` re-authors all 23. Two properties matter:
+
+- **Keyed by material name, not by model.** All ~300 Nature Kit models share one `grass`
+  and one `stone` material asset, so the batch survives. Keying by model — which is what
+  the existing glTF path does, correctly, for a handful of characters — would have
+  produced hundreds of duplicates.
+- **A `recolour` therefore must not write through.** `Repaint` gives an overridden colour
+  its own cache key (the caller's `variant`, or the colour's hex). Without that, the dead
+  tree asking for a brown canopy would repaint every living tree in the valley. This is
+  the same shape of bug as the property-block one above: shared state, one caller wanting
+  an exception.
+
+The textured packs have the mirror-image hazard. A Kenney FBX asks for a texture named
+`colormap`; Unity's material search is **recursive-up**, so a pack whose texture is named
+anything else silently binds to a *different pack's* atlas. The Fantasy Town Kit ships
+`variation-a.png` and imported wearing Cube Pets' colours until it was renamed.
+
+### Modular kits pivot off-centre on purpose
+
+`ArtKit.Spawn` centres what it places, which is exactly right when one model replaces one
+greybox mesh. A modular building kit is the opposite: Fantasy Town's wall panel sits on the
+**−X edge** of its 1 m cell so that four instances at 0/90/180/270° enclose the cell.
+Centring each one stacks all four in the middle. `ArtKit.SpawnModule` instantiates at a
+plain uniform scale and leaves the pivot alone; `ArtPass.Cottage` uses it to assemble the
+village houses, and `TerrainKit` uses it for every cliff cube.
+
+## Terrain is scenery, and it is generated (cycle 2)
+
+[TerrainKit.cs](../../Assets/Editor/TerrainKit.cs) builds everything the 2D layout could
+not supply, because the 2D scene is a flat tilemap: the highland mesa and its spring inside
+Level 1's walls, the hills and lake outside them, the village district, and the plain that
+stops the world ending in void. `Level1Builder` calls `TerrainKit.Level1` between wiring
+and dressing; `HubBuilder` calls the cheaper `Surround`; `Level2Builder` calls `Underlay`.
+
+**None of it is climbable.** Golden rule #1 still holds — the play surface is the same flat
+slab at y = 0. The mesa is one `BoxCollider` and the spring one `SphereCollider`, both on
+Obstacle, so the NavMesh carves round them and the slimes path round them exactly as they
+would round a large rock. Everything beyond the boundary walls has no collider at all.
+
+Three things this pass learned the hard way:
+
+- **Never stretch a cliff block.** Kenney's cliff cube carries a grass cap that is a fixed
+  fraction of its own height, so scaling Y alone turns the cap into a metre-thick green
+  slab and the result reads as a layer cake. `TerrainKit.Stack` scales uniformly and stacks,
+  which also hides each block's cap under the next one.
+- **Water coplanar with the ground z-fights it.** The spring's disc first sat with its top
+  face at exactly y = 0 and rendered as a mottled mushroom-shaped stain. It sits 3 cm proud
+  now; the bank props hide the lip.
+- **The camera decides how far out is worth building.** Pitch 50° with a 60° FOV puts the
+  frustum's top plane on the ground 26.6 m ahead of the camera — about **19 m past
+  Greenie**, and *nothing* beyond that is on screen at any height. The first ring of hills
+  is 10 m outside the wall for that reason, and a lake placed 38 m out was invisible until
+  it was moved in. See [PRODUCT-BACKLOG.md](../../PRODUCT-BACKLOG.md) for the numbers at
+  other pitches.
 
 ## Bosses bring their own UI (C3)
 

@@ -407,6 +407,37 @@ owners in [../../TEAM-TASKS.md](../../TEAM-TASKS.md).
 
 ## Recent log
 
+- _(2026-08-20)_ **Cycle 2's environment pass (backlog B1–B5) — and the reason the valley
+  looked cheap was a bug, not a shortage of assets.** Kenney's Nature Kit is the one pack in
+  the project with **no texture at all** — it is flat-shaded off its material colours — and
+  those colours import wrong: `leafsGreen` arrives as turquoise `(0.44, 0.90, 0.84)`, `dirt`
+  and `stone` as near-white. Every tree, grass tuft, rock, bush and fence in Level 1 had been
+  rendering **cyan** since B5, through a full QA pass, because no single asset looks wrong on
+  its own and a whole scene shifting together reads as a deliberate look. `ArtKit.NaturePalette`
+  now re-authors all 23, keyed by material name so the shared batch survives — which in turn
+  meant the dead trees had to start asking for their dead colour explicitly, or the palette fix
+  would have brought all 38 of them back to life. The mirror-image hazard bit on the way in: a
+  Kenney FBX asks for a texture called `colormap`, Unity's material search is recursive-*up*,
+  and the newly imported Fantasy Town Kit (whose texture ships as `variation-a.png`) silently
+  wore **Cube Pets'** atlas until it was renamed.
+  On top of that: Level 1 gained a 4.2 m stepped rock mesa with a spring at its foot, three
+  rings of hills and a lake beyond the boundary walls, and green land under all of it so the
+  world stops ending in void; a village district of Fantasy Town cottages north of the 2D
+  layout's pen, with the layout's own four huts rebuilt in place so the CSV never changed;
+  living trees, 3 earth tones across the 192 floor tiles, and a denser green scatter. The hub
+  went from five objects in a grey box to a dressed yard, and Level 2 no longer shows skybox
+  through the gaps between its rooms. Every scene now tunes the built-in procedural sky —
+  **no skybox and no ground texture were sourced**, exactly as the shopping list predicted;
+  the one pack that was sourced (Fantasy Town Kit, CC0) went in because the Survival Kit's
+  "structure" pieces turn out to be open scaffold frames, not houses.
+  Elevation is scenery: the play surface is still one flat slab, the mesa is one box collider
+  and the spring one sphere, and play-mode verification shows the NavMesh re-baking to 719
+  triangles with complete paths from both far corners. New generator:
+  [TerrainKit.cs](../../Assets/Editor/TerrainKit.cs).
+  One measurement worth keeping: at pitch 50° / 60° FOV the camera can see **~19 m past
+  Greenie and nothing beyond, at any height** — which is why the hills start 10 m outside the
+  wall, and which the PO now has in hand for the camera-angle decision.
+
 - _(2026-08-15)_ **C5 done — the game makes noise, and three things that were silently broken
   aren't.** The clips had been in the repo since A5 doing nothing: one prefab used three of
   them, half the scenes had no music, and every other sound field was empty.

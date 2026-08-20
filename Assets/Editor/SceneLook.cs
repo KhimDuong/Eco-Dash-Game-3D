@@ -24,6 +24,7 @@ public static class SceneLook
     {
         var sun = Sun(look);
         Ambient(look);
+        Sky(look, profileDir, sun);
         var profile = Profile(look, profileDir);
 
         var go = GameObject.Find("PostProcessing") ?? new GameObject("PostProcessing");
@@ -99,6 +100,64 @@ public static class SceneLook
                 RenderSettings.fog = false;
                 break;
         }
+    }
+
+    /// <summary>
+    /// The sky. All three scenes shipped on Unity's default skybox, which is the same blue
+    /// everywhere and belongs to none of them — most visible in Level 1, where the valley now
+    /// has hills to see over its walls and so has a horizon at all.
+    ///
+    /// <para>No asset is sourced for this: Unity's built-in <c>Skybox/Procedural</c> shader
+    /// takes a tint, a ground colour, an atmosphere thickness and an exposure, which is enough
+    /// to put a bleached smoggy haze over the farm and a cold overcast over the factory. The
+    /// material is written next to the scene, like the volume profile, so it survives a
+    /// rebuild and Smart Merge can still read the scene file.</para>
+    /// </summary>
+    static void Sky(Look look, string dir, Light sun)
+    {
+        Directory.CreateDirectory(dir);
+        string path = dir + "/Sky_" + look + ".mat";
+
+        var sky = AssetDatabase.LoadAssetAtPath<Material>(path);
+        if (sky == null)
+        {
+            sky = new Material(Shader.Find("Skybox/Procedural"));
+            AssetDatabase.CreateAsset(sky, path);
+        }
+
+        switch (look)
+        {
+            case Look.Farm:      // smog held in the valley: yellow-grey, sun burning through it
+                sky.SetColor("_SkyTint", new Color(0.62f, 0.58f, 0.45f));
+                sky.SetColor("_GroundColor", new Color(0.32f, 0.28f, 0.22f));
+                sky.SetFloat("_AtmosphereThickness", 1.75f);
+                sky.SetFloat("_Exposure", 1.15f);
+                sky.SetFloat("_SunSize", 0.06f);
+                sky.SetFloat("_SunDisk", 2f);
+                break;
+            case Look.Factory:   // a lid of cold cloud over the plant; no sun disk to find
+                sky.SetColor("_SkyTint", new Color(0.34f, 0.38f, 0.46f));
+                sky.SetColor("_GroundColor", new Color(0.10f, 0.10f, 0.12f));
+                sky.SetFloat("_AtmosphereThickness", 0.85f);
+                sky.SetFloat("_Exposure", 0.70f);
+                sky.SetFloat("_SunSize", 0.02f);
+                sky.SetFloat("_SunDisk", 0f);
+                break;
+            case Look.Hub:       // the one clean sky in the game
+                sky.SetColor("_SkyTint", new Color(0.48f, 0.62f, 0.80f));
+                sky.SetColor("_GroundColor", new Color(0.36f, 0.34f, 0.30f));
+                sky.SetFloat("_AtmosphereThickness", 1.05f);
+                sky.SetFloat("_Exposure", 1.30f);
+                sky.SetFloat("_SunSize", 0.05f);
+                sky.SetFloat("_SunDisk", 2f);
+                break;
+        }
+
+        EditorUtility.SetDirty(sky);
+        RenderSettings.skybox = sky;
+        // The procedural sky puts its sun disk where this light points; without it Unity picks
+        // the brightest directional light in the scene, which is not guaranteed to be ours.
+        RenderSettings.sun = sun;
     }
 
     static VolumeProfile Profile(Look look, string dir)
@@ -181,6 +240,8 @@ public static class SceneLook
         {
             var data = cam.GetComponent<UniversalAdditionalCameraData>();
             if (data == null) continue;
+            // A camera on Solid Color never draws the skybox, however well the sky is authored.
+            cam.clearFlags = CameraClearFlags.Skybox;
             data.renderPostProcessing = true;
             data.antialiasing = AntialiasingMode.FastApproximateAntialiasing;
             EditorUtility.SetDirty(data);

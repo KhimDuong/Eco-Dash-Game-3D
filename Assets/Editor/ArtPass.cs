@@ -62,6 +62,7 @@ public static class ArtPass
         Player();
         EnemyKit();
         FarmProps();
+        VillageKit();
         FarmInteractables();
         Villagers();
         FactoryKit();
@@ -191,11 +192,22 @@ public static class ArtPass
         // open. rock_tallA is the boulder-shaped one; the fence keeps its own 1 m scale for
         // the same reason (a 1 m-tall Kenney fence panel would be 2.9 m wide).
         Prop(Greybox + "Greybox_Rock.prefab", ArtKit.Nature + "rock_tallA.fbx", 0.70f);
-        Prop(Greybox + "Greybox_Fence.prefab", ArtKit.Nature + "fence_planksDouble.fbx", 0f);
-        Prop(Greybox + "Greybox_Hut.prefab", ArtKit.Survival + "structure-roof.fbx", 2.60f);
+        // The fence keeps its 1 m panel width — the 2D layout posts them one metre apart, and a
+        // Kenney panel fitted to a 1 m *height* would be 2.9 m across — but it gets stretched
+        // vertically. At its import proportions it stands 0.35 m, which next to a 1.75 m
+        // villager reads as a ladder lying on the ground rather than as a fence.
+        TallFence(Greybox + "Greybox_Fence.prefab", 2.4f);
+        // Greybox_Hut is built by VillageKit now — the Survival Kit "hut" it used to wear is an
+        // open scaffold roof, not a house.
 
         // The dead tree keeps its two-node shape: the trunk owns the collider, the crown never
         // had one so the player can walk under the canopy.
+        //
+        // It also has to ask for its colour now. Before cycle 2 this model was "dead" only by
+        // accident — the Nature Kit's own leafsDark imported as a washed-out turquoise. With
+        // ArtKit's palette repainting that back to the deep green Kenney meant, an unrecoloured
+        // tree_thin_dark is a *healthy* tree, and Level 1's 38 dead trees would all come back
+        // to life. The dead read is a deliberate recolour from here on.
         Edit(Greybox + "Greybox_DeadTree.prefab", root =>
         {
             var trunk = root.transform.Find("Trunk");
@@ -204,7 +216,8 @@ public static class ArtPass
             trunk.localPosition = Vector3.zero;
             trunk.localScale = Vector3.one;
 
-            var art = ArtKit.Spawn(ArtKit.Nature + "tree_thin_dark.fbx", trunk, 2.60f);
+            var art = ArtKit.Spawn(ArtKit.Nature + "tree_thin_dark.fbx", trunk, 2.60f,
+                                   variant: "Dead", recolour: DeadWoodPalette);
             if (art != null && trunk.TryGetComponent<CapsuleCollider>(out var cap))
             {
                 cap.center = new Vector3(0f, 1.30f, 0f);
@@ -212,8 +225,14 @@ public static class ArtPass
                 cap.height = 2.60f;
                 cap.direction = 1;
             }
-            Log.AppendLine("Greybox_DeadTree: nature-kit dead tree (2.6 m), trunk collider refit");
+            Log.AppendLine("Greybox_DeadTree: nature-kit tree, recoloured dead (2.6 m)");
         });
+
+        // B1: the valley is not uniformly dead. Same prefab shape, same trunk collider, living
+        // canopy — Level1Builder plants these where people still live and where the highland
+        // spring still runs, so the polluted plain's dead trees read as a contrast.
+        LivingTree("Greybox_TreeOak", "tree_oak", 3.40f, 0.26f);
+        LivingTree("Greybox_TreePine", "tree_pineTallA", 4.20f, 0.22f);
 
         // Ground and boundary keep their ProBuilder geometry — ReclamationPatch re-tints the
         // floor tile by tile as its wave passes, so the tiling has to survive.
@@ -226,6 +245,57 @@ public static class ArtPass
         {
             Paint(root.transform, ArtKit.SolidMaterial("FarmBoundary", new Color(0.30f, 0.28f, 0.22f)));
             Log.AppendLine("Greybox_Wall: earth-bank material (fence posts tiled by Level1Builder)");
+        });
+    }
+
+    /// <summary>
+    /// The fence panel at its own width but <paramref name="stretchY"/> times its height, with
+    /// the box collider following. Raising a 0.35 m collider to 0.85 m changes nothing about
+    /// what it blocks — a CharacterController was never stepping over either — so this is a
+    /// look-only change.
+    /// </summary>
+    static void TallFence(string prefabPath, float stretchY)
+    {
+        Edit(prefabPath, root =>
+        {
+            var t = root.transform;
+            Strip(t);
+            t.localScale = Vector3.one;
+
+            var art = ArtKit.Spawn(ArtKit.Nature + "fence_planksDouble.fbx", t, 0f);
+            if (art == null) return;
+            var s = art.transform.localScale;
+            art.transform.localScale = new Vector3(s.x, s.y * stretchY, s.z);
+
+            var size = ArtKit.Measure(art).size;
+            if (root.TryGetComponent<BoxCollider>(out var box))
+            {
+                box.size = size;
+                box.center = new Vector3(0f, size.y * 0.5f, 0f);
+            }
+            Log.AppendLine($"Greybox_Fence: fence_planksDouble stretched to " +
+                           $"{size.x:F2}x{size.y:F2}x{size.z:F2} m, collider refit");
+        });
+    }
+
+    /// <summary>
+    /// A living tree, cloned off the dead one so the two-node shape (trunk owns the collider,
+    /// canopy has none so the player walks under it) is identical by construction.
+    /// </summary>
+    static void LivingTree(string name, string model, float height, float radius)
+    {
+        Variant(Greybox + "Greybox_DeadTree.prefab", Greybox + name + ".prefab", root =>
+        {
+            var trunk = root.transform.Find("Trunk");
+            ArtKit.Spawn(ArtKit.Nature + model + ".fbx", trunk, height);
+            if (trunk.TryGetComponent<CapsuleCollider>(out var cap))
+            {
+                cap.center = new Vector3(0f, height * 0.5f, 0f);
+                cap.radius = radius;
+                cap.height = height;
+                cap.direction = 1;
+            }
+            Log.AppendLine($"{name}: {model} ({height:F1} m), living canopy");
         });
     }
 
@@ -267,6 +337,133 @@ public static class ArtPass
                            $"{System.IO.Path.GetFileNameWithoutExtension(modelPath)} " +
                            $"({size.x:F2}x{size.y:F2}x{size.z:F2} m), collider refit");
         });
+    }
+
+    // --- cycle 2: the village kit -----------------------------------------------------------
+
+    /// <summary>
+    /// One Fantasy Town module, in metres — a cottage's whole footprint. Villagers are 1.75 m,
+    /// so a one-storey cottage stands 2.9 m to the ridge and a two-storey one 4.8 m.
+    ///
+    /// <para>1.9 m and not more because the 2D layout puts two of the pen's four huts 2.24 m
+    /// apart: at the 2.2 m this started out as, those two interpenetrated.</para>
+    /// </summary>
+    const float Cell = 1.9f;
+
+    /// <summary>
+    /// B4: the village. Kenney's Survival Kit — the pack the four huts were built from — has no
+    /// houses in it at all, only open scaffold frames, which is why the "làng" read as a fence
+    /// with four lean-tos. The Fantasy Town Kit does, as modules: one wall panel, one roof cap,
+    /// assembled here.
+    ///
+    /// <para><see cref="Greybox_Hut"/> is rebuilt in place rather than replaced, so the four
+    /// huts the 2D layout already places become real houses without touching the CSV.</para>
+    /// </summary>
+    static void VillageKit()
+    {
+        // Kenney ships this kit's colours as an atlas of flat bands, and the 2.0 download only
+        // carries "variation-a" — whose roof band is lavender. The walls sample brown wood and
+        // grey plaster and are kept as they import; the roof gets a solid material instead, so
+        // the hamlet reads thatch-and-tile rather than purple.
+        Cottage(Greybox + "Greybox_Hut.prefab", "wall-wood", false,
+                new Color(0.52f, 0.40f, 0.21f));
+        Cottage(Greybox + "Greybox_House.prefab", "wall", true,
+                new Color(0.58f, 0.29f, 0.20f));
+
+        // Single-piece village dressing. Each is its own prefab because Level1Builder places
+        // them as instances and the stalls/fountain need to stop the player walking through.
+        Solid(Greybox + "Greybox_Stall.prefab", ArtKit.Town + "stall-red.fbx", 2.30f);
+        Solid(Greybox + "Greybox_Cart.prefab", ArtKit.Town + "cart.fbx", 0.90f);
+        // The fountain is a wide, shallow basin: fitting it by height would blow a 2 m
+        // bowl out to 6 m across.
+        Solid(Greybox + "Greybox_Fountain.prefab", ArtKit.Town + "fountain-round.fbx", 0.45f);
+    }
+
+    /// <summary>
+    /// Assemble a cottage inside an existing prefab: four wall panels round one module cell,
+    /// a pyramid roof on top, and the root's box collider refit to the result.
+    ///
+    /// <para>The kit is authored on a 1 m grid with each wall panel lying on the <b>−X edge</b>
+    /// of its cell, so the four walls are the same model at 0/90/180/270° — west, north, east,
+    /// south. The door faces south because that is the side Greenie approaches every village
+    /// building from.</para>
+    /// </summary>
+    static void Cottage(string prefabPath, string wall, bool twoStorey, Color roofColour)
+    {
+        Stub(prefabPath, "Obstacle");
+        Edit(prefabPath, root =>
+        {
+            Strip(root.transform);
+            root.transform.localScale = Vector3.one;
+
+            int storeys = twoStorey ? 2 : 1;
+            for (int s = 0; s < storeys; s++)
+            {
+                float y = s * Cell;
+                // West and east stay blank walls; north takes a window, south the door on the
+                // ground floor and a window above it.
+                Module(root.transform, wall, 0f, y);
+                Module(root.transform, wall + "-window-shutters", 90f, y);
+                Module(root.transform, wall, 180f, y);
+                Module(root.transform, s == 0 ? wall + "-door" : wall + "-window-shutters", 270f, y);
+            }
+
+            var roof = ArtKit.SpawnModule(ArtKit.Town + "roof-point.fbx", root.transform, Cell,
+                                          cell: new Vector3(0f, storeys * Cell, 0f));
+            Paint(roof.transform, ArtKit.SolidMaterial(
+                "VillageRoof_" + ColorUtility.ToHtmlStringRGB(roofColour), roofColour), all: true);
+
+            float height = (storeys + 0.5f) * Cell;
+            if (root.TryGetComponent<BoxCollider>(out var box))
+            {
+                box.size = new Vector3(Cell, height, Cell);
+                box.center = new Vector3(0f, height * 0.5f, 0f);
+            }
+            Log.AppendLine($"{System.IO.Path.GetFileNameWithoutExtension(prefabPath)}: " +
+                           $"{storeys}-storey {wall} cottage ({Cell:F1} m footprint, {height:F1} m ridge)");
+        });
+    }
+
+    static void Module(Transform root, string model, float rotY, float y) =>
+        ArtKit.SpawnModule(ArtKit.Town + model + ".fbx", root, Cell, rotY, new Vector3(0f, y, 0f));
+
+    /// <summary>A one-model prop prefab with a box collider fitted to its art.</summary>
+    static void Solid(string prefabPath, string modelPath, float height)
+    {
+        Stub(prefabPath, "Obstacle");
+        Edit(prefabPath, root =>
+        {
+            Strip(root.transform);
+            root.transform.localScale = Vector3.one;
+            var art = ArtKit.Spawn(modelPath, root.transform, height);
+            if (art == null) return;
+            var size = ArtKit.Measure(art).size;
+            if (root.TryGetComponent<BoxCollider>(out var box))
+            {
+                box.size = size;
+                box.center = new Vector3(0f, size.y * 0.5f, 0f);
+            }
+            Log.AppendLine($"{System.IO.Path.GetFileNameWithoutExtension(prefabPath)}: " +
+                           $"{System.IO.Path.GetFileNameWithoutExtension(modelPath)} " +
+                           $"({size.x:F2}x{size.y:F2}x{size.z:F2} m)");
+        });
+    }
+
+    /// <summary>
+    /// Make sure a prefab exists before <see cref="Edit"/> opens it, so the village kit can
+    /// introduce new prefabs and still be re-runnable. Existing prefabs are left untouched —
+    /// only the art inside them is rebuilt.
+    /// </summary>
+    static void Stub(string prefabPath, string layer)
+    {
+        if (AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath) != null) return;
+        var stub = new GameObject(System.IO.Path.GetFileNameWithoutExtension(prefabPath))
+        {
+            layer = LayerMask.NameToLayer(layer),
+        };
+        stub.AddComponent<BoxCollider>();
+        PrefabUtility.SaveAsPrefabAsset(stub, prefabPath);
+        UnityEngine.Object.DestroyImmediate(stub);
     }
 
     // --- Level 1 interactables -------------------------------------------------------------------
@@ -322,8 +519,11 @@ public static class ArtPass
         // is *which floor is unsafe*, so these keep their discs and get honest materials.
         Edit(Greybox + "ToxicMud.prefab", root =>
         {
+            // Dark enough to read as a sludge pit. At the mid-green it had, a 7 x 5 m pool under
+            // the farm's warm key light came out lighter than the grass around it and the two
+            // biggest pools looked like lawn rugs laid on the dirt.
             Paint(root.transform.Find("Pool"), ArtKit.SolidMaterial(
-                "ToxicMud", new Color(0.20f, 0.26f, 0.14f), 0.65f, new Color(0.10f, 0.18f, 0.05f)));
+                "ToxicMud", new Color(0.10f, 0.13f, 0.07f), 0.75f, new Color(0.06f, 0.11f, 0.02f)));
             Log.AppendLine("ToxicMud: wet toxic-sludge material (flat pool kept)");
         });
 
@@ -389,6 +589,17 @@ public static class ArtPass
         ("Brown2", new Color(0.30f, 0.10f, 0.12f)),
         ("LightBlue", new Color(0.20f, 0.20f, 0.23f)),    // black trousers
         ("Beige", new Color(0.78f, 0.77f, 0.73f)),        // grey hair under the nón lá
+    };
+
+    /// <summary>
+    /// A tree the smoke has killed: grey-brown canopy, near-black bark. Only Level 1's dead
+    /// trees and the Slime King's grove ask for it — every other Nature Kit model keeps
+    /// <see cref="ArtKit"/>'s shared palette.
+    /// </summary>
+    static readonly (string, Color)[] DeadWoodPalette =
+    {
+        ("leafsDark", new Color(0.33f, 0.29f, 0.22f)),
+        ("woodBarkDark", new Color(0.24f, 0.20f, 0.16f)),
     };
 
     /// <summary>Slime Chúa: the same mesh as a Plastic Slime, gone bruised-purple and gold-eyed.</summary>

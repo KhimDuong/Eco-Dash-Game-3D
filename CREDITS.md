@@ -19,21 +19,49 @@ Template for a new entry:
 ## 3D models & materials — third-party
 
 All of it is **CC0** (public domain) — no attribution is legally required for any
-row below. We credit anyway, per our policy. Imported in **B5** (the P3 art pass).
+row below. We credit anyway, per our policy. Imported in **B5** (the P3 art pass),
+except the Fantasy Town Kit, which cycle 2 added.
 
 ### Nature Kit — by Kenney
-- **Used for:** Level 1's trees, dead trees, rocks, bushes, grass, flowers,
-  mushrooms, stumps, fence posts and the teleport gate's stone ring.
+- **Used for:** Level 1's trees (living and dead), rocks, bushes, grass, flowers,
+  mushrooms, stumps, fence posts, the teleport gate's stone ring, and — new in
+  cycle 2 — the cliff blocks that make up the highland mesa and the hills beyond
+  every boundary wall, plus the spring's bank props, lilies and canoe.
 - **Source:** https://kenney.nl/assets/nature-kit
 - **Author:** Kenney (Kenney Vleugels) — https://kenney.nl
 - **License:** CC0 1.0
 - **Files:** `Assets/Models/ThirdParty/Kenney_NatureKit/` (FBX + License.txt)
-- **Modifications:** none to the models. The pack's OBJ/GLTF/DAE/STL copies and
+- **Modifications:** no mesh is touched. The pack's OBJ/GLTF/DAE/STL copies and
   isometric sprite renders were dropped on import — FBX only, to keep the repo small.
+  **All 23 of its material colours are re-authored at spawn time** by
+  `ArtKit.NaturePalette`: this is the one pack here that ships no texture, and the
+  colours baked into its FBX files are a washed-out pastel set (`leafsGreen` imports
+  as turquoise, `dirt` and `stone` as near-white), which is why the valley's grass
+  and rocks rendered cyan until cycle 2. The originals are left untouched on disk;
+  the repaint writes shared copies under `Assets/Models/Materials/ThirdParty/`.
+
+### Fantasy Town Kit — by Kenney
+- **Used for:** the village. `Greybox_Hut` (the 2D layout's four huts) and
+  `Greybox_House` are assembled from its modular `wall-wood` / `wall` panels and
+  `roof-point` cap; the market stalls, hand cart, fountain and lanterns are its
+  single-piece props, in both Level 1's village district and the hub's yard.
+- **Source:** https://kenney.nl/assets/fantasy-town-kit
+- **Author:** Kenney — https://kenney.nl
+- **License:** CC0 1.0 (stated in the pack's own `License.txt`, kept alongside it)
+- **Files:** `Assets/Models/ThirdParty/Kenney_FantasyTownKit/` (167 FBX + Textures +
+  License.txt); the GLB and OBJ copies and the per-model preview renders were dropped
+  on import.
+- **Modifications:** the pack's texture ships as `variation-a.png` while its FBX
+  materials ask for one named `colormap`, so Unity's recursive-up material search
+  bound all 167 models to **Cube Pets'** atlas instead. Renamed to `colormap.png`
+  inside the pack so each model finds its own. Roofs are painted with a solid
+  thatch/terracotta material because the shipped variation's roof band is lavender.
 
 ### Survival Kit — by Kenney
 - **Used for:** the chest, crates, barrels, litter bottles, item pickups, the
-  rustic hut and the hub's crafting bench.
+  hub's crafting bench and the crates, barrels and planks stacked in its yard.
+  (It supplied the rustic hut until cycle 2 — this pack has no houses in it, only
+  open scaffold frames, so the village moved to the Fantasy Town Kit.)
 - **Source:** https://kenney.nl/assets/survival-kit
 - **Author:** Kenney — https://kenney.nl
 - **License:** CC0 1.0

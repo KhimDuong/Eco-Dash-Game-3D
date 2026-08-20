@@ -80,6 +80,8 @@ public static class HubBuilder
 
         Floor();
         Walls();
+        TerrainKit.Surround(envRoot, log.Builder, HalfX, HalfZ, 20260821);
+        Yard();
 
         // The 2D hub's own placements, (x, y) -> (x, z).
         Place("MrBear", new Vector3(0f, 0f, 2.4f), "MrBear");
@@ -137,6 +139,84 @@ public static class HubBuilder
         go.transform.position = pos;
         go.transform.localScale = scale;
         GameObjectUtility.SetStaticEditorFlags(go, StaticEditorFlags.BatchingStatic);
+    }
+
+    /// <summary>
+    /// Cycle 2: the station yard. The hub was five objects in an 18 × 14 m grey box — the one
+    /// place the player returns to between stages, and the emptiest room in the game. This fills
+    /// the edges with the recycling work the station is supposedly doing, and with the greenery
+    /// the design doc's "Stardew community-centre" note asks for.
+    ///
+    /// <para>Everything here is dressing spawned straight from the art kits rather than prefab
+    /// instances, exactly as Level 1's ground scatter is: no colliders, nothing interactive, so
+    /// none of it can get between the player and Ông Bear, the bench or the two portals.</para>
+    /// </summary>
+    static void Yard()
+    {
+        var yard = new GameObject("Yard").transform;
+        yard.SetParent(envRoot, false);
+
+        // Sorted recycling along the north wall, behind the shop counter.
+        var stock = new (string pack, string model, float height, float x, float z, float rotY)[]
+        {
+            (ArtKit.Survival, "box-large", 1.10f, -7.2f, 5.4f, 15f),
+            (ArtKit.Survival, "box", 0.85f, -5.7f, 5.9f, -25f),
+            (ArtKit.Survival, "box", 0.85f, -6.6f, 3.9f, 40f),
+            (ArtKit.Survival, "barrel", 0.95f, -4.8f, 5.7f, 0f),
+            (ArtKit.Survival, "barrel-open", 0.95f, 5.0f, 5.6f, 0f),
+            (ArtKit.Survival, "box-large", 1.10f, 6.4f, 5.3f, -12f),
+            (ArtKit.Survival, "resource-planks", 0.55f, 7.3f, 4.2f, 70f),
+            (ArtKit.Factory, "pipe-large-long", 1.00f, -8.0f, 0.5f, 90f),
+            (ArtKit.Factory, "pipe-large-long", 1.00f, -8.0f, -1.5f, 90f),
+            (ArtKit.Factory, "screen-flat", 1.20f, 8.0f, 1.4f, -90f),
+            (ArtKit.Town, "cart", 0.90f, -7.4f, -3.2f, 30f),
+            (ArtKit.Town, "stall-red", 2.20f, 7.0f, -1.6f, -90f),
+        };
+        int props = 0;
+        foreach (var (pack, model, height, x, z, rotY) in stock)
+        {
+            var holder = new GameObject(model);
+            holder.transform.SetParent(yard, false);
+            holder.transform.position = new Vector3(x, 0f, z);
+            if (ArtKit.Spawn(pack + model + ".fbx", holder.transform, height, rotY) == null) continue;
+            GameObjectUtility.SetStaticEditorFlags(holder, StaticEditorFlags.BatchingStatic);
+            props++;
+        }
+
+        // Green things: what the station is for.
+        var green = new (string model, float height, float x, float z)[]
+        {
+            ("tree_oak", 3.40f, -7.8f, 2.6f),
+            ("tree_oak", 3.00f, 7.9f, 3.4f),
+            ("plant_bush", 0.70f, -3.2f, 5.9f),
+            ("plant_bush", 0.60f, 3.4f, 5.9f),
+            ("plant_bushLarge", 0.85f, -8.1f, -5.4f),
+            ("plant_bushLarge", 0.85f, 8.1f, -5.4f),
+            ("flower_yellowA", 0.35f, -2.0f, 6.0f),
+            ("flower_redA", 0.35f, 2.2f, 6.0f),
+            ("grass_large", 0.0f, -5.6f, -5.8f),
+            ("grass_large", 0.0f, 5.6f, -5.8f),
+        };
+        foreach (var (model, height, x, z) in green)
+        {
+            var holder = new GameObject(model);
+            holder.transform.SetParent(yard, false);
+            holder.transform.position = new Vector3(x, 0f, z);
+            if (ArtKit.Spawn(ArtKit.Nature + model + ".fbx", holder.transform, height) == null) continue;
+            GameObjectUtility.SetStaticEditorFlags(holder, StaticEditorFlags.BatchingStatic);
+            props++;
+        }
+
+        foreach (var (x, z) in new[] { (-4.2f, -4.6f), (4.2f, -4.6f), (0f, 5.8f) })
+        {
+            var holder = new GameObject("Lantern");
+            holder.transform.SetParent(yard, false);
+            holder.transform.position = new Vector3(x, 0f, z);
+            ArtKit.Spawn(ArtKit.Town + "lantern.fbx", holder.transform, 2.6f);
+            props++;
+        }
+
+        log.Line("  yard: " + props + " dressing props (no colliders)");
     }
 
     static GameObject Place(string prefabName, Vector3 pos, string name)
@@ -567,6 +647,7 @@ public static class HubBuilder
     class StringBuilderLog
     {
         readonly System.Text.StringBuilder sb = new();
+        public System.Text.StringBuilder Builder => sb;
         public void Line(string s) => sb.AppendLine(s);
         public override string ToString() => sb.ToString();
     }

@@ -123,6 +123,26 @@ Rules that keep it working:
   ships two baked-in **directional lights**; one per fly-bot would blow out the level.
   `ArtKit.Spawn` always strips lights.
 
+### Two import checks to run on every new pack (learned in cycle 2)
+
+1. **Is the texture named what the models ask for?** A Kenney FBX asks for `colormap`.
+   Unity's material search is **recursive-up**, so a pack whose texture is called anything
+   else binds to whichever *other* pack under `ThirdParty/` has a `colormap.png`. The
+   Fantasy Town Kit ships `variation-a.png` and all 167 of its models imported wearing Cube
+   Pets' atlas — no warning, no error, just wrong colours. Rename to `colormap.png` on import.
+2. **Is `Textures/` empty?** Then the pack is flat-shaded and its material colours *are* its
+   art — and they may be wrong. The Nature Kit's are a pastel placeholder set (`leafsGreen`
+   imports as turquoise), which is why Level 1's vegetation rendered cyan through all of
+   cycle 1. Render one model before trusting it; corrections go in `ArtKit.NaturePalette`,
+   keyed by material name so the shared batch survives, and get noted in
+   [CREDITS.md](CREDITS.md) under **Modifications**.
+
+Also worth knowing: **the Survival Kit has no houses.** Its `structure*.fbx` pieces are open
+scaffold frames, not buildings — which is what B4 discovered the hard way. Village buildings
+come from the Fantasy Town Kit, assembled from modular walls and a roof cap by
+`ArtPass.Cottage` via `ArtKit.SpawnModule` (which, unlike `Spawn`, keeps a module's
+deliberately off-centre pivot).
+
 ## Greybox placeholders (the P3 art pass replaced these)
 
 Until art is sourced, everything visual is **ProBuilder/primitive greybox**,

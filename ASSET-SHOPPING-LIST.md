@@ -1,5 +1,10 @@
 # Asset Shopping List — BA5
 
+> **Status: acted on.** Tier 0 is now wired up, and Tier 1 resolved as predicted —
+> no ground texture and no skybox asset were needed. **One pack was sourced that
+> this list did not anticipate: Kenney's Fantasy Town Kit**, because the reasoning
+> below had a hole in it. See [What actually happened](#what-actually-happened).
+>
 > Owned by **Gia Khang & Đức Anh** (Business Analyst, [CYCLE-2-TASKS.md § 4](CYCLE-2-TASKS.md)).
 > Feeds into `GAP-ANALYSIS.md`'s asset section and expands
 > [CYCLE-2-TASKS.md § 6](CYCLE-2-TASKS.md).
@@ -107,3 +112,65 @@ ends here. **Đức Anh (has the editor) owns the import** for anything in Tier
 1 that gets picked, and owns **all** of Tier 0 — which is pure editor/code
 work (`ArtPass.cs` rows, level-builder additions), not sourcing, so it never
 needed Khang's browser time in the first place.
+
+---
+
+## What actually happened
+
+Written after the work, so the next sourcing pass inherits the corrections rather
+than the guesses.
+
+**Tier 0 held up.** The cliffs, river tiles, living trees and pond props were all
+there and all usable; the mesa, the hills, the spring and the village greenery are
+built entirely from models the project already owned. Two corrections to the table
+above, both learned by measuring rather than reading filenames:
+
+- The **cliff blocks are 1 m cubes with a grass cap that is a fixed fraction of
+  their own height.** Scaling one to 2 × 4 × 2 to make a taller cliff stretches
+  that cap into a metre-thick slab of green, and the result reads as a layer cake.
+  They have to be scaled uniformly and *stacked*.
+- The **ground/river/path tiles are 1 × 1 m and ~5 cm thick.** Anything that fits
+  a model by height — which is what the art pass does everywhere else — scales a
+  5 cm tile by 60×.
+
+**Tier 1 resolved exactly as recommended.** No ground texture was sourced (the
+denser scatter plus three earth tones did the job), and the built-in procedural
+sky was enough — `SceneLook.Sky` tunes it per scene and no skybox asset was needed.
+The pre-written CREDITS row below went unused.
+
+### The gap: Survival Kit has no houses
+
+The table above lists seven unused `structure*.fbx` pieces under "village structures
+(B4)". **They are not buildings.** Rendering them shows open wooden scaffold frames —
+four posts and a beam — which is also why the existing `Greybox_Hut` (`structure-roof`)
+read as a lean-to rather than a house. Nothing in the Survival Kit, the Nature Kit or
+the Factory Kit is a house, so B4 could not have been built from Tier 0 at all.
+
+Sourced instead, and now in [CREDITS.md](CREDITS.md):
+
+### Fantasy Town Kit — by Kenney
+- **Used for:** the village — `Greybox_Hut` and `Greybox_House` are assembled from
+  its modular wall and roof pieces; the stalls, cart, fountain and lanterns are
+  single-piece props.
+- **Source:** https://kenney.nl/assets/fantasy-town-kit
+  (direct: `https://kenney.nl/media/pages/assets/fantasy-town-kit/efe948d309-1754222374/kenney_fantasy-town-kit_2.0.zip`)
+- **Author:** Kenney — https://kenney.nl
+- **License:** CC0 1.0 — stated in the pack's own `License.txt`, which is kept
+  alongside the models: *"You can use this content for personal, educational, and
+  commercial purposes… crediting is not a requirement."*
+- **Files:** `Assets/Models/ThirdParty/Kenney_FantasyTownKit/` (167 FBX + Textures +
+  License.txt, 5.1 MB; GLB/OBJ copies and preview renders dropped)
+- **Modifications:** its texture ships as `variation-a.png` but its FBX materials ask
+  for `colormap` — renamed so the models stop binding to Cube Pets' atlas. Roofs are
+  painted solid because the shipped variation's roof band is lavender.
+
+**Two things worth knowing before sourcing the next Kenney pack:**
+
+1. **Check the texture filename matches what the FBX asks for.** Unity's recursive-up
+   material search will happily bind a new pack to a *different pack's* `colormap.png`
+   if the new one is named anything else. All 167 Fantasy Town models silently imported
+   wearing Cube Pets' colours. Nothing warns you.
+2. **A pack that ships no texture may ship no usable colours either.** The Nature Kit's
+   FBX materials are a pastel placeholder set (`leafsGreen` = turquoise), which is why
+   Level 1's vegetation was cyan for the whole of cycle 1. If a candidate pack has an
+   empty `Textures/` folder, render one of its models before trusting it.

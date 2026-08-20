@@ -22,6 +22,12 @@ using UnityEngine;
 /// <item><b>Nothing that leaks into the scene.</b> The Quaternius flying robot ships two
 /// baked-in <b>directional lights</b> (intensity 4.3); one per fly-bot would blow out the
 /// whole level. Lights are always stripped.</item>
+/// <item><b>Colours the pack did not actually mean.</b> Kenney's Nature Kit is the one pack
+/// here that ships <i>no</i> texture — every model is flat-shaded off its material colour —
+/// and the colours baked into its FBX files are a washed-out pastel set:
+/// <c>leafsGreen</c> imports as turquoise (0.44, 0.90, 0.84), <c>dirt</c> and <c>stone</c>
+/// as near-white. That is why Level 1's grass and rocks rendered cyan.
+/// <see cref="NaturePalette"/> repaints all 23 of them, once, into shared materials.</item>
 /// </list>
 /// </summary>
 public static class ArtKit
@@ -30,6 +36,7 @@ public static class ArtKit
     public const string Survival = "Assets/Models/ThirdParty/Kenney_SurvivalKit/";
     public const string Factory = "Assets/Models/ThirdParty/Kenney_FactoryKit/";
     public const string Pets = "Assets/Models/ThirdParty/Kenney_CubePets/";
+    public const string Town = "Assets/Models/ThirdParty/Kenney_FantasyTownKit/";
     public const string Quat = "Assets/Models/ThirdParty/Quaternius/";
 
     const string MatDir = "Assets/Models/Materials/ThirdParty/";
@@ -157,6 +164,39 @@ public static class ArtKit
         return go;
     }
 
+    /// <summary>
+    /// Instantiate a model at a plain uniform scale, keeping <b>its own pivot</b> — no
+    /// grounding, no centring.
+    ///
+    /// <para><see cref="Spawn"/> is for swapping one greybox mesh for one model, so it centres
+    /// what it places. A modular kit is the opposite: Fantasy Town's wall panel deliberately
+    /// sits on the −X edge of its 1 m cell so that four of them, rotated 0/90/180/270°, enclose
+    /// the cell. Centring each one would stack all four in the middle of the house.</para>
+    /// </summary>
+    /// <param name="cell">Offset from the parent, already in world metres.</param>
+    public static GameObject SpawnModule(string assetPath, Transform parent, float scale,
+                                         float rotY = 0f, Vector3 cell = default)
+    {
+        var source = Load(assetPath);
+        if (source == null) return null;
+
+        var go = (GameObject)PrefabUtility.InstantiatePrefab(source, parent);
+        PrefabUtility.UnpackPrefabInstance(go, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
+        go.name = "Art_" + Path.GetFileNameWithoutExtension(assetPath);
+
+        foreach (var light in go.GetComponentsInChildren<Light>(true))
+            Object.DestroyImmediate(light.gameObject.GetComponent<Light>());
+        foreach (var animator in go.GetComponentsInChildren<Animator>(true))
+            Object.DestroyImmediate(animator);
+
+        Retarget(go, assetPath, null, null);
+
+        go.transform.localPosition = cell;
+        go.transform.localRotation = Quaternion.Euler(0f, rotY, 0f);
+        go.transform.localScale = Vector3.one * scale;
+        return go;
+    }
+
     /// <summary>Scale to a target height, ground the pivot, then rotate about Y.</summary>
     static void Fit(GameObject go, float height, float rotY, float lift)
     {
@@ -212,14 +252,16 @@ public static class ArtKit
     // --- materials ----------------------------------------------------------------------------
 
     /// <summary>
-    /// Swap every glTF material for a saved URP/Lit equivalent. Kenney's FBX materials already
-    /// import as URP/Lit and are left alone.
+    /// Swap every glTF material for a saved URP/Lit equivalent, and repaint the Nature Kit's
+    /// pastel FBX materials off <see cref="NaturePalette"/>. The other Kenney packs carry a
+    /// <c>colormap</c> texture and are left alone.
     /// </summary>
     static void Retarget(GameObject go, string assetPath, string variant,
                          (string material, Color colour)[] recolour)
     {
         string model = Path.GetFileNameWithoutExtension(assetPath);
         if (!string.IsNullOrEmpty(variant)) model += "_" + variant;
+        bool untextured = assetPath.StartsWith(Nature) || assetPath.StartsWith(Town);
 
         foreach (var r in go.GetComponentsInChildren<Renderer>(true))
         {
@@ -227,12 +269,89 @@ public static class ArtKit
             bool changed = false;
             for (int i = 0; i < mats.Length; i++)
             {
-                if (mats[i] == null || !mats[i].shader.name.Contains("glTF")) continue;
-                mats[i] = ToUrp(mats[i], model, recolour);
-                changed = true;
+                if (mats[i] == null) continue;
+                if (mats[i].shader.name.Contains("glTF"))
+                {
+                    mats[i] = ToUrp(mats[i], model, recolour);
+                    changed = true;
+                }
+                else if (untextured)
+                {
+                    var repainted = Repaint(mats[i], variant, recolour);
+                    if (repainted == null) continue;
+                    mats[i] = repainted;
+                    changed = true;
+                }
             }
             if (changed) r.sharedMaterials = mats;
         }
+    }
+
+    /// <summary>
+    /// The intended look of the two packs whose colour lives in materials rather than in a
+    /// texture, re-authored. The Nature Kit's own values are the ones the pack's preview renders
+    /// show — green foliage, brown bark and earth, grey stone — none of which survived into its
+    /// FBX materials. The Fantasy Town Kit is textured except for its one untextured
+    /// <c>Water</c> material, which imports near-white and turns the fountain into a metal pad.
+    /// Anything not listed here is left as the pack imported it.
+    /// </summary>
+    static readonly Dictionary<string, (Color colour, float smoothness)> NaturePalette = new()
+    {
+        { "Water",        (new Color(0.22f, 0.52f, 0.68f), 0.90f) },   // Fantasy Town's fountain
+        { "grass",        (new Color(0.38f, 0.58f, 0.27f), 0f) },
+        { "leafsGreen",   (new Color(0.33f, 0.54f, 0.24f), 0f) },
+        { "leafsDark",    (new Color(0.21f, 0.37f, 0.19f), 0f) },
+        { "leafsFall",    (new Color(0.74f, 0.44f, 0.15f), 0f) },
+        { "dirt",         (new Color(0.47f, 0.35f, 0.23f), 0f) },
+        { "dirtDark",     (new Color(0.34f, 0.25f, 0.16f), 0f) },
+        { "stone",        (new Color(0.44f, 0.45f, 0.46f), 0f) },
+        { "stoneDark",    (new Color(0.32f, 0.33f, 0.35f), 0f) },
+        { "wood",         (new Color(0.58f, 0.41f, 0.25f), 0f) },
+        { "woodDark",     (new Color(0.40f, 0.28f, 0.17f), 0f) },
+        { "woodBark",     (new Color(0.42f, 0.30f, 0.19f), 0f) },
+        { "woodBarkDark", (new Color(0.28f, 0.20f, 0.14f), 0f) },
+        { "woodBirch",    (new Color(0.80f, 0.77f, 0.70f), 0f) },
+        { "woodInner",    (new Color(0.70f, 0.53f, 0.33f), 0f) },
+        { "water",        (new Color(0.18f, 0.45f, 0.62f), 0.85f) },
+        { "colorRed",     (new Color(0.70f, 0.20f, 0.17f), 0f) },
+        { "colorRedDark", (new Color(0.48f, 0.12f, 0.11f), 0f) },
+        { "colorPurple",  (new Color(0.47f, 0.30f, 0.63f), 0f) },
+        { "colorYellow",  (new Color(0.83f, 0.68f, 0.18f), 0f) },
+        { "colorTan",     (new Color(0.71f, 0.57f, 0.36f), 0f) },
+        { "colorWhite",   (new Color(0.85f, 0.84f, 0.79f), 0f) },
+        { "corn",         (new Color(0.80f, 0.66f, 0.26f), 0f) },
+        { "_defaultMat",  (new Color(0.53f, 0.54f, 0.55f), 0f) },
+    };
+
+    /// <summary>
+    /// A shared repaint of one Nature Kit material, or null to leave it alone. The cache key is
+    /// the material name — <b>not</b> the model — so all 300 Nature Kit models keep sharing one
+    /// "grass" and one "stone" and stay in a single batch. A caller-supplied
+    /// <paramref name="recolour"/> asks for a private copy instead, keyed by variant.
+    /// </summary>
+    static Material Repaint(Material source, string variant,
+                            (string material, Color colour)[] recolour)
+    {
+        Color? overridden = null;
+        if (recolour != null)
+            foreach (var (name, colour) in recolour)
+                if (name == source.name) overridden = colour;
+
+        if (overridden == null && !NaturePalette.ContainsKey(source.name)) return null;
+
+        var entry = NaturePalette.TryGetValue(source.name, out var p) ? p : (colour: Color.white, smoothness: 0f);
+        var final = overridden ?? entry.colour;
+        // A recolour must never write through to the shared entry, or the one prop that asked
+        // for a private colour repaints every other model that uses that material.
+        string key = overridden == null
+            ? "Nature_" + source.name
+            : "Nature_" + (string.IsNullOrEmpty(variant)
+                ? ColorUtility.ToHtmlStringRGB(final) : variant) + "_" + source.name;
+
+        if (converted.TryGetValue(key, out var cached) && cached != null) return cached;
+        var mat = SolidMaterial(Sanitise(key), final, entry.smoothness);
+        converted[key] = mat;
+        return mat;
     }
 
     static readonly Dictionary<string, Material> converted = new();

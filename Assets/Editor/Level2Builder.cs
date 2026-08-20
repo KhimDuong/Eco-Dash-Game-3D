@@ -67,6 +67,10 @@ public static class Level2Builder
         // knocks 12 of its 40 props out of the running. Litter has the whole floor to choose
         // from, so it is the one that can afford to work around the other.
         gameplayOccupied = occupied.Count;
+        // The maze's floor is laid room by room, so the camera looks straight through the gaps
+        // between rooms onto the skybox — a black hole in the middle of a lit factory.
+        TerrainKit.Underlay(envRoot, log, Vector2.zero, new Vector2(260f, 260f),
+                            new Color(0.13f, 0.14f, 0.16f));
         Dress();
         ScatterLitter();
         PlaceSystems();

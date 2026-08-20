@@ -54,6 +54,7 @@ public static class Level1Builder
         AddExtras();
         BossGrove();
         WireChestsAndGate();
+        TerrainKit.Level1(envRoot, propRoot, occupied, log, HalfX, HalfZ);
         Dress();
         PlaceSystems();
         SetupLighting();
@@ -77,6 +78,19 @@ public static class Level1Builder
         var parent = new GameObject("Ground").transform;
         parent.SetParent(envRoot, false);
 
+        // Three near-identical earths rather than one. The tiles have to stay separate meshes for
+        // ReclamationPatch to re-tint them one at a time, and 192 of them sharing a single flat
+        // brown made the valley read as a painted plane; a few percent of variation per tile
+        // breaks that up without ever looking like a checkerboard. The patch's runtime tint goes
+        // through a MaterialPropertyBlock, so it still overrides whichever of the three a tile got.
+        var earths = new[]
+        {
+            ArtKit.SolidMaterial("FarmGround", new Color(0.42f, 0.38f, 0.26f)),
+            ArtKit.SolidMaterial("FarmGround_B", new Color(0.44f, 0.395f, 0.275f)),
+            ArtKit.SolidMaterial("FarmGround_C", new Color(0.405f, 0.365f, 0.25f)),
+        };
+        var soil = new System.Random(20260820);
+
         int nx = Mathf.RoundToInt(HalfX * 2f / Tile);      // 16 tiles across
         int nz = Mathf.RoundToInt(HalfZ * 2f / Tile);      // 12 tiles deep
         int n = 0;
@@ -89,11 +103,13 @@ public static class Level1Builder
                 var t = (GameObject)PrefabUtility.InstantiatePrefab(floor, parent);
                 t.name = $"Floor_{i}_{j}";
                 t.transform.position = new Vector3(x, -0.25f, z);   // slab top sits at y = 0
+                if (t.TryGetComponent<Renderer>(out var r))
+                    r.sharedMaterial = earths[soil.Next(earths.Length)];
                 GameObjectUtility.SetStaticEditorFlags(t, StaticEditorFlags.BatchingStatic);
                 n++;
             }
         }
-        log.AppendLine("ground: " + n + " tiles (" + nx + "x" + nz + " @ " + Tile + " m)");
+        log.AppendLine("ground: " + n + " tiles (" + nx + "x" + nz + " @ " + Tile + " m), 3 earth tones");
     }
 
     static void BuildWalls()
@@ -491,18 +507,22 @@ public static class Level1Builder
             posts += Post(parent, new Vector3(HalfX - 0.6f, 0f, z), -90f);
         }
 
-        // Deterministic so a rebuild reproduces the same valley.
+        // Deterministic so a rebuild reproduces the same valley. Weighted toward grass: at the
+        // old 320-over-3185-m² density the ground read as one flat brown plane with the odd
+        // pebble on it, and only three of the eight models were green.
         var rng = new System.Random(20260812);
         string[] detail =
         {
-            ArtKit.Nature + "grass.fbx", ArtKit.Nature + "grass_large.fbx",
-            ArtKit.Nature + "plant_bushSmall.fbx", ArtKit.Nature + "stone_smallA.fbx",
-            ArtKit.Nature + "stone_smallFlatA.fbx", ArtKit.Nature + "flower_yellowA.fbx",
+            ArtKit.Nature + "grass.fbx", ArtKit.Nature + "grass.fbx",
+            ArtKit.Nature + "grass_large.fbx", ArtKit.Nature + "grass_large.fbx",
+            ArtKit.Nature + "plant_bushSmall.fbx", ArtKit.Nature + "plant_bush.fbx",
+            ArtKit.Nature + "stone_smallA.fbx", ArtKit.Nature + "stone_smallFlatA.fbx",
+            ArtKit.Nature + "flower_yellowA.fbx", ArtKit.Nature + "flower_redA.fbx",
             ArtKit.Nature + "mushroom_tan.fbx", ArtKit.Nature + "stump_old.fbx",
         };
 
         int scattered = 0;
-        for (int i = 0; i < 320; i++)
+        for (int i = 0; i < 900; i++)
         {
             var p = new Vector3(
                 (float)(rng.NextDouble() * (HalfX * 2f - 6f) - (HalfX - 3f)), 0f,
@@ -517,6 +537,7 @@ public static class Level1Builder
             GameObjectUtility.SetStaticEditorFlags(holder, StaticEditorFlags.BatchingStatic);
             scattered++;
         }
+
         log.AppendLine("  dressing: " + posts + " fence posts, " + scattered + " ground details");
     }
 
