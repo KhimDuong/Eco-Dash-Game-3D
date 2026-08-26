@@ -129,6 +129,15 @@ village of Fantasy Town cottages around the 2D layout's four huts, living trees,
 ground cover and a tuned procedural sky; the hub has a dressed yard instead of five objects
 in a grey box, and Level 2 no longer shows skybox through the gaps in its maze floor.
 
+The environment pass then went through QA
+([QA/exploratory-pass-2026-08-26.md](QA/exploratory-pass-2026-08-26.md)) and **C1–C7 are
+fixed**: the spring is a wade volume Greenie walks into (and Seeds fly over), the mesa is a
+collider per column instead of one box standing in 6.5 m² of open ground, the hub yard and
+the three interactables are solid, reclamation blooms as a circle instead of repainting whole
+4 m tiles, and the ground's three earth tones no longer read as a checkerboard. C8 (the mesa's
+layer-cake silhouette) and R1 (undulating ground) are deliberately deferred — R1 would change
+golden rule #1 and put combat at risk, and is a PO call.
+
 Next up: the three unplaced side-quest NPCs (Bé Mây, Ông Tài, Cô Lan — the village district
 B4 built is where they would live), a full manual playthrough + ~30-min time-budget check,
 the A2 demo video, and the submission build.
@@ -174,7 +183,11 @@ prefab — the next rebuild would throw it away.
 1. **Height is presentation, hitting things is XZ.** Greenie's Seeds fly flat at y ≈ 0.6,
    so anything that leaves the ground still needs a hurtbox reaching the ground plane or
    it is simply unkillable — and anything that *shoots* him has to fire at his chest, not
-   from the top of its own model.
+   from the top of its own model. The same arithmetic runs the other way for a blocker:
+   **size it against the cross-section it blocks at, not its widest one.** The spring's
+   sphere was sunk so its equator sat underground, which left it 3.09 m wide at Greenie's
+   shins and stopped him 0.45 m short of the water — while its *top* reached y = 2.00 and
+   ate every Seed fired across the pool. One sphere, two defects.
    See [architecture.md](.claude/docs/architecture.md#flying-enemies-need-two-colliders-c2).
 2. **Only the visual is ever swapped.** Colliders, trigger radii and the toggled-child
    pairs (`Visual_Open`/`Visual_Locked`, `Lid`/`Hole`, `Visual_Unconscious`/`Visual_Awake`)
@@ -189,7 +202,12 @@ prefab — the next rebuild would throw it away.
    middle. Modular pieces go through `ArtKit.SpawnModule`, which keeps their own pivot.
    And **fitting by height only works on a model roughly as tall as it is wide**: a 5 cm
    ground tile asked for a 3 m height scales 60×, and a 2 m fountain basin asked for 0.9 m
-   comes out 6.4 m across.
+   comes out 6.4 m across. The flip side of "only the visual": **`ArtKit.Spawn` places a
+   visual and never a collider**, so anything a generator spawns straight from an art kit is
+   a ghost — the hub's whole 25-prop yard, Ông Bear, and Level 1's 2.6 m lanterns all were.
+   The generator calls `ArtKit.Solidify` for that (never the art pass), and it fits its box
+   in the *holder's* frame, so a turned prop is turned by its holder or it only gets its
+   bounding rectangle.
    See [architecture.md](.claude/docs/architecture.md#the-art-pass-is-generated-too-b5).
 3. **`HitFlash` owns an enemy's resting colour.** It caches that colour in `Awake` and
    repaints it after every flash, so a lasting tint (the boss's enrage) must go through

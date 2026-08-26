@@ -78,18 +78,29 @@ public static class Level1Builder
         var parent = new GameObject("Ground").transform;
         parent.SetParent(envRoot, false);
 
-        // Three near-identical earths rather than one. The tiles have to stay separate meshes for
-        // ReclamationPatch to re-tint them one at a time, and 192 of them sharing a single flat
-        // brown made the valley read as a painted plane; a few percent of variation per tile
-        // breaks that up without ever looking like a checkerboard. The patch's runtime tint goes
-        // through a MaterialPropertyBlock, so it still overrides whichever of the three a tile got.
+        // Three near-identical earths rather than one: 192 tiles sharing a single flat brown made
+        // the valley read as a painted plane. That was the intent last time too, and it came out
+        // as a checkerboard (QA C6) for two compounding reasons, both fixed here.
+        //
+        // The spread was 0.035 on the widest channel — 8.6% of the base colour, roughly triple
+        // the "few percent" the tiles want; it is +-0.006 now, about 2.9%.
+        //
+        // And the material was drawn per tile from a die roll, so two neighbours could differ by
+        // the whole spread along a dead-straight 4 m seam, which is the one thing natural ground
+        // never has. Smooth noise over (i, j) instead puts neighbours in the same band and the
+        // grid stops being legible.
+        //
+        // The tiles still have to stay separate meshes: GroundCleanser repaints them one at a
+        // time, and its runtime tint goes through a MaterialPropertyBlock, so it overrides
+        // whichever of the three a tile got.
         var earths = new[]
         {
-            ArtKit.SolidMaterial("FarmGround", new Color(0.42f, 0.38f, 0.26f)),
-            ArtKit.SolidMaterial("FarmGround_B", new Color(0.44f, 0.395f, 0.275f)),
-            ArtKit.SolidMaterial("FarmGround_C", new Color(0.405f, 0.365f, 0.25f)),
+            ArtKit.SolidMaterial("FarmGround", new Color(0.420f, 0.380f, 0.260f)),
+            ArtKit.SolidMaterial("FarmGround_B", new Color(0.426f, 0.386f, 0.266f)),
+            ArtKit.SolidMaterial("FarmGround_C", new Color(0.414f, 0.374f, 0.254f)),
         };
         var soil = new System.Random(20260820);
+        float drift = (float)soil.NextDouble() * 128f;   // deterministic, but not on a lattice node
 
         int nx = Mathf.RoundToInt(HalfX * 2f / Tile);      // 16 tiles across
         int nz = Mathf.RoundToInt(HalfZ * 2f / Tile);      // 12 tiles deep
@@ -104,12 +115,19 @@ public static class Level1Builder
                 t.name = $"Floor_{i}_{j}";
                 t.transform.position = new Vector3(x, -0.25f, z);   // slab top sits at y = 0
                 if (t.TryGetComponent<Renderer>(out var r))
-                    r.sharedMaterial = earths[soil.Next(earths.Length)];
+                {
+                    // ~7 tiles per noise period. At 3 the bands still changed at 47% of the 356
+                    // tile edges and the grid stayed readable, just fainter; this drops it to a
+                    // quarter, so what is left reads as patches of earth rather than as a lattice.
+                    float shade = Mathf.PerlinNoise(drift + i * 0.145f, drift + j * 0.145f);
+                    r.sharedMaterial = shade < 0.44f ? earths[2] : shade < 0.58f ? earths[0] : earths[1];
+                }
                 GameObjectUtility.SetStaticEditorFlags(t, StaticEditorFlags.BatchingStatic);
                 n++;
             }
         }
-        log.AppendLine("ground: " + n + " tiles (" + nx + "x" + nz + " @ " + Tile + " m), 3 earth tones");
+        log.AppendLine("ground: " + n + " tiles (" + nx + "x" + nz + " @ " + Tile + " m), " +
+                       "3 earth tones within 2.9%, picked by smooth noise");
     }
 
     static void BuildWalls()

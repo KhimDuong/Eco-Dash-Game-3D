@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Text;
+using Unity.AI.Navigation;
 using UnityEditor;
 using UnityEngine;
 
@@ -215,19 +216,56 @@ public static class TerrainKit
     /// which is exactly what the first attempt at these hills looked like. Stacking keeps every
     /// cap in proportion, and a stacked cube hides the cap of the one under it.</para>
     /// </summary>
-    static float Stack(Transform parent, Vector3 at, float size, int count)
+    /// <param name="solid">
+    /// Give each column its own collider. Only the mesa wants this — the outer hills stand past
+    /// the boundary walls where the player can never reach them, and colliding scenery there
+    /// would only spend NavMesh budget.
+    /// </param>
+    static float Stack(Transform parent, Vector3 at, float size, int count, bool solid = false)
     {
+        Bounds? rock = null;
         for (int i = 0; i < count; i++)
         {
             var holder = new GameObject("Rock");
             holder.transform.SetParent(parent, false);
             holder.transform.position = at + new Vector3(0f, i * size, 0f);
             string face = rng.Next(3) == 0 ? "cliff_block_stone" : "cliff_block_rock";
-            ArtKit.SpawnModule(ArtKit.Nature + face + ".fbx", holder.transform, size,
-                               rng.Next(4) * 90f);
+            var art = ArtKit.SpawnModule(ArtKit.Nature + face + ".fbx", holder.transform, size,
+                                         rng.Next(4) * 90f);
             GameObjectUtility.SetStaticEditorFlags(holder, StaticEditorFlags.BatchingStatic);
+
+            if (!solid || art == null) continue;
+            var b = ArtKit.Measure(art);
+            if (rock == null) rock = b;
+            else { var grown = rock.Value; grown.Encapsulate(b); rock = grown; }
         }
+        if (solid && rock != null) Column(parent, rock.Value);
         return count * size;
+    }
+
+    /// <summary>
+    /// One box per built column, tracing the rock that is actually there.
+    ///
+    /// <para>The mesa used to carry a single <see cref="BoxCollider"/> sized to the bounds of
+    /// every cell that got built. The intent was right — a full-grid box would have stopped the
+    /// player short of thin air — but <see cref="Bounds.Encapsulate"/> yields an axis-aligned
+    /// rectangle and the whole point of the silhouette is that it is <i>not</i> one: the cells
+    /// the height rule rolled empty fell inside it, leaving 6.5 m² of invisible wall in open
+    /// ground and phantom corners up to 1.75 m deep (QA C3). A box per column is exact, and the
+    /// three dozen of them are static and batched.</para>
+    /// </summary>
+    static void Column(Transform parent, Bounds rock)
+    {
+        var go = new GameObject("Column");
+        go.layer = LayerMask.NameToLayer("Obstacle");
+        go.transform.SetParent(parent, false);
+        go.transform.position = new Vector3(rock.center.x, 0f, rock.center.z);
+        var box = go.AddComponent<BoxCollider>();
+        // Grown down to the ground: the cubes are stacked up from y = 0, and a box floating at
+        // the mesh's own min would let the player walk in under the lowest tier.
+        box.size = new Vector3(rock.size.x, rock.max.y, rock.size.z);
+        box.center = new Vector3(0f, rock.max.y * 0.5f, 0f);
+        GameObjectUtility.SetStaticEditorFlags(go, StaticEditorFlags.BatchingStatic);
     }
 
     /// <summary>Points along the perimeter of a rectangle, spaced roughly <paramref name="step"/> apart.</summary>
@@ -262,8 +300,7 @@ public static class TerrainKit
         const float cell = 1.4f;
         int nx = Mathf.RoundToInt(MesaSize.x / cell), nz = Mathf.RoundToInt(MesaSize.y / cell);
         var summits = new List<Vector3>();
-        var footprint = new Bounds(new Vector3(MesaCentre.x, 0f, MesaCentre.y), Vector3.zero);
-        int placed = 0;
+        int placed = 0, columns = 0;
         for (int i = 0; i < nx; i++)
         {
             for (int j = 0; j < nz; j++)
@@ -279,20 +316,12 @@ public static class TerrainKit
 
                 var at = new Vector3(MesaCentre.x + (i - (nx - 1) * 0.5f) * cell, 0f,
                                      MesaCentre.y + (j - (nz - 1) * 0.5f) * cell);
-                float top = Stack(root.transform, at, cell, n);
+                float top = Stack(root.transform, at, cell, n, solid: true);
                 placed += n;
-                footprint.Encapsulate(new Bounds(at, new Vector3(cell, 0f, cell)));
+                columns++;
                 if (n >= 2) summits.Add(new Vector3(at.x, top, at.z));
             }
         }
-
-        // Sized to the rock that actually got built, not to the grid it was laid out on — the
-        // ragged edge leaves whole cells empty and a full-grid box would stop the player short
-        // of thin air.
-        var box = root.AddComponent<BoxCollider>();
-        box.size = new Vector3(footprint.size.x, MesaHeight, footprint.size.z);
-        box.center = new Vector3(footprint.center.x - MesaCentre.x, MesaHeight * 0.5f,
-                                 footprint.center.z - MesaCentre.y);
 
         // Pines on the summit — the only living trees in the valley the smoke never reached.
         // Planted on columns that were actually built, at that column's own top, because the
@@ -310,7 +339,7 @@ public static class TerrainKit
 
         Reserve(MesaCentre, nx * cell * 0.5f + 1.5f);
         log.AppendLine($"  highlands: {placed} rock cubes ({nx * cell:F1}x{nz * cell:F1} m, " +
-                       $"{MesaHeight:F1} m), {pines} summit pines, one box collider");
+                       $"{MesaHeight:F1} m), {pines} summit pines, {columns} column colliders");
     }
 
     /// <summary>
@@ -338,15 +367,28 @@ public static class TerrainKit
             "SpringWater", new Color(0.20f, 0.48f, 0.64f), 0.90f);
         GameObjectUtility.SetStaticEditorFlags(disc, StaticEditorFlags.BatchingStatic);
 
-        // Sunk so its widest part is below the surface: at ground level it blocks a little
-        // inside the visible rim, which lets the player stand on the bank instead of stopping
-        // short of it.
-        var blocker = new GameObject("Blocker");
-        blocker.layer = LayerMask.NameToLayer("Obstacle");
-        blocker.transform.SetParent(root, false);
-        var sphere = blocker.AddComponent<SphereCollider>();
-        sphere.radius = PondRadius;
-        sphere.center = new Vector3(0f, -1.4f, 0f);
+        // Nothing solid over the water. The old blocker was a sphere of this radius sunk to
+        // center.y = -1.4, meant to let the player stand on the bank; a sphere cut at Greenie's
+        // shins is narrower than at its equator, so it stopped him 0.45 m short of water he
+        // could see (QA C1) — and its top reached y = 2.00, four times his own 0.60 m fire
+        // height, so it quietly destroyed every Seed fired across the pool (QA C2).
+        var wade = new GameObject("Wade");
+        wade.layer = LayerMask.NameToLayer("Water");
+        wade.transform.SetParent(root, false);
+        var trigger = wade.AddComponent<SphereCollider>();
+        trigger.isTrigger = true;
+        trigger.radius = PondRadius;
+        trigger.center = new Vector3(0f, 0.4f, 0f);   // around the player's waist, not his shins
+        wade.AddComponent<WaterWade>();
+
+        // The slimes still keep to the bank — carved out of the NavMesh rather than walled off,
+        // so the water stops what walks without standing in the way of what flies over it.
+        var carve = new GameObject("NoSwim");
+        carve.transform.SetParent(root, false);
+        var volume = carve.AddComponent<NavMeshModifierVolume>();
+        volume.size = new Vector3(PondRadius * 2f, 2f, PondRadius * 2f);
+        volume.center = new Vector3(0f, 0.5f, 0f);
+        volume.area = 1;                              // "Not Walkable"
 
         int rim = 0;
         for (int i = 0; i < 26; i++)
@@ -379,11 +421,13 @@ public static class TerrainKit
         var canoe = new GameObject("Canoe");
         canoe.transform.SetParent(root, false);
         canoe.transform.localPosition = new Vector3(1.9f, 0f, -3.1f);
-        ArtKit.Spawn(ArtKit.Nature + "canoe.fbx", canoe.transform, 0.55f, 25f);
+        canoe.transform.localRotation = Quaternion.Euler(0f, 25f, 0f);   // turn the holder, not the hull
+        var hull = ArtKit.Spawn(ArtKit.Nature + "canoe.fbx", canoe.transform, 0.55f);
+        ArtKit.Solidify(canoe, hull, minHeight: 0.4f);
 
         Reserve(PondCentre, PondRadius + 1.5f);
-        log.AppendLine($"  spring: {PondRadius * 2f:F1} m pool at the mesa's foot, " +
-                       $"{rim} bank props, 4 lilies, a beached canoe");
+        log.AppendLine($"  spring: {PondRadius * 2f:F1} m wade pool at the mesa's foot, " +
+                       $"{rim} bank props, 4 lilies, a solid beached canoe");
     }
 
     /// <summary>A flat, unlit-blue water quad with no collider — outer scenery only.</summary>
@@ -466,7 +510,9 @@ public static class TerrainKit
             var holder = new GameObject("Lantern");
             holder.transform.SetParent(root, false);
             holder.transform.position = new Vector3(x, 0f, z);
-            ArtKit.Spawn(ArtKit.Town + "lantern.fbx", holder.transform, 2.6f);
+            var post = ArtKit.Spawn(ArtKit.Town + "lantern.fbx", holder.transform, 2.6f);
+            // A 2.6 m post you walk through is the same tell as the hub's props (QA C7).
+            ArtKit.Solidify(holder, post, maxHalfExtent: 0.3f);
             Reserve(new Vector2(x, z), 1.2f);
         }
 

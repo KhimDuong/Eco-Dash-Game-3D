@@ -11,15 +11,24 @@ using UnityEngine;
 /// brief asks for — <i>swap materials in a radius</i>. The patch is a flat disc lying
 /// on the ground: on <see cref="Reveal"/> it grows from nothing to
 /// <see cref="radius"/> while its colour lerps barren → lush, so the green still
-/// ripples outward from the centre. Any renderer tagged as ground inside the radius
-/// is re-tinted as the wave passes it, which sells the reclamation on the terrain
-/// itself rather than only on the decal.</para>
+/// ripples outward from the centre.</para>
+///
+/// <para><b>The disc carries the beat on its own.</b> The patch could also re-tint the
+/// ground renderers the wave sweeps over (<see cref="tintSurroundings"/>), and did until
+/// QA C5: the floor's smallest repaintable unit is a whole 4 m tile, so a 3.5 m circle
+/// turned up to eight 16 m² squares solid green and the valley's payoff beat rendered as
+/// a Tetris shape with 90° corners — 432 m² of green from four discs totalling 154 m².
+/// The decal is already a circle, already animates outward and already lands in the right
+/// place, so it is left to do the job alone and its radius was raised to compensate.
+/// Tinting the terrain itself needs the ground to stop being 192 flat tiles, which is the
+/// same structural change undulating terrain would need; the two should be costed
+/// together.</para>
 /// </summary>
 public class ReclamationPatch : MonoBehaviour
 {
     [Header("Reveal")]
     [Tooltip("Final radius of the reclaimed disc, in metres.")]
-    [SerializeField] float radius = 3.5f;
+    [SerializeField] float radius = 4.5f;
     [Tooltip("Seconds for the wave to travel from the centre to the rim.")]
     [SerializeField] float revealDuration = 0.9f;
 
@@ -30,8 +39,10 @@ public class ReclamationPatch : MonoBehaviour
     [SerializeField] Renderer discRenderer;
 
     [Header("Spread to the ground around it")]
-    [Tooltip("Also re-tint ground/prop renderers the wave sweeps over.")]
-    [SerializeField] bool tintSurroundings = true;
+    [Tooltip("Also re-tint whole ground tiles the wave sweeps over. Off: the floor is 192 flat " +
+             "4 m tiles and one renderer is the smallest thing this can repaint, so the round " +
+             "wave comes out as a Tetris shape of hard-edged green squares (QA C5).")]
+    [SerializeField] bool tintSurroundings;
     [SerializeField] LayerMask surroundingsMask = ~0;
 
     bool revealed;

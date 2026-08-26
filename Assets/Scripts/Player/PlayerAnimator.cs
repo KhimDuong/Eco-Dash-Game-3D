@@ -29,6 +29,17 @@ public class PlayerAnimator : MonoBehaviour
     [Tooltip("Degrees per second the visual turns to face the move direction.")]
     [SerializeField] float turnSpeed = 720f;
 
+    /// <summary>
+    /// A vertical offset added to the visual's rest height, in metres — negative sinks Greenie.
+    /// Used by <see cref="WaterWade"/> so he reads as standing <i>in</i> the spring.
+    ///
+    /// <para>This class owns <c>visual.localPosition</c>: it rewrites it from
+    /// <c>baseLocalPos</c> every frame, so anything that moves the mesh by writing the transform
+    /// directly is scrubbed off on the very next Update — the same ownership trap as
+    /// <see cref="HitFlash"/> and an enemy's resting colour. Offsets come through here.</para>
+    /// </summary>
+    public float SinkOffset { get; set; }
+
     Vector3 baseLocalPos;
     Vector3 baseScale;
     float bobPhase;
@@ -61,7 +72,7 @@ public class PlayerAnimator : MonoBehaviour
         bobPhase += Time.deltaTime * bobHz * Mathf.PI * 2f;
         float wave = Mathf.Sin(bobPhase);
 
-        visual.localPosition = baseLocalPos + new Vector3(0f, wave * amp, 0f);
+        visual.localPosition = baseLocalPos + new Vector3(0f, wave * amp + SinkOffset, 0f);
 
         // Squash/stretch only matters while moving; volume roughly preserved.
         float s = moving ? moveSquash : 0f;

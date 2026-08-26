@@ -135,12 +135,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6a280654b94b74042ab4544cbee47343, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ReclamationPatch
-  radius: 3.5
+  radius: 4.5
   revealDuration: 0.9
   barrenColor: {r: 0.42, g: 0.34, b: 0.24, a: 1}
   lushColor: {r: 0.3, g: 0.66, b: 0.28, a: 1}
   discRenderer: {fileID: 0}
-  tintSurroundings: 1
+  tintSurroundings: 0
   surroundingsMask:
     serializedVersion: 2
     m_Bits: 4294967295

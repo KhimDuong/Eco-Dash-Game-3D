@@ -238,6 +238,79 @@ public static class ArtKit
 
     static float Safe(float f) => Mathf.Approximately(f, 0f) ? 1f : f;
 
+    // --- solidity -----------------------------------------------------------------------------
+
+    /// <summary>
+    /// Give a spawned visual the collider it never had.
+    ///
+    /// <para><see cref="Spawn"/> and <see cref="SpawnModule"/> place a <i>visual</i> and nothing
+    /// else. That is right when the visual is swapped onto a greybox prefab that already carries
+    /// the gameplay collider, and wrong everywhere a generator spawns art directly: the hub yard's
+    /// 25 props, Level 1's three village lanterns and the beached canoe were all ghosts you could
+    /// walk through (QA C4/C7), and the mesa's ragged silhouette was traced by one axis-aligned
+    /// box that stood in 6.5 m² of open ground (QA C3).</para>
+    ///
+    /// <para>The box is fitted to the art's real bounds and lives on <paramref name="holder"/>,
+    /// not on the art, so the next art pass can replace the model without touching the physics.
+    /// Returns null when the prop is too small to be worth stopping — walking through a tuft of
+    /// grass is correct.</para>
+    /// </summary>
+    /// <remarks>
+    /// A turned prop should be turned by its <b>holder</b>, not by <see cref="Spawn"/>'s
+    /// <c>rotY</c>: the box is fitted in the holder's own frame, so a holder rotation gives an
+    /// oriented box while a rotation baked into the art only gives its bounding rectangle. The
+    /// beached canoe is a 3.4 x 1.0 m boat lying at 25°, which is a 2.3 x 3.5 m box the wrong
+    /// way — twice the footprint, right where the player now walks along the bank.
+    /// </remarks>
+    /// <param name="grounded">Stretch the box down to y = 0 so nothing can be walked under.</param>
+    /// <param name="minHeight">Props shorter than this stay walk-through.</param>
+    /// <param name="maxHalfExtent">Clamp the XZ half-size (keeps an interactable inside its own trigger).</param>
+    public static BoxCollider Solidify(GameObject holder, GameObject art, string layer = "Obstacle",
+                                       bool grounded = true, float minHeight = 0.5f,
+                                       float maxHalfExtent = 0f)
+    {
+        if (holder == null || art == null) return null;
+
+        // Measure() reports world-axis-aligned bounds, so a turned holder has to be squared up
+        // first or the box comes out as the prop's bounding rectangle rather than its footprint.
+        var t = holder.transform;
+        var turned = t.localRotation;
+        bool spun = turned != Quaternion.identity;
+        if (spun) t.localRotation = Quaternion.identity;
+
+        var world = Measure(art);
+        var scale = t.lossyScale;
+        var centre = t.InverseTransformPoint(world.center);
+        var size = new Vector3(world.size.x / Safe(scale.x),
+                               world.size.y / Safe(scale.y),
+                               world.size.z / Safe(scale.z));
+
+        if (spun) t.localRotation = turned;
+        if (world.size.y < minHeight) return null;
+
+        if (maxHalfExtent > 0f)
+        {
+            size.x = Mathf.Min(size.x, maxHalfExtent * 2f);
+            size.z = Mathf.Min(size.z, maxHalfExtent * 2f);
+        }
+
+        if (grounded)
+        {
+            // The holder sits on the ground, so local y = 0 is the floor: grow the box down to it.
+            float top = centre.y + size.y * 0.5f;
+            size.y = Mathf.Max(top, minHeight);
+            centre.y = size.y * 0.5f;
+        }
+
+        int id = LayerMask.NameToLayer(layer);
+        if (id >= 0) holder.layer = id; else Warn("no layer named '" + layer + "'");
+
+        var box = holder.AddComponent<BoxCollider>();
+        box.center = centre;
+        box.size = size;
+        return box;
+    }
+
     public static Transform FindDeep(Transform root, string name)
     {
         if (root.name == name) return root;

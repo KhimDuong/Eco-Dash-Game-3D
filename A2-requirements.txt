@@ -1,0 +1,7 @@
+Each group is required to design a 3D terrain area in Unity with basic elements such as trees, grass, sky, and different terrain elevations, including mountains, hills, rivers, lakes, or similar features. The environment should also be decorated with additional elements such as villages, houses, or other surrounding structures.
+
+After creating the terrain, each group must build or use a 3D character and implement basic keyboard controls so that the character can move around and explore the created environment.
+
+Each group must submit one video of approximately 30 seconds to 1 minute in length, recording the screen while pressing Play in the Unity Editor and demonstrating the completed environment and character movement. The recording must show the entire Unity Editor interface, not only the Game tab.
+
+The submitted video must be in .mp4 format, with a file size below 20 MB. The file must be named according to the format GroupXX-A2.mp4 (for example, Group01-A2.mp4 for Group 01)

@@ -347,9 +347,8 @@ stops the world ending in void. `Level1Builder` calls `TerrainKit.Level1` betwee
 and dressing; `HubBuilder` calls the cheaper `Surround`; `Level2Builder` calls `Underlay`.
 
 **None of it is climbable.** Golden rule #1 still holds — the play surface is the same flat
-slab at y = 0. The mesa is one `BoxCollider` and the spring one `SphereCollider`, both on
-Obstacle, so the NavMesh carves round them and the slimes path round them exactly as they
-would round a large rock. Everything beyond the boundary walls has no collider at all.
+slab at y = 0. The mesa is a `BoxCollider` per built column, the spring is a trigger with no
+solid in it at all, and everything beyond the boundary walls has no collider whatsoever.
 
 Three things this pass learned the hard way:
 
@@ -360,12 +359,97 @@ Three things this pass learned the hard way:
 - **Water coplanar with the ground z-fights it.** The spring's disc first sat with its top
   face at exactly y = 0 and rendered as a mottled mushroom-shaped stain. It sits 3 cm proud
   now; the bank props hide the lip.
+- **A blocker has to be sized against the cross-section it blocks at, not its widest one.**
+  The spring's blocker was a sphere of the water's own 3.40 m radius sunk to `center.y = -1.4`,
+  so that its widest part would sit below ground and the player could stand on the bank. It
+  does the opposite: cut at Greenie's shins the sphere is only 3.09 m across, and his own
+  0.35 m body radius stopped him **0.45 m short of water he could see** (QA C1). The same
+  sphere reached `y = 2.00` — four times his 0.60 m fire height — so it also destroyed every
+  Seed fired across the pool, fizzle VFX and all, in mid-air over open water (QA C2). Two
+  symptoms, one sphere.
 - **The camera decides how far out is worth building.** Pitch 50° with a 60° FOV puts the
   frustum's top plane on the ground 26.6 m ahead of the camera — about **19 m past
   Greenie**, and *nothing* beyond that is on screen at any height. The first ring of hills
   is 10 m outside the wall for that reason, and a lake placed 38 m out was invisible until
   it was moved in. See [PRODUCT-BACKLOG.md](../../PRODUCT-BACKLOG.md) for the numbers at
   other pitches.
+
+### Water you can stand in, and rock that is only where the rock is (cycle 2 QA)
+
+Two of the cycle-2 environment defects were the same mistake in different clothes: a collider
+standing in for a shape it does not have.
+
+**The spring is a wade volume now.** There is no solid over the water — deleting the blocker
+is what fixes the Seed-eating dome, because nothing non-trigger is left to fizzle on.
+[WaterWade.cs](../../Assets/Scripts/World/WaterWade.cs) is a trigger on the Water layer that
+borrows `PlayerController.EnterMud()` / `ExitMud()` for the slow, exactly as `ToxicMud` does,
+and eases `PlayerAnimator.SinkOffset` to -0.15 m so Greenie reads as standing *in* the pool.
+Three things it has to respect:
+
+- **`PlayerAnimator` owns `visual.localPosition`.** It rewrites it from `baseLocalPos` every
+  frame for the hover bob, so a dip written straight onto the transform is scrubbed off on the
+  next Update — the same ownership trap as `HitFlash` and an enemy's resting colour. Offsets go
+  through `SinkOffset`.
+- **The slimes are kept out by a `NavMeshModifierVolume`, not by physics.** Carving the NavMesh
+  stops what walks without standing in the way of what flies over it. The blocker used to be
+  what the bake tripped on; now nothing physical is involved.
+- **Enter/exit must be counted by collider, not by event.** Disabling a `CharacterController`
+  inside a trigger does not reliably raise `OnTriggerExit`, so a teleport or a respawn can
+  deliver a second `OnTriggerEnter` with no exit between — and one unbalanced pair leaves
+  Greenie permanently at half speed. `WaterWade` keeps a `HashSet<Collider>`, which cannot
+  double-count. `ToxicMud` has the same exposure and has simply never been teleported into.
+
+**The mesa gets one box per column.** `Mesa()` builds a ragged radial mound and deliberately
+skips cells that roll zero storeys — that broken edge is the whole point of the silhouette.
+Sizing one `BoxCollider` to `Bounds.Encapsulate` of the cells that *were* built gives an
+axis-aligned rectangle, and every skipped corner cell falls inside it: **6.5 m² of invisible
+wall in open ground, up to 1.75 m deep** (QA C3). `TerrainKit.Stack(..., solid: true)` now adds
+a box per column instead, which traces the real outline for free and re-measures to zero
+phantom points. `Stack` is shared with `OuterHills` and `Surround`, which must stay
+collider-free, so it is a parameter and not the default.
+
+### `ArtKit.Spawn` places a visual and never a collider (cycle 2 QA)
+
+Level 1's props look solid because they are greybox **prefabs** that carry their own colliders.
+Anything a generator spawns straight from an art kit is a ghost — the hub's entire 25-prop yard,
+Ông Bear, the recycling counter, the crafting bench, Level 1's three 2.6 m village lanterns and
+the beached canoe. The hub scene contained exactly five solid colliders: the floor and four
+walls (QA C4/C7). `ArtKit.Solidify(holder, art, ...)` fits a `BoxCollider` on the holder, on the
+Obstacle layer, and it is the generator that calls it — never the art pass, because colliders
+are the gameplay contract and B5 only ever swaps the visual.
+
+- **It fits in the holder's frame, so turn the holder and not the art.** A model rotated by
+  `Spawn`'s `rotY` can only be given its *bounding rectangle*: the beached canoe is a 3.4 × 1.0 m
+  boat lying at 25°, which comes out as a 2.3 × 3.5 m box — twice the footprint, right where the
+  player now walks along the bank. Rotating the holder instead gets 0.9 × 3.5 m.
+- **A tree is not its canopy.** An axis-aligned box around an oak is a box around the leaves;
+  two of them would swallow ~10 m² of the hub's 18 × 14 m room. Trees and lanterns pass
+  `maxHalfExtent` and get their trunk.
+- **An interactable's trigger radius is the contract; the body goes beside it.** The three hub
+  interactables were built by `Interactable()`, which grants one trigger sphere — the interaction
+  *range*, not a shape, which is why Greenie stood inside Ông Bear and vanished. They get a
+  separate `Solid` child carrying no `IInteractable`, clamped so `clamp + 0.35` (Greenie's own
+  radius) stays inside the trigger: the player stops 0.90 / 0.85 / 0.94 m out against radii of
+  1.10 / 1.00 / 1.00, so every E-prompt still fires.
+
+### The floor's smallest unit is a 4 m tile, and two beats forgot it (cycle 2 QA)
+
+Level 1's ground is 192 separate 4 m tiles — it has to be, because they are re-tinted one at a
+time. Two effects quantised to that grid and looked it:
+
+- **`ReclamationPatch` repainted whole tiles.** `TintWithin` does an `OverlapSphere` and re-tints
+  the entire renderer of each ground collider it touches, so a 3.5 m circle turned up to eight
+  16 m² squares solid green — the valley's payoff beat rendered as a Tetris shape with 90°
+  corners, 432 m² of green from four discs totalling 154 m² (QA C5). `tintSurroundings` is off;
+  the decal disc is already a circle, already animates outward, and its radius went 3.5 → 4.5 to
+  compensate. Tinting the terrain itself needs the ground to stop being 192 flat tiles, which is
+  the same structural change undulating terrain would need — cost them together.
+- **The three earth tones read as a checkerboard.** The spread was 0.035 on the widest channel,
+  8.6% of the base and about triple what "a few percent of variation" meant, and the material was
+  drawn per tile from a die roll — so two neighbours could differ by the whole spread along a
+  dead-straight 4 m seam, the one thing natural ground never has (QA C6). It is ±0.006 now
+  (2.9%), picked from `Mathf.PerlinNoise` over `(i, j)` at ~7 tiles per period, which drops the
+  edges where the tone changes from 67% (random) to 29%.
 
 ## Bosses bring their own UI (C3)
 

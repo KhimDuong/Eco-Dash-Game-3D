@@ -62,6 +62,7 @@ public static class HubBuilder
         // and C5's clips with it. Put both back before the scene instantiates them.
         log.Line(ArtPass.ReapplyHub().TrimEnd());
         log.Line(AudioPass.ReapplyHub().TrimEnd());
+        SolidifyInteractables();
 
         BuildScene();
         return log.ToString();
@@ -157,52 +158,66 @@ public static class HubBuilder
         yard.SetParent(envRoot, false);
 
         // Sorted recycling along the north wall, behind the shop counter.
-        var stock = new (string pack, string model, float height, float x, float z, float rotY)[]
+        //
+        // `clamp` is the largest XZ half-extent the prop's collider may take. 0 means "fit the
+        // model" — right for a box or a barrel, whose silhouette *is* its footprint. A tree is
+        // the opposite: an axis-aligned box around an oak is a box around its canopy, and two of
+        // those would swallow ~10 m² of an 18 x 14 m room, so a tree gets its trunk.
+        var stock = new (string pack, string model, float height, float x, float z, float rotY, float clamp)[]
         {
-            (ArtKit.Survival, "box-large", 1.10f, -7.2f, 5.4f, 15f),
-            (ArtKit.Survival, "box", 0.85f, -5.7f, 5.9f, -25f),
-            (ArtKit.Survival, "box", 0.85f, -6.6f, 3.9f, 40f),
-            (ArtKit.Survival, "barrel", 0.95f, -4.8f, 5.7f, 0f),
-            (ArtKit.Survival, "barrel-open", 0.95f, 5.0f, 5.6f, 0f),
-            (ArtKit.Survival, "box-large", 1.10f, 6.4f, 5.3f, -12f),
-            (ArtKit.Survival, "resource-planks", 0.55f, 7.3f, 4.2f, 70f),
-            (ArtKit.Factory, "pipe-large-long", 1.00f, -8.0f, 0.5f, 90f),
-            (ArtKit.Factory, "pipe-large-long", 1.00f, -8.0f, -1.5f, 90f),
-            (ArtKit.Factory, "screen-flat", 1.20f, 8.0f, 1.4f, -90f),
-            (ArtKit.Town, "cart", 0.90f, -7.4f, -3.2f, 30f),
-            (ArtKit.Town, "stall-red", 2.20f, 7.0f, -1.6f, -90f),
+            (ArtKit.Survival, "box-large", 1.10f, -7.2f, 5.4f, 15f, 0f),
+            (ArtKit.Survival, "box", 0.85f, -5.7f, 5.9f, -25f, 0f),
+            (ArtKit.Survival, "box", 0.85f, -6.6f, 3.9f, 40f, 0f),
+            (ArtKit.Survival, "barrel", 0.95f, -4.8f, 5.7f, 0f, 0f),
+            (ArtKit.Survival, "barrel-open", 0.95f, 5.0f, 5.6f, 0f, 0f),
+            (ArtKit.Survival, "box-large", 1.10f, 6.4f, 5.3f, -12f, 0f),
+            (ArtKit.Survival, "resource-planks", 0.55f, 7.3f, 4.2f, 70f, 0f),
+            (ArtKit.Factory, "pipe-large-long", 1.00f, -8.0f, 0.5f, 90f, 0f),
+            (ArtKit.Factory, "pipe-large-long", 1.00f, -8.0f, -1.5f, 90f, 0f),
+            (ArtKit.Factory, "screen-flat", 1.20f, 8.0f, 1.4f, -90f, 0f),
+            (ArtKit.Town, "cart", 0.90f, -7.4f, -3.2f, 30f, 0f),
+            (ArtKit.Town, "stall-red", 2.20f, 7.0f, -1.6f, -90f, 0f),
         };
-        int props = 0;
-        foreach (var (pack, model, height, x, z, rotY) in stock)
+        int props = 0, solid = 0;
+        foreach (var (pack, model, height, x, z, rotY, clamp) in stock)
         {
             var holder = new GameObject(model);
             holder.transform.SetParent(yard, false);
             holder.transform.position = new Vector3(x, 0f, z);
-            if (ArtKit.Spawn(pack + model + ".fbx", holder.transform, height, rotY) == null) continue;
+            // The turn goes on the holder so ArtKit.Solidify can fit an oriented box; the prop
+            // ends up in the same place either way, because Spawn centres it on the pivot.
+            holder.transform.rotation = Quaternion.Euler(0f, rotY, 0f);
+            var art = ArtKit.Spawn(pack + model + ".fbx", holder.transform, height);
+            if (art == null) continue;
+            if (ArtKit.Solidify(holder, art, maxHalfExtent: clamp) != null) solid++;
             GameObjectUtility.SetStaticEditorFlags(holder, StaticEditorFlags.BatchingStatic);
             props++;
         }
 
         // Green things: what the station is for.
-        var green = new (string model, float height, float x, float z)[]
+        var green = new (string model, float height, float x, float z, float clamp)[]
         {
-            ("tree_oak", 3.40f, -7.8f, 2.6f),
-            ("tree_oak", 3.00f, 7.9f, 3.4f),
-            ("plant_bush", 0.70f, -3.2f, 5.9f),
-            ("plant_bush", 0.60f, 3.4f, 5.9f),
-            ("plant_bushLarge", 0.85f, -8.1f, -5.4f),
-            ("plant_bushLarge", 0.85f, 8.1f, -5.4f),
-            ("flower_yellowA", 0.35f, -2.0f, 6.0f),
-            ("flower_redA", 0.35f, 2.2f, 6.0f),
-            ("grass_large", 0.0f, -5.6f, -5.8f),
-            ("grass_large", 0.0f, 5.6f, -5.8f),
+            ("tree_oak", 3.40f, -7.8f, 2.6f, 0.28f),
+            ("tree_oak", 3.00f, 7.9f, 3.4f, 0.28f),
+            ("plant_bush", 0.70f, -3.2f, 5.9f, 0f),
+            ("plant_bush", 0.60f, 3.4f, 5.9f, 0f),
+            ("plant_bushLarge", 0.85f, -8.1f, -5.4f, 0f),
+            ("plant_bushLarge", 0.85f, 8.1f, -5.4f, 0f),
+            ("flower_yellowA", 0.35f, -2.0f, 6.0f, 0f),
+            ("flower_redA", 0.35f, 2.2f, 6.0f, 0f),
+            ("grass_large", 0.0f, -5.6f, -5.8f, 0f),
+            ("grass_large", 0.0f, 5.6f, -5.8f, 0f),
         };
-        foreach (var (model, height, x, z) in green)
+        foreach (var (model, height, x, z, clamp) in green)
         {
             var holder = new GameObject(model);
             holder.transform.SetParent(yard, false);
             holder.transform.position = new Vector3(x, 0f, z);
-            if (ArtKit.Spawn(ArtKit.Nature + model + ".fbx", holder.transform, height) == null) continue;
+            var art = ArtKit.Spawn(ArtKit.Nature + model + ".fbx", holder.transform, height);
+            if (art == null) continue;
+            // The flowers and the grass fall under Solidify's minimum height on their own —
+            // walking through a tuft of grass is correct, and stopping dead on one is not.
+            if (ArtKit.Solidify(holder, art, maxHalfExtent: clamp) != null) solid++;
             GameObjectUtility.SetStaticEditorFlags(holder, StaticEditorFlags.BatchingStatic);
             props++;
         }
@@ -212,11 +227,61 @@ public static class HubBuilder
             var holder = new GameObject("Lantern");
             holder.transform.SetParent(yard, false);
             holder.transform.position = new Vector3(x, 0f, z);
-            ArtKit.Spawn(ArtKit.Town + "lantern.fbx", holder.transform, 2.6f);
+            var post = ArtKit.Spawn(ArtKit.Town + "lantern.fbx", holder.transform, 2.6f);
+            if (ArtKit.Solidify(holder, post, maxHalfExtent: 0.3f) != null) solid++;
             props++;
         }
 
-        log.Line("  yard: " + props + " dressing props (no colliders)");
+        log.Line("  yard: " + props + " dressing props, " + solid + " of them solid");
+    }
+
+    /// <summary>
+    /// C4: give Ông Bear, the recycling counter and the crafting bench a body.
+    ///
+    /// <para>All three were built by <see cref="Interactable"/>, which grants exactly one
+    /// <see cref="SphereCollider"/> and marks it a trigger. That is the interaction range, not a
+    /// shape — so Greenie walked <i>into</i> the shopkeeper and vanished inside him, with the
+    /// "Nhấn E" prompt floating over the pair of them.</para>
+    ///
+    /// <para>The trigger is the gameplay contract and is left exactly as it was (CLAUDE.md
+    /// rule 2). The body is a separate <c>Solid</c> child on the Obstacle layer, carrying no
+    /// <see cref="IInteractable"/>, so <see cref="PlayerInteractor"/> still resolves the root's
+    /// trigger and nothing about the E-prompt changes. It runs <b>after</b> the art pass because
+    /// the box is fitted to the model the art pass just put on, and its XZ half-extent is capped
+    /// well inside the trigger radius so the player can always still reach the prompt: contact
+    /// lands at <c>clamp + 0.35</c> (Greenie's own body radius) from the centre.</para>
+    /// </summary>
+    static void SolidifyInteractables()
+    {
+        foreach (var (prefab, clamp, trigger) in new[]
+        {
+            ("MrBear", 0.55f, 1.1f),
+            ("RecyclingCounter", 0.45f, 1.0f),
+            ("CraftingBench", 0.45f, 1.0f),
+        })
+        {
+            string path = Dir + prefab + ".prefab";
+            var root = PrefabUtility.LoadPrefabContents(path);
+            if (root == null) { log.Line("  MISSING " + path); continue; }
+            try
+            {
+                var solid = new GameObject("Solid");
+                solid.transform.SetParent(root.transform, false);
+                var box = ArtKit.Solidify(solid, root, maxHalfExtent: clamp);
+                if (box == null)
+                {
+                    Object.DestroyImmediate(solid);
+                    log.Line("  " + prefab + ": nothing to solidify");
+                    continue;
+                }
+                PrefabUtility.SaveAsPrefabAsset(root, path);
+                float reach = Mathf.Max(box.size.x, box.size.z) * 0.5f + 0.35f;
+                log.Line("  " + prefab + ": solid " + box.size.x.ToString("F2") + " x " +
+                         box.size.z.ToString("F2") + " m body (player reaches " +
+                         reach.ToString("F2") + " m, trigger " + trigger.ToString("F2") + " m)");
+            }
+            finally { PrefabUtility.UnloadPrefabContents(root); }
+        }
     }
 
     static GameObject Place(string prefabName, Vector3 pos, string name)
