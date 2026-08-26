@@ -46,10 +46,9 @@ the run and restored; the TMP dynamic atlas that grew during play was reverted.
 | E7 | S4 | Shop price text runs underneath the MUA button | `ShopUpgradeRow.cs` | **fixed** |
 | E8 | S4 | Main-menu title "ECO-DASH" sits ~134 px right of centre | `MainMenu.unity` | **fixed** |
 | E9 | S4 | Hub objective panel is an empty black box | `ObjectiveTracker` | **fixed** |
-| E10 | `ArtKit.Fit` applies `rotY` **before** it measures, so grounding and centring both run on the final orientation; re-ran **Run the art pass (B5)**, **Rebuild Level 1** and **Rebuild Level 2** to carry it into the 6 affected prefabs and the two scenes | art-vs-hurtbox distance is **0.000 m at every yaw** through a full turn (was 1.80 m); on screen the model sits 1 px from the capsule centre; walked him into a slime — HP fell 6/6 → 5/6 with the two bodies visibly touching (0.12 m overlap) · `e10_01`–`e10_04` |
 | E10 | **S2** | Greenie's model is drawn 1.80 m from the body that takes damage | `ArtKit.cs:189` | **fixed** |
 
-> All nine were fixed on the same day — see [Fix log](#fix-log--2026-08-18) at the bottom for
+> All ten were fixed on the same day — see [Fix log](#fix-log--2026-08-18) at the bottom for
 > what changed, and re-test them with the T2 procedure before closing anything. The finding
 > write-ups below are left as they were written, so the evidence trail still reads straight.
 
@@ -420,13 +419,29 @@ it was verified so T knows what is *not* covered.
 |---|---|---|
 | E1 | `HUD.prefab` → `InventorySystem` stretched to fill the canvas (was a 100×100 rect pinned at screen centre); `Hotbar.cs` + `InventoryUI.cs` set `childControlWidth/Height = false` on their `HorizontalLayoutGroup` | runtime rect dump — four 88×88 slots, centred on x, 24 px off the bottom · `fix_02` |
 | E2 | `PauseController.Update` returns early while `DialogueRunner.IsActive` (mirrors the existing `TutorialPopup.IsOpen` guard); `SetPaused` now restores `0f` rather than `1f` when a dialogue still owns the clock | drove `TogglePause` twice inside Bà Tư's opening line — `timeScale` stayed **0** where it used to go to 1 |
-| E3 | `HudController` reads `PlayerProgress.Trash` and subscribes to `PlayerProgress.OnChanged` instead of `GameManager.OnTrashChanged`, and hides the core counter when there is no `GameManager` | hub HUD reads "Rác: 1" matching the shop panel · buying an upgrade moved the HUD from 21 → 11, which never worked before · `fix_04`, `fix_05` |
+| E3 | `HudController` reads `PlayerProgress.Trash` and subscribes to `PlayerProgress.OnChanged` instead of `GameManager.OnTrashChanged`, and hides the core counter when there is no `GameManager` (†) | hub HUD reads "Rác: 1" matching the shop panel · buying an upgrade moved the HUD from 21 → 11, which never worked before · `fix_04`, `fix_05` |
 | E4 | `✕` → `×` (`HubBuilder.cs`, `CraftingUI.cs`); the `🔒` prefix dropped from the locked-recipe line; `ObjectiveTracker`'s dead `•`/`✓` defaults replaced with the `[ ]`/`[x]` the prefab already serialises | both close buttons and all four locked rows render clean · `fix_05`, `fix_06` |
 | E5 | All 13 legacy `UnityEngine.UI.Text` labels in `HUD.prefab` converted to `TextMeshProUGUI` with `LiberationSans SDF` pinned explicitly; the white button plates repainted to the accent green the rest of the game uses; the four pause buttons spaced 120 apart instead of 105 | `FindObjectsByType<Text>()` returns **0** at runtime · `fix_03`, `fix_07`, `fix_08` |
 | E6 | `HubBuilder` back button y −44 → −232, i.e. under the Rác counter instead of over the HP bar | `fix_04` |
 | E7 | `HubBuilder` shop cost label 200 wide @ −230 → 180 wide @ −270, ending 20 px clear of the MUA button | `fix_05` |
 | E8 | The stray `margin = (0, 0, -267.88, -40.46)` on `MainMenu.unity`'s title zeroed. A scan of all scenes found this was the **only** non-zero TMP margin in the project | `fix_01` |
 | E9 | `ObjectiveTracker.RefreshPanelVisibility` hides the backing plate, title and list while no row is visible | panel gone in the hub, still drawn in Level 1 · `fix_03`, `fix_04` |
+| E10 | `ArtKit.Fit` applies `rotY` **before** it measures, so grounding and centring both run on the final orientation; re-ran **Run the art pass (B5)**, **Rebuild Level 1** and **Rebuild Level 2** to carry it into the 6 affected prefabs and the two scenes | art-vs-hurtbox distance is **0.000 m at every yaw** through a full turn (was 1.80 m); on screen the model sits 1 px from the capsule centre; walked him into a slime — HP fell 6/6 → 5/6 with the two bodies visibly touching (0.12 m overlap) · `e10_01`–`e10_04` |
+
+> **Corrections (re-verification, 2026-08-26).**
+>
+> - The **E10** row above was originally pasted into the *Summary* table at the top of this
+>   document, where it appeared as a second `E10` line with the wrong number of columns. It is
+>   a fix-log entry — `# | Change | Verified by` — and has been moved here, which is also why
+>   the fix log used to stop at E9. No content changed; only its place in the document.
+> - **(†) The E3 clause "hides the core counter when there is no `GameManager`" is inert.**
+>   The code is there ([`HudController.cs:43`](../Assets/Scripts/UI/HudController.cs#L43)), but
+>   it can never be observed: `HUD/CoreText` ships `m_IsActive: 0` and has done since it was
+>   first authored (`fc2993d`), so the core counter is hidden in **every** scene, with or
+>   without a `GameManager` — the live objective display is the `ObjectiveTracker` panel.
+>   E3's actual defect (the Rác wallet) is fixed and re-verified; only this side-clause
+>   over-claims. Confirmed at runtime in Level 1: `GameManager` present, `CoreText.text` is
+>   correctly `"Lõi NL: 3/3 - Tới cổng phía Bắc!"`, and `activeSelf` is still `False`.
 
 Two things were changed that are not in the list above, both noticed while fixing E5 and
 both in the settings window: the mute toggle's checkbox hung ~20 px outside the window's

@@ -2,9 +2,15 @@
 
 > Owned by **Thanh Tùng & Đức Anh** (Product Owner, [CYCLE-2-TASKS.md § 3](CYCLE-2-TASKS.md)).
 >
-> **Status: B1–B5 are built.** Everything below the rubric table has been implemented
-> and play-mode verified — see [Delivered](#delivered) for what changed and what is
-> still open. The findings are kept as written so the reasoning survives.
+> **Status: B1–B5 are built.** Everything in [Backlog items](#backlog-items) has been
+> implemented and play-mode verified — see [Delivered](#delivered) for what changed and
+> what is still open. The findings are kept as written so the reasoning survives.
+>
+> **B6–B9 are a new, unstarted slice** — movement & perspective, requested by Khiêm on
+> 2026-08-26 and written up in
+> [Cycle 3 draft](#cycle-3-draft--the-movement--perspective-slice-b6b9). **Three of the
+> four change [golden rule #1](CLAUDE.md)** and are PO decisions before they are tickets;
+> read the note at the head of that section before scheduling any of them.
 >
 > **Scope of this draft.** This covers one slice only: environment feel — terrain
 > elevation, map scale, camera angle, and "does this look cheap" — gathered by
@@ -94,6 +100,177 @@ Format per [CYCLE-2-TASKS.md § 7](CYCLE-2-TASKS.md): *"As a player, I want… s
 **As a player**, I want the sky to look intentional, **so that** the two levels don't end at "a wall with nothing beyond it" (already flagged in `CYCLE-2-TASKS.md § 6`'s shopping list).
 - **Acceptance:** each scene has a tuned sky (procedural sky settings, tinted per `SceneLook.cs`'s existing warm-farm/cold-factory/bright-hub split) — a custom skybox asset only if tuning the built-in procedural sky isn't enough.
 - **Cost:** likely zero new assets (Unity's procedural sky is tunable via `RenderSettings`/Lighting, no download needed) — try that first, fall back to sourcing only if it's not enough. Small.
+
+---
+
+## Cycle 3 draft — the movement & perspective slice (B6–B9)
+
+> **Requested by Khiêm, 2026-08-26.** Four items, written up here with acceptance criteria and
+> real costs. **Read this paragraph before scheduling any of them.**
+>
+> **Three of the four break [golden rule #1](CLAUDE.md).** The rule reads: *"3D top-down on the
+> XZ plane, no platforming. WASD moves Greenie on flat ground; input Y maps to world Z. Fixed ¾
+> Cinemachine camera (no player camera control), no jumping, gravity is never a mechanic. Never
+> add side-scroller or first-person logic."* B6 adds first-person logic and player camera
+> control; B8 makes the ground non-flat; B9 makes gravity and surface-climbing a mechanic. That
+> does **not** mean "no" — it means these are **PO decisions to change the project's founding
+> constraint**, not tickets a dev can quietly pick up, and CLAUDE.md's rule 7 reserves
+> shared-contract changes like this for Dev A. If they are taken, golden rule #1 has to be
+> **rewritten first** and the change announced to the other two devs, or three people will be
+> building against three different contracts.
+>
+> **The load-bearing risk, stated once:** the one thing that currently works end to end is
+> **combat**, and all three of B6/B8/B9 sit on top of it. `SeedProjectile.Launch` zeroes the Y
+> of its direction and the prefab ships `m_UseGravity: 0`
+> ([`SeedProjectile.cs:36`](Assets/Scripts/Items/SeedProjectile.cs#L36)) — seeds fly dead flat
+> at y = 0.60 m, in **world** axes. Tilt the ground, turn the camera, or put Greenie on a wall
+> and that projectile is aiming at nothing. **Whichever of these is taken first, the
+> projectiles become terrain- and orientation-aware before anything else does** — that is the
+> gate, and it is shared by all three.
+>
+> **B7 is the exception:** it is a straight improvement, breaks no rule, and is worth doing on
+> its own merits whether or not B6 ships.
+
+### B6 — Toggle between the ¾ view and first person with **P**
+
+**As a player**, I want to press **P** to switch between the current ¾ top-down camera and a
+first-person view from Greenie's own eyes, **so that** I can look around the valley I am
+cleaning up instead of only ever seeing it from above.
+
+- **Acceptance:**
+  - **P** toggles the two framings and toggles back; the key is polled the way every other
+    control is — `kb.pKey.wasPressedThisFrame` straight off `Keyboard.current`, **not** through
+    the action asset (CLAUDE.md's controls contract). **`P` is currently unbound** — verified
+    against every key the project polls (`W/A/S/D`, `J`, `E`, `I`, `Tab`, `Q`, `C`, `H`, `Esc`,
+    `1–4`, `Space`, `Enter`, `←`/`→`) — so there is no conflict to resolve.
+  - Greenie's own model does not fill the first-person frame.
+  - The toggle survives a scene change and cannot be triggered while a modal (dialogue, pause,
+    bag, tutorial) owns the screen.
+  - Both framings are playable: a player who toggles mid-fight is not killed by the switch.
+- **Cost: Large, and it is not the camera that makes it large.** Honestly scoped:
+  - **The camera half is genuinely small.** `CameraFollow` already authors framing from
+    serialized `pitch` / `yaw` / `distance` / `targetHeightOffset`
+    ([`CameraFollow.cs:34`](Assets/Scripts/Systems/CameraFollow.cs#L34)) and pushes them into
+    `CinemachineFollow.FollowOffset`. A second `CinemachineCamera` at `distance ≈ 0`, eye
+    height, priority-swapped on toggle, is the clean Cinemachine way to do it and gets a free
+    blend between the two.
+  - **The movement half is the real work.** Movement is authored in **world axes** — `wKey`
+    adds to `dir.z` and `Move()` does `body.Move(horizontal + Vector3.down * groundStickSpeed)`
+    ([`PlayerController.cs:75`](Assets/Scripts/Player/PlayerController.cs#L75)) — and the yaw
+    is locked at 0 precisely *"so W always moves 'up' the screen."* The moment the camera can
+    yaw, W must become **camera-relative** or the controls invert whenever the player turns
+    around. That is a change to the movement contract, and `FacingDirection` (which drives the
+    animator and the shooting direction) goes with it.
+  - **Three traps this codebase specifically sets**, all documented in CLAUDE.md and all live
+    here: (a) **do not hide Greenie by deactivating the `Visual` node** — `PlayerAnimator`
+    caches `baseLocalPos`/`baseScale` in `Awake` and writes `visual.localPosition` every frame;
+    disable the **renderers** instead. (b) `CameraFollow` is `[ExecuteAlways]` and claims
+    `Instance` in `OnEnable` *because* Fast Enter Play Mode never re-runs its `Awake` — a
+    second camera object must follow the same pattern or `GameFeel.Shake` silently dies again
+    (rule 5). (c) `Time.timeScale` already has six owners; the toggle must not become a
+    seventh (rule 4).
+  - **What it invalidates:** every framing decision in this document. The "~19 m of ground
+    visible past Greenie" measurement, the A2 demo route, cycle-1 and cycle-2 QA (both run at
+    50°), and Level 2's corridor sightlines were all tuned for a fixed 50° yaw-0 camera.
+    First person also exposes **B7** immediately — see below.
+
+### B7 — A sky and a horizon that survive being looked at
+
+**As a player**, I want the sky to look like a real sky when I can actually see it, **so that**
+the world does not visibly end at the top of the boundary wall.
+
+- **Why this is a separate item.** B5 shipped a tuned procedural sky per scene, and it is
+  correct — but at pitch 50° you never see the horizon, so today the sky is a gradient smear
+  along the top of frame. **The moment B6 lands, the sky becomes a major surface** and every
+  shortcut behind it is visible. This item is what makes B6 not look broken.
+- **Acceptance:**
+  - From eye height, in both levels, looking at the horizon in any of the four cardinal
+    directions shows a deliberate horizon — not a hard edge where the world stops.
+  - Level 1's boundary reads as *distance* (the B2 hills, the lake and fog doing the work), not
+    as a 3 m wall with sky above it.
+  - `Level2_FactoryMaze` gets an answer for "what is above a factory maze?" — it is an
+    open-topped box today, and B2's outer hills do not exist there. A ceiling, a roofline, or a
+    smog dome; a bare procedural sky over an indoor level will read as a bug.
+  - Fog / atmosphere is tuned per scene alongside `SceneLook`, so the cut-off distance is a
+    choice rather than an accident.
+- **Cost: Medium, and mostly Level 2.** Level 1 is close — B2 already put three rings of hills
+  and a lake outside every wall. Level 2 has nothing above the walls at all. **Zero new assets
+  expected**; this is `RenderSettings` / `SceneLook.cs` tuning plus one backdrop pass in
+  `Level2Builder`. **Worth doing on its own** even if B6 is deferred: it costs little and it
+  helps the A2 video, which wants sky in shot.
+
+### B8 — Hill-like ground: tilts, rises and dips instead of a flat plane
+
+**As a player**, I want Level 1's ground to rise and fall — small hills and shallow dips —
+**so that** the valley reads as terrain rather than as a game-board.
+
+- **This is [QA R1](QA/exploratory-pass-2026-08-26.md#r1--undulating-ground-change-request-not-a-defect), promoted from a QA change-request to a backlog item.** QA's costing stands; read it
+  before scoping. Two things have changed since it was written, one cheaper and one not:
+  - **Cheaper now.** R1 listed `ReclamationPatch` as a blocker because its whole mechanism was
+    one renderer per 4 m tile found by `OverlapSphere`. **C5's fix removed that dependency** —
+    `tintSurroundings` is now `false` and the reclamation beat is carried by the decal disc
+    alone, which does not care what shape the ground is.
+  - **Still a blocker.** `GroundCleanser.TintGround` **still** does exactly that
+    (`Physics.OverlapSphere` → per-renderer tint, filtered on `layer == Ground`,
+    [`GroundCleanser.cs:148`](Assets/Scripts/World/GroundCleanser.cs#L148)), and it is what
+    drives the codex's Độ Sạch metric. So the "192 separate flat tiles" assumption is now held
+    by **one** system instead of two — the rewrite got smaller, not optional.
+- **Acceptance:**
+  - Level 1's play surface has real elevation change that Greenie walks up and down, with no
+    step or seam at tile boundaries.
+  - **Combat still works on a slope** — this is the acceptance criterion that matters. A seed
+    fired uphill hits an enemy uphill; one fired downhill does not sail over its head.
+  - Everything authored at `y = 0` sits on the new ground: props, the 112 fence posts, chests,
+    herbs, NPCs, enemy spawns and the whole village, across four generator files.
+  - `GroundCleanser` / Độ Sạch still register, and the NavMesh re-bakes and still paths from
+    both far corners.
+  - The camera does not bob — `CameraFollow` damps Y as tightly as X and Z (0.15 s on all three
+    axes), so every bump currently rocks the whole frame.
+- **Cost: Large.** Four generator files, the projectiles, `GroundCleanser`, and the camera.
+  **Do not start here** — start with the projectile gate named at the top of this section.
+
+### B9 — Greenie climbs vertical walls like an ant
+
+**As a player**, I want Greenie to walk up vertical surfaces the way an ant does, **so that** I
+can climb the mesa in Level 1's north-west corner instead of walking around it.
+
+- **Acceptance:**
+  - Greenie can leave the ground plane onto a vertical face, walk on it under his own
+    orientation, and return to the ground without being launched or stuck.
+  - The Level 1 mesa is climbable end to end. Note what it is made of now: **C3's fix replaced
+    the single box with 19 per-column `BoxCollider`s** grown down to `y = 0`, so the mesa is a
+    stepped stack of vertical faces — good news for climbing, but it means the climb surface is
+    19 separate colliders with seams between them, and the transition *between columns* is the
+    hard case, not the flat face.
+  - The camera keeps Greenie in frame and readable while he is on a wall.
+  - Combat, damage and pickups behave on a wall, or are explicitly disabled there by design.
+- **Cost: Large, and it needs a different character controller.** `Player.prefab` uses a
+  **`CharacterController`** (`radius 0.35, height 1.15, slopeLimit 45°, stepOffset 0.3`) and
+  `PlayerController.Move` adds a constant `Vector3.down * groundStickSpeed` in **world** axes.
+  A `CharacterController`'s capsule is permanently world-Y aligned and cannot be re-oriented —
+  so ant-walking means **replacing it with a `Rigidbody` plus a surface-aligned controller**
+  (raycast the surface, align `transform.up` to its normal, move in the tangent plane, apply
+  "gravity" along −normal). That is a rewrite of the one script the whole game's feel rests on,
+  and it lands on: `PlayerAnimator` (bob/squash assume world up), `PlayerHealth`'s knockback
+  (`knockbackVelocity` is world-space), every hazard that calls `EnterMud`/`ExitMud`, the
+  contact-damage geometry, and `CameraFollow`.
+- **Ordering note:** B9 and B8 want the *same* rewrite — a controller that follows a surface
+  normal handles both a hill and a wall, and doing them separately means doing it twice. If
+  both are wanted, scope them as one piece of work. B9 combined with B6 also raises a design
+  question worth answering before any code: **in first person, on a wall, which way is up?**
+
+### Recommended order, if the PO takes this slice
+
+| # | Item | Take it? |
+|---|---|---|
+| 1 | **B7** sky & horizon | **Yes, independently.** Breaks no rule, small-to-medium, helps the A2 video today. |
+| 2 | *(gate)* projectiles become orientation- and terrain-aware | **Prerequisite** for everything below. Nothing else starts until this is done and combat still passes QA. |
+| 3 | **B6** perspective toggle | After the gate. Camera is easy; camera-relative movement is the work. |
+| 4 | **B8 + B9** together | One surface-aligned controller serves both. Biggest item on the list by a wide margin. |
+
+**Not recommended before the A2 submission.** Cycle 2 closed with the game finishable end to
+end and QA clean; B6/B8/B9 put that at risk for presentation value the fixed camera already
+delivers. If only one thing is taken this cycle, take **B7**.
 
 ---
 

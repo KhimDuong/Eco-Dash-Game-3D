@@ -39,16 +39,24 @@ Consequences, all still open:
 
 ## Summary
 
-| # | Severity | What | Where | Reported by |
-|---|---|---|---|---|
-| C1 | S3 | An invisible wall stops Greenie **0.45 m short of the spring** — the water can never be touched | `TerrainKit.cs:344` | **Khiêm** |
-| C2 | **S2** | The same blocker is a **2 m invisible dome** that destroys Seeds in mid-air over open water | `TerrainKit.cs:347` | new |
-| C3 | S3 | The mesa's collider stands in **6.5 m² of open ground**; three corners are phantom walls up to **1.75 m** deep | `TerrainKit.cs:292` | **Khiêm** |
-| C4 | S3 | **Every object in the hub is walk-through** — 25 yard props, Ông Bear, the counter, the bench | `HubBuilder.cs:154` | **Khiêm** |
-| C5 | S3 | Reclamation repaints **whole 4 m tiles**: a 3.5 m patch greens 96–128 m², 2.5–3.3× its own disc | `ReclamationPatch.cs:99` | new |
-| C6 | S4 | The three earth tones differ by **8.6%** on 4 m tiles and read as a visible checkerboard | `Level1Builder.cs:86` | new |
-| C7 | S4 | Level 1 walk-through props: **3 village lanterns (2.6 m)** and the beached canoe | `TerrainKit.cs:464` | new |
-| C8 | S4 | The mesa reads as a stacked layer-cake rather than a rock formation | `TerrainKit.cs:255` | new |
+| # | Severity | What | Where | Reported by | Status |
+|---|---|---|---|---|---|
+| C1 | S3 | An invisible wall stops Greenie **0.45 m short of the spring** — the water can never be touched | `TerrainKit.cs:344` | **Khiêm** | **fixed** |
+| C2 | **S2** | The same blocker is a **2 m invisible dome** that destroys Seeds in mid-air over open water | `TerrainKit.cs:347` | new | **fixed** |
+| C3 | S3 | The mesa's collider stands in **6.5 m² of open ground**; three corners are phantom walls up to **1.75 m** deep | `TerrainKit.cs:292` | **Khiêm** | **fixed** |
+| C4 | S3 | **Every object in the hub is walk-through** — 25 yard props, Ông Bear, the counter, the bench | `HubBuilder.cs:154` | **Khiêm** | **fixed** |
+| C5 | S3 | Reclamation repaints **whole 4 m tiles**: a 3.5 m patch greens 96–128 m², 2.5–3.3× its own disc | `ReclamationPatch.cs:99` | new | **fixed** |
+| C6 | S4 | The three earth tones differ by **8.6%** on 4 m tiles and read as a visible checkerboard | `Level1Builder.cs:86` | new | **fixed** |
+| C7 | S4 | Level 1 walk-through props: **3 village lanterns (2.6 m)** and the beached canoe | `TerrainKit.cs:464` | new | **fixed** |
+| C8 | S4 | The mesa reads as a stacked layer-cake rather than a rock formation | `TerrainKit.cs:255` | new | **open** — deferred, see [C8](#c8--the-mesa-reads-as-a-stacked-layer-cake-s4) |
+| R1 | — | *Undulating ground* — **change request, not a defect**; asks to change golden rule #1 | golden rule #1 | **Khiêm** | **open** — PO call, see [R1](#r1--undulating-ground-change-request-not-a-defect) |
+
+**C1–C7 were fixed in commit `e3d42ac` ("Fixed bug")** and re-verified on 2026-08-26 — see
+[Fix log](#fix-log--2026-08-26) at the bottom for what changed and how each one was measured.
+The finding write-ups below are left as they were written, so the evidence trail still reads
+straight. **C8 and R1 are deliberately deferred**, both as PO calls: R1 would change golden
+rule #1 and put combat at risk, and C8 is cosmetic polish not worth spending before the A2
+build.
 
 **C1 and C2 are one bug with two symptoms** — a single oversized sphere — and one change fixes
 both. **C4 and C7 are also one bug**: `ArtKit.Spawn` places a visual and never a collider, so
@@ -141,18 +149,33 @@ is a trigger with a Rigidbody and fizzles on contact with *anything* non-trigger
 if (!other.isTrigger) { Vfx.Impact(...); Destroy(gameObject); }
 ```
 
-The blocker is non-trigger and on `Obstacle`, and nothing filters the pair: of the six
-gameplay layers checked (`Player`, `Enemy`, `Obstacle`, `Water`, `Ground`, `Default`)
-**every one collides with every other**, and there is **no `Projectile` layer in the project
-at all** — `Projectile` exists only as a *tag*. So the seed is destroyed exactly as if it had
-hit a rock, fizzle VFX and all, in the middle of the air.
+The blocker is non-trigger and on `Obstacle`. `Seed.prefab` is on **`PlayerProjectile`**
+(layer 10), and `PlayerProjectile ↔ Obstacle` is one of only two pairings that layer has
+switched **on** — deliberately, so that scenery stops shots. So the seed is destroyed exactly
+as if it had hit a rock, fizzle VFX and all, in the middle of the air. Nothing about the layer
+setup is wrong here; the collider was.
+
+> **Correction (re-verification, 2026-08-26).** This paragraph originally read *"of the six
+> gameplay layers checked … **every one collides with every other**, and there is **no
+> `Projectile` layer in the project at all** — `Projectile` exists only as a tag."* Both
+> halves are false, and the corrected text above replaces them. `TagManager.asset` defines
+> **`PlayerProjectile` (10)** and **`EnemyProjectile` (11)**; `Seed.prefab` is on layer 10; and
+> `DynamicsManager.asset` carries a hand-configured matrix, not an all-on one — decoded, layer
+> 10 collides with **`Enemy` and `Obstacle` only**, and not with `Default`, `Water`, `Player`,
+> `Ground` or `Trigger`. The finding itself is unaffected: the old blocker really was a
+> non-trigger `Obstacle` collider reaching `y = 2.00` (confirmed against
+> `git show 2f51336:Assets/Editor/TerrainKit.cs`), so it really did eat seeds, and the fix
+> below is the right one. Only the root-cause narrative was wrong.
 
 - **Cheapest fix:** the same `MeshCollider` swap as C1 — a 0.45 m-tall disc tops out at
   `y = 0.45`, below the seed's 0.60 m flight line, so seeds sail over the pond and Greenie
   still can't walk into it. One change closes both findings.
-- **Worth doing anyway:** add a `Projectile` layer and turn off `Projectile ↔ Obstacle`
-  collision only where scenery should not eat shots. That is a bigger change and a Dev A call
-  (shared contract), so it is a backlog item, not part of this fix.
+- **Not the backlog item this originally proposed.** The first draft asked for *"add a
+  `Projectile` layer and turn off `Projectile ↔ Obstacle` collision"* — but the layers already
+  exist and that checkbox is already there and already **on**, on purpose. Whoever picks this
+  up is making a one-checkbox design decision (*should scenery eat Seeds at all?*), not
+  building new infrastructure. Still a Dev A call, since the collision matrix is a shared
+  contract, but a much smaller one than it was written up as.
 
 ---
 
@@ -411,3 +434,48 @@ with the projectiles.
 - Save/load across an application quit
 - The three missing NPCs (D3) — already logged, not re-checked
 - Whether the hub's five-collider state affects the NavMesh (no enemies there today)
+
+---
+
+## Fix log — 2026-08-26
+
+Applied in commit **`e3d42ac`** and re-verified the same day. Each row says how it was
+measured, so T knows what is *not* covered. The same limitations as the pass itself still
+apply: **no key binding was exercised, one aspect ratio (1100×533), no build, no timing**, and
+the Play sessions inherited Khiêm's save.
+
+| # | Change | Verified by |
+|---|---|---|
+| C1 | The sunk `SphereCollider` blocker is **deleted**. The pool is now a trigger — `Wade` (`SphereCollider` r 3.40 at `center.y = 0.4`, `isTrigger`) driving the new `WaterWade.cs`, which borrows `PlayerController.EnterMud()` / `ExitMud()` and eases `PlayerAnimator.SinkOffset` down 0.15 m. Slimes are kept out by a `NavMeshModifierVolume` instead of by physics, so the water stops what walks without standing in the way of what flies | walked Greenie's real capsule (r 0.35, spheres at y 0.375 / 0.825) in at 1 cm steps from south and east — **reaches the pond centre**, no stop. The only colliders under `Spring` are `Wade` (trigger) and the canoe |
+| C2 | Same change — there is nothing solid over the water any more | 8 raycasts at exactly **y = 0.60 m**, straight across the pool on 8 headings: **0 solid hits**. The seed flight line is clear |
+| C3 | The single `BoxCollider` in `Mesa()` is gone; `Stack()` now emits **one `BoxCollider` per built column**, grown down to `y = 0`, behind a `solid:` parameter so `OuterHills` and `Surround` stay collider-free | **19** column colliders trace the real outline. 1302 sample points at 0.25 m across the footprint: 765 blocked, and **0** of them with no rock within 0.7 m — was 104 points / **6.5 m²**, deepest 1.75 m |
+| C4 | New `ArtKit.Solidify` fits a `BoxCollider` to the art's real bounds **on the holder**, so the next art pass can swap the model without touching physics. `HubBuilder.Yard()` calls it for every prop (flowers and grass fall under the 0.5 m minimum on their own); `SolidifyInteractables()` adds a solid box **alongside** the existing trigger | hub is **35 colliders, 30 solid** (was 5). `Yard`: 27 renderers → **21** colliders. `MrBear` / `RecyclingCounter` / `Hub_CraftingBench` each carry `SphereCollider(trigger)` + `BoxCollider(SOLID)`, **trigger radii unchanged** at 1.1 / 1.0 / 1.0 (CLAUDE.md rule 2). `StagePortal` correctly left trigger-only — you are meant to walk into it |
+| C5 | `tintSurroundings` now defaults to `false` and is serialised `0` on `ReclamationPatch.prefab`; `radius` raised **3.5 → 4.5** so the decal disc alone carries the beat | all **4** patches in Level 1 read `radius 4.50, tintSurroundings False`, and there is **no scene override** of either field anywhere in `Assets/_Scenes` |
+| C6 | Spread cut to **±0.006** per channel, and the material is picked from `Mathf.PerlinNoise` over `(i, j)` (~7 tiles per period) instead of `soil.Next()`, so neighbours land in the same band | largest channel spread **0.035 → 0.012** (8.6% → **2.9%** of base). Tone changes at **102 of 356** tile seams = **29%**, down from a random ≈⅔ |
+| C7 | `ArtKit.Solidify` after `Spawn` in `TerrainKit.Village()` (lanterns, XZ half-extent clamped to 0.3 m) and `Pond()` (canoe, turned by its *holder* so the box is oriented rather than its bounding rectangle) | 3 lanterns + the canoe all report **solid `BoxCollider`** in the live scene. The canoe's box tops out at **y = 0.55**, under the 0.60 m seed line — so making it solid did **not** re-create C2 |
+
+**Rebuilds.** *Rebuild Level 1* and *Rebuild the hub* were run to carry C1–C7 into
+`Level1_BarrenFarm.unity` and `Shop_RecyclingStation.unity`. **Level 2 was not rebuilt and did
+not need to be** — the `ArtKit` diff in `e3d42ac` is purely additive (the new `Solidify`);
+`ArtKit.Fit` is untouched, so Level 2's art placement is unaffected.
+
+**Not changed, on purpose:**
+
+- **C8** (the mesa's layer-cake silhouette) — cosmetic, not worth spending before the A2 build.
+  Confirmed still open: `Stack()` uses a fixed 1.4 m cell with no per-column XZ jitter.
+- **R1** (undulating ground) — PO call, and it would change golden rule #1. Confirmed still
+  open: the Level 1 floor is still one flat plane of 192 tiles.
+- **The four `LoreNote` signs** (0.85 m) are still walk-through — left to the PO, as originally
+  written up in [C7](#c7--level-1-walk-through-props-three-lanterns-and-the-canoe-s4).
+- Everything under [Not covered by this pass](#not-covered-by-this-pass) is still not covered.
+
+**One incidental, not a defect and not a tracked finding.** On a late-game save the hub
+objective panel renders `[x] Tìm thảo dược (0/3)` — a struck-through *done* row carrying a 0/3
+counter. `done` is set from `HasAntidote` / `Stage == TiSaved` while the label prints live
+`QuestProgress.HerbCount`, which is 0 once the herbs have been handed in
+([`ObjectiveTracker.cs:161`](../Assets/Scripts/UI/ObjectiveTracker.cs#L161)). Cosmetic, and
+only visible after the antidote hand-in. Logged so it is not re-discovered.
+
+**Console:** zero errors or exceptions across the re-verification sessions; the only warning is
+the pre-existing, unrelated Coplay editor-toolbar one. **`check_compile_errors`:** clean.
+**Nothing in the project was changed by the re-verification** — `git status` clean afterwards.
