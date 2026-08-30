@@ -727,6 +727,81 @@ chain underneath was healthy the entire time, which is why nothing looked broken
 in `OnEnable` as well fixes it. Same family as the statics rule below: **Fast Enter Play
 Mode changes which lifecycle callbacks you may assume, not only how long statics live.**
 
+## The perspective toggle is one rotation (B6)
+
+`P` swaps between the fixed ¾ camera and a first-person view from Greenie's eyes. This is the
+first change to golden rule #1 since the project started, so the shape of it matters more than
+the feature: **the game did not grow a second control scheme, it grew a frame.**
+
+`PerspectiveMode` is a static service holding the view and, in first person, the look yaw and
+pitch. Everything that used to be written in world axes now multiplies by
+`PerspectiveMode.MoveFrame`:
+
+```csharp
+moveInput = PerspectiveMode.MoveFrame * dir;   // PlayerController.ReadInput
+```
+
+Under the ¾ camera that rotation is the **identity** — the house camera's yaw is 0 — so every
+top-down path behaves exactly as it did before B6 and `W` is still world `+Z`. In first person
+it is the look yaw, which is what stops the controls inverting the moment the player turns
+round. There is no `if (firstPerson)` in the movement code, and there should never be one:
+a branch is two behaviours to keep in sync, a multiply is one.
+
+The same frame carries the aim. `PlayerShooter` was **not touched** — it still reads
+`PlayerController.FacingDirection`, which in first person follows the look instead of the last
+move direction, so Greenie shoots where the player is looking even while strafing or standing
+still. Seeds keep flying flat on XZ, so **looking up or down changes what you see and never
+where you shoot**; `FirstPersonReticle`'s centre dot exists to say so, because at eye height
+Greenie's body is no longer on screen to indicate his facing.
+
+### Four things a perspective swap drags behind it
+
+`PerspectiveRig` (on `CameraRig.prefab`, beside `CameraFollow`) owns all four, and three of
+them are traps this repo has already documented in another form:
+
+1. **The second camera is built in code, not authored.** It is a `CinemachineCamera` +
+   `CinemachineFollow` at eye height with **zero position damping** (`CameraFollow`'s 0.15 s
+   damping is right at 12 m and nausea at 1 m), created in `Start` and priority-swapped on
+   toggle so the brain blends the two framings for free. Built rather than authored because it
+   then cannot drift out of sync with this file, and every scene that already has a `CameraRig`
+   gets first person with no prefab surgery. The prefab's own 2 s default blend is shortened to
+   0.3 s on the way past — a cutscene blend, applied to a toggle, leaves the controls
+   camera-relative to a camera that is still overhead.
+2. **Greenie is hidden by his renderers, never by his `Visual` node.** `PlayerAnimator` caches
+   `baseLocalPos`/`baseScale` in `Awake` and rewrites `visual.localPosition` every frame;
+   deactivating that node is the documented way to lose his rest pose. `Renderer.enabled`
+   touches nothing the animator or the colliders own.
+3. **The cursor is shared, and it has to be given back.** It is locked only while first person
+   is live *and* `UiModal.AnyOpen` is false, and released again in `OnDisable` — otherwise
+   quitting play mode in first person leaves the editor without a pointer.
+4. **`Time.timeScale` gained no seventh owner.** The toggle does not touch the clock at all; it
+   reads it.
+
+### `UiModal`: one answer to "is a screen up?"
+
+B6 needed a question nothing in the project could answer. Most modals announce themselves
+through the clock — `PauseController`, `DialogueRunner`, `TutorialPopup` and the end screens all
+park `Time.timeScale` at exactly 0, and `GameFeel`'s hit-stop crawls at 0.02 precisely so it
+never reads as one — but the **four runtime-built panels (bag, codex, quest log, crafting) and
+the shop never touch it**. Those five now call `UiModal.Set(this, open)`, and `UiModal.AnyOpen`
+folds them together with the clock-based ones. It gates the `P` key, the mouse look, the cursor
+lock and the reticle.
+
+Owners are tracked as a set of instance ids, not as a counter: a counter is the classic
+Fast-Enter-Play-Mode leak — one panel open when play mode exits and the count never returns to
+zero — and both `UiModal` and `PerspectiveMode` clear themselves from
+`[RuntimeInitializeOnLoadMethod(SubsystemRegistration)]`. The mode is *deliberately* static
+past a scene load (that is the "survives a scene change" requirement); it just must not survive
+the play session.
+
+### What B6 does not do
+
+It does not tilt the ground, move Seeds off the XZ plane, or let Greenie leave it. **B8 and B9
+remain unstarted and still break rule #1 in ways this does not** — B8 needs `GroundCleanser`'s
+`OverlapSphere` tinting rewritten, B9 needs the `CharacterController` replaced with a
+surface-aligned `Rigidbody`. The projectile "gate" the cycle-3 draft named is satisfied *for
+orientation* (a Seed follows the aim frame in either view) and untouched *for terrain*.
+
 ## Communication patterns (unchanged — frozen contract)
 
 - `GameManager` static-instance + C# events (`OnCoresChanged`,

@@ -26,7 +26,7 @@ public class CraftingUI : MonoBehaviour
     }
 
     void OnEnable() { Inventory.OnChanged += RefreshIfOpen; QuestLog.OnChanged += RefreshIfOpen; }
-    void OnDisable() { Inventory.OnChanged -= RefreshIfOpen; QuestLog.OnChanged -= RefreshIfOpen; }
+    void OnDisable() { Inventory.OnChanged -= RefreshIfOpen; QuestLog.OnChanged -= RefreshIfOpen; UiModal.Set(this, false); }
     void RefreshIfOpen() { if (isOpen) Refresh(); }
 
     public void Open() => SetOpen(true);
@@ -35,6 +35,7 @@ public class CraftingUI : MonoBehaviour
     void SetOpen(bool open)
     {
         isOpen = open;
+        UiModal.Set(this, open);   // B6: releases the cursor and blocks P while this is up
         if (panel != null) panel.SetActive(open);
         if (open) Refresh();
     }

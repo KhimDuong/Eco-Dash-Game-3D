@@ -25,7 +25,7 @@ public class QuestLogUI : MonoBehaviour
     }
 
     void OnEnable() { QuestLog.OnChanged += Refresh; QuestProgress.OnChanged += Refresh; }
-    void OnDisable() { QuestLog.OnChanged -= Refresh; QuestProgress.OnChanged -= Refresh; }
+    void OnDisable() { QuestLog.OnChanged -= Refresh; QuestProgress.OnChanged -= Refresh; UiModal.Set(this, false); }
 
     void Update()
     {
@@ -37,6 +37,7 @@ public class QuestLogUI : MonoBehaviour
     void SetOpen(bool open)
     {
         isOpen = open;
+        UiModal.Set(this, open);   // B6: releases the cursor and blocks P while this is up
         if (panel != null) panel.SetActive(open);
         if (open) Refresh();
     }

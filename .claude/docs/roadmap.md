@@ -405,8 +405,52 @@ owners in [../../TEAM-TASKS.md](../../TEAM-TASKS.md).
 - [ ] Full manual playthrough + ~30-min time-budget check
 - [ ] Submission build
 
+### Cycle 3 — movement & perspective ([PRODUCT-BACKLOG.md](../../PRODUCT-BACKLOG.md) B6–B9)
+- **B6** `P` toggles the ¾ view and first person — **done**
+  - [x] **golden rule #1 rewritten first** (CLAUDE.md), because B6 changes the project's
+    founding constraint: the world is still one flat XZ plane with no jumping and no gravity,
+    but the ¾ camera is now the *default* framing rather than the only one
+  - [x] `PerspectiveMode` — static owner of the view and the look angles; `MoveFrame` is the
+    identity under the ¾ camera, so every top-down path is bit-for-bit unchanged
+  - [x] `PerspectiveRig` on `CameraRig.prefab` — polls `P`, builds the first-person
+    `CinemachineCamera` at eye height in code, priority-swaps it (0.3 s blend), reads the mouse,
+    hides Greenie by his **renderers** and manages the cursor lock
+  - [x] `UiModal` — the "is a screen up?" question the project could not answer: the bag, codex,
+    quest log, crafting bench and shop never touched `Time.timeScale`, so they now register
+  - [x] `FirstPersonReticle` — a centre dot, because at eye height Greenie's body is no longer
+    on screen to show which way he aims
+  - [x] `PlayerShooter` untouched: aim rides `FacingDirection`, which follows the look in first
+    person. Seeds still fly flat, so looking down does not tilt a shot
+  - [x] `HOW_TO_PLAY.md` + the in-game tutorial popup both teach `P`
+  - [x] play-mode verified **49/49** — rig build, top-down parity, the dive to the eye, renderer
+    hiding with the `Visual` node left alone, aim in both views, seeds flat in both views,
+    real-key WASD walking `+Z` in top-down and east in first person while looking east, `A`
+    strafing, `P` gated by the bag, and the mode surviving a load into the hub
+- [ ] **B7** a sky and a horizon that survive being looked at — *B6 makes this visible; not started*
+- [ ] **B8 + B9** hill ground and wall-walking — *still break golden rule #1; unstarted, PO call*
+
 ## Recent log
 
+- _(2026-08-31)_ **B6 — the perspective toggle, and the frame that made it cheap.** `P` now
+  drops to Greenie's eyes and back. The interesting part is not the camera (a second
+  `CinemachineCamera` at eye height, priority-swapped, is a dozen lines) but the movement: WASD
+  was authored in **world** axes with the camera's yaw locked at 0 *because* of that, so first
+  person would have inverted the controls the moment the player turned round. Rather than
+  branching, `PlayerController` now multiplies its input by `PerspectiveMode.MoveFrame` — the
+  identity under the ¾ camera, the look yaw in first person — which is why the top-down game is
+  provably unchanged (real-key probe: `W` still walks `+Z` at 2.03 m in 0.4 s, zero cross-axis
+  drift) and `PlayerShooter` needed no edit at all.
+  Three things the repo had already written down bit exactly as documented: Greenie had to be
+  hidden by his **renderers**, not by deactivating the `Visual` node `PlayerAnimator` rewrites
+  every frame; the toggle had to stay off `Time.timeScale`, which already has six owners; and
+  the statics had to be cleared from `SubsystemRegistration` — the mode is deliberately allowed
+  to outlive a scene load, and must not outlive the play session.
+  One gap found while wiring the gate: **the project had no way to ask "is a screen open?"**
+  Most modals park the clock at 0, which is a usable signal, but the bag, codex, quest log,
+  crafting bench and shop never touch it — so pressing `P` with the bag up would have swapped
+  the camera under the player, and the cursor would have stayed locked away from the very panel
+  they had just opened. `UiModal` is now the single answer, and those five register with it.
+  49 play-mode checks green, including the mode surviving a load from the farm into the hub.
 - _(2026-08-20)_ **Cycle 2's environment pass (backlog B1–B5) — and the reason the valley
   looked cheap was a bug, not a shortage of assets.** Kenney's Nature Kit is the one pack in
   the project with **no texture at all** — it is flat-shaded off its material colours — and

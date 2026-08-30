@@ -40,6 +40,8 @@ public class TutorialPopup : MonoBehaviour
          "• <b>W A S D</b> — di chuyển 4 hướng.\n" +
          "• <b>J</b> — bắn hạt mầm (giữ để bắn liên tục).\n" +
          "• <b>E</b> — tương tác: mở rương, nói chuyện, dùng cổng, bàn chế tạo.\n" +
+         "• <b>P</b> — đổi góc nhìn: từ trên xuống ↔ góc nhìn thứ nhất. Ở góc nhìn " +
+         "thứ nhất, di <b>chuột</b> để nhìn quanh; hạt mầm vẫn bay ngang mặt đất.\n" +
          "• <b>Esc</b> — tạm dừng trò chơi."),
 
         ("Túi đồ & Bảng thông tin",

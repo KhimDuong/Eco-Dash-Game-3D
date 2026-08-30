@@ -3,11 +3,17 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 /// <summary>
-/// Top-down 4-direction movement for Greenie (the cleanup robot) on the XZ ground
-/// plane. Same feel as the 2D original — WASD, no jumping, no camera control — but
-/// input Y maps to world Z and a CharacterController replaces the Rigidbody2D.
-/// Other systems modify speed through EnterMud/ExitMud (Toxic Mud hazard) and
-/// SetSpeedBoost (Green Sprout Energy Drink item).
+/// Movement for Greenie (the cleanup robot) on the XZ ground plane. Same feel as the
+/// 2D original — WASD, no jumping — but input Y maps to world Z and a
+/// CharacterController replaces the Rigidbody2D. Other systems modify speed through
+/// EnterMud/ExitMud (Toxic Mud hazard) and SetSpeedBoost (Green Sprout Energy Drink item).
+///
+/// <para><b>B6 made the input camera-relative.</b> WASD is read in screen axes and then
+/// turned into world axes by <see cref="PerspectiveMode.MoveFrame"/>. That rotation is the
+/// identity while the ¾ camera is live — its yaw is locked at 0, so W is still world +Z and
+/// every top-down path behaves exactly as it did before — and becomes the look yaw in first
+/// person, where W has to mean "forward" or the controls invert the moment the player turns
+/// round. There is no branch on the view mode here; there is a multiply.</para>
 /// </summary>
 [RequireComponent(typeof(CharacterController))]
 public class PlayerController : MonoBehaviour
@@ -84,13 +90,19 @@ public class PlayerController : MonoBehaviour
         if (kb == null) { moveInput = Vector3.zero; return; }
 
         Vector3 dir = Vector3.zero;
-        if (kb.wKey.isPressed) dir.z += 1f;   // 2D input Y -> world Z
+        if (kb.wKey.isPressed) dir.z += 1f;   // 2D input Y -> world Z (screen "up")
         if (kb.sKey.isPressed) dir.z -= 1f;
         if (kb.dKey.isPressed) dir.x += 1f;
         if (kb.aKey.isPressed) dir.x -= 1f;
 
-        moveInput = dir.sqrMagnitude > 1f ? dir.normalized : dir; // no diagonal speed boost
-        if (moveInput != Vector3.zero) FacingDirection = moveInput;
+        if (dir.sqrMagnitude > 1f) dir.Normalize();       // no diagonal speed boost
+        moveInput = PerspectiveMode.MoveFrame * dir;      // identity under the ¾ camera
+
+        // Facing is the aim as well as the animator's heading. In first person it follows the
+        // look, so Greenie shoots where the player is looking even while strafing or standing
+        // still; under the ¾ camera it keeps following the move direction, as it always has.
+        if (PerspectiveMode.IsFirstPerson) FacingDirection = PerspectiveMode.AimForward;
+        else if (moveInput != Vector3.zero) FacingDirection = moveInput;
     }
 
     void UpdateAnimator()

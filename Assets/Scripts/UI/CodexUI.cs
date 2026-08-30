@@ -28,7 +28,7 @@ public class CodexUI : MonoBehaviour
     }
 
     void OnEnable() { Codex.OnChanged += Render; Codex.OnCleanlinessChanged += OnClean; }
-    void OnDisable() { Codex.OnChanged -= Render; Codex.OnCleanlinessChanged -= OnClean; }
+    void OnDisable() { Codex.OnChanged -= Render; Codex.OnCleanlinessChanged -= OnClean; UiModal.Set(this, false); }
     void OnClean(int stage, float pct) { if (isOpen && tab == Tab.Cleanliness) Render(); }
 
     void Update()
@@ -41,6 +41,7 @@ public class CodexUI : MonoBehaviour
     void SetOpen(bool open)
     {
         isOpen = open;
+        UiModal.Set(this, open);   // B6: releases the cursor and blocks P while this is up
         if (panel != null) panel.SetActive(open);
         if (open) Render();
     }

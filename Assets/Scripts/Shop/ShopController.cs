@@ -45,7 +45,7 @@ public class ShopController : MonoBehaviour
     }
 
     void OnEnable() => PlayerProgress.OnChanged += Refresh;
-    void OnDisable() => PlayerProgress.OnChanged -= Refresh;
+    void OnDisable() { PlayerProgress.OnChanged -= Refresh; UiModal.Set(this, false); }
 
     void Update()
     {
@@ -63,12 +63,14 @@ public class ShopController : MonoBehaviour
         if (panel == null || IsOpen) return;
         panel.SetActive(true);
         Refresh();
+        UiModal.Set(this, true);
         if (openSfx != null && audioSource != null) audioSource.PlayOneShot(openSfx);
     }
 
     public void Close()
     {
         if (panel != null) panel.SetActive(false);
+        UiModal.Set(this, false);
     }
 
     /// <summary>Called by a row after a successful purchase.</summary>

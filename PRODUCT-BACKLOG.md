@@ -6,11 +6,17 @@
 > implemented and play-mode verified — see [Delivered](#delivered) for what changed and
 > what is still open. The findings are kept as written so the reasoning survives.
 >
-> **B6–B9 are a new, unstarted slice** — movement & perspective, requested by Khiêm on
-> 2026-08-26 and written up in
-> [Cycle 3 draft](#cycle-3-draft--the-movement--perspective-slice-b6b9). **Three of the
-> four change [golden rule #1](CLAUDE.md)** and are PO decisions before they are tickets;
-> read the note at the head of that section before scheduling any of them.
+> **B6 is built** (2026-08-31) — see [Cycle 3 draft](#cycle-3-draft--the-movement--perspective-slice-b6b9)
+> and [Delivered — B6](#delivered--b6-the-perspective-toggle). Khiêm took the slice and chose to
+> start with B6, so **[golden rule #1](CLAUDE.md) has been rewritten** and the change is
+> announced here for the other two devs: the world is still one flat XZ plane with no jumping
+> and no gravity, but the ¾ camera is now the *default* framing rather than the only one, and
+> **movement and aim are camera-relative from now on** — go through `PerspectiveMode.MoveFrame`,
+> never raw world axes.
+>
+> **B7–B9 remain unstarted.** B8 and B9 still change golden rule #1 in ways B6 did not (non-flat
+> ground; gravity and surface-climbing as mechanics) and are still PO decisions before they are
+> tickets; read the note at the head of that section before scheduling either.
 >
 > **Scope of this draft.** This covers one slice only: environment feel — terrain
 > elevation, map scale, camera angle, and "does this look cheap" — gathered by
@@ -131,7 +137,7 @@ Format per [CYCLE-2-TASKS.md § 7](CYCLE-2-TASKS.md): *"As a player, I want… s
 > **B7 is the exception:** it is a straight improvement, breaks no rule, and is worth doing on
 > its own merits whether or not B6 ships.
 
-### B6 — Toggle between the ¾ view and first person with **P**
+### B6 — Toggle between the ¾ view and first person with **P** — ✅ **built 2026-08-31**
 
 **As a player**, I want to press **P** to switch between the current ¾ top-down camera and a
 first-person view from Greenie's own eyes, **so that** I can look around the valley I am
@@ -263,14 +269,21 @@ can climb the mesa in Level 1's north-west corner instead of walking around it.
 
 | # | Item | Take it? |
 |---|---|---|
-| 1 | **B7** sky & horizon | **Yes, independently.** Breaks no rule, small-to-medium, helps the A2 video today. |
-| 2 | *(gate)* projectiles become orientation- and terrain-aware | **Prerequisite** for everything below. Nothing else starts until this is done and combat still passes QA. |
-| 3 | **B6** perspective toggle | After the gate. Camera is easy; camera-relative movement is the work. |
-| 4 | **B8 + B9** together | One surface-aligned controller serves both. Biggest item on the list by a wide margin. |
+| 1 | **B7** sky & horizon | **Yes, independently.** Breaks no rule, small-to-medium, helps the A2 video today — and now that B6 has landed, the sky is a surface players can actually look at. |
+| 2 | *(gate)* projectiles become orientation- and terrain-aware | ✅ **Orientation half done with B6** — a Seed follows `PerspectiveMode.AimForward` in either framing and still flies flat. The **terrain half is untouched** and is still the prerequisite for B8/B9. |
+| 3 | **B6** perspective toggle | ✅ **Built.** The camera was easy, as predicted; camera-relative movement was the work, and it came out as one rotation rather than a second control scheme. |
+| 4 | **B8 + B9** together | One surface-aligned controller serves both. Biggest item on the list by a wide margin, and unchanged by B6. |
 
-**Not recommended before the A2 submission.** Cycle 2 closed with the game finishable end to
-end and QA clean; B6/B8/B9 put that at risk for presentation value the fixed camera already
-delivers. If only one thing is taken this cycle, take **B7**.
+**The order was taken out of sequence, deliberately.** Khiêm asked for the slice starting with
+its first item, so B6 went first rather than B7. That was the more expensive order — B6's own
+write-up predicted it would "expose B7 immediately", and it does: from eye height Level 1's sky
+is a gradient and Level 2 is an open-topped box. **B7 is now the obvious next item**, and it is
+still the cheap one.
+
+**B8/B9 are still not recommended before the A2 submission.** Cycle 2 closed with the game
+finishable end to end and QA clean. B6 was contained — it added a framing without touching the
+ground, the projectiles' flight or the character controller — but B8 and B9 rewrite exactly
+those, and the game's one fully-working system is combat.
 
 ---
 
@@ -297,3 +310,64 @@ All five items are built and play-mode verified (no errors; NavMesh re-bakes to 
 - ~~**The camera angle**~~ — decided: stays at 50°, and the A2 demo route covers the terrain instead. See the measurement above.
 - **The ship-line** — still the PO's call once P2's pillar scoring is done.
 - **Greenie reads as a plain white sphere from behind.** The model (Kenney's `oopi`) is a mint character in a white shell with a face, but the fixed camera looks at his back whenever he walks away from it, which is most of the time. Not a bug and not touched — flagging it because "the character looks fine" in the rubric table above was judged from the front.
+
+---
+
+## Delivered — B6: the perspective toggle
+
+Built and play-mode verified on 2026-08-31 (**49 checks green, no exceptions**). Nothing needs
+rebuilding — B6 is code plus one component on `CameraRig.prefab`; the level, art and audio
+generators are untouched.
+
+**Press `P`.** The camera dives from the ¾ rig to Greenie's eyes over 0.3 s; the mouse looks
+around; `P` again brings it back. The mode survives a scene change, so walking a portal into the
+hub keeps you in first person.
+
+| Acceptance criterion | Result |
+|---|---|
+| `P` toggles both ways, polled off `Keyboard.current`, no action-asset binding | ✅ verified through synthesised real key events, not by calling the toggle |
+| Greenie's model does not fill the frame | ✅ his **renderers** are disabled — the `Visual` node stays active, because `PlayerAnimator` owns its transform and rewrites it every frame |
+| Survives a scene change | ✅ farm → hub keeps the mode, and the hub's own rig builds its own first-person camera |
+| Cannot fire while a modal owns the screen | ✅ and this needed a new piece — see below |
+| Both framings playable; a mid-fight toggle does not kill you | ✅ the world never pauses, the blend is 0.3 s, and the look starts at the ¾ camera's own heading so `W` means the same thing the frame after the toggle as the frame before |
+
+**What it cost, against the estimate.** The write-up said "Large, and it is not the camera that
+makes it large" — right on both counts, but the movement half came out smaller than feared,
+because it did not become a second control scheme:
+
+```csharp
+moveInput = PerspectiveMode.MoveFrame * dir;   // identity under the ¾ camera
+```
+
+`MoveFrame` is the identity rotation while the ¾ camera is live (its yaw is locked at 0), so
+every top-down path is unchanged rather than merely intended to be — a real-key probe walks
+`W` 2.03 m along `+Z` in top-down with zero cross-axis drift, and 2.02 m due east in first
+person while looking east. `PlayerShooter` needed **no edit at all**: it reads
+`FacingDirection`, which now follows the look in first person.
+
+**Two things found while building it, neither previously reported:**
+
+1. **The project had no way to ask "is a screen open?"** Most modals announce themselves by
+   parking `Time.timeScale` at 0 — and `GameFeel`'s hit-stop crawls at 0.02 precisely so it
+   never reads as one — but the **bag, codex, quest log, crafting bench and shop never touch the
+   clock**. Without a shared answer, `P` would have swapped the camera under a player reading
+   their inventory, and the cursor would have stayed locked away from the panel they had just
+   opened. `UiModal` is now that answer and those five register with it. It is a small piece of
+   plumbing that any future modal-aware feature gets for free.
+2. **First person has no facing cue.** Under the ¾ camera Greenie's body *is* the aim indicator;
+   at eye height there is nothing. `FirstPersonReticle` puts a centre dot on screen — and it is
+   a *horizontal* aim marker, not a 3D crosshair, because Seeds still fly flat: looking down
+   does not tilt a shot. Verified.
+
+**Open, deliberately:**
+
+- **B7 is now visibly the next item.** B6's own write-up predicted it would expose the sky, and
+  it does — from eye height Level 1's horizon is a gradient smear and Level 2 is an
+  open-topped box with a procedural sky over an indoor level.
+- **Every framing measurement in this document still assumes 50°.** The "~19 m of ground visible
+  past Greenie" figure, the A2 demo route and both QA passes were tuned for the ¾ camera, which
+  is still the default and still the one to demo. First person is an addition, not a
+  replacement.
+- **Mouse sensitivity is a serialized field on `PerspectiveRig`, not a settings-panel slider.**
+  0.12°/pixel felt right; if playtesting disagrees it belongs in `GameSettings` beside the
+  volume controls, which is a small job nobody has asked for yet.

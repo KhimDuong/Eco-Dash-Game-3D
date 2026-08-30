@@ -22,10 +22,17 @@ per-developer breakdown is [TEAM-TASKS.md](TEAM-TASKS.md). Creative brief
 
 ## The golden rules (read these first)
 
-1. **3D top-down on the XZ plane, no platforming.** WASD moves Greenie on flat
-   ground; input Y maps to **world Z**. Fixed ¾ Cinemachine camera (no player
-   camera control), no jumping, gravity is never a mechanic. Never add
-   side-scroller or first-person logic.
+1. **Two framings over one flat XZ world, no platforming.** Greenie walks on flat
+   ground; no jumping, gravity is never a mechanic, and Seeds always fly flat at
+   y ≈ 0.6 in world axes. The **default and canonical framing is the fixed ¾
+   Cinemachine camera** (pitch 50°, yaw 0) — every layout, sightline and QA pass is
+   tuned at it. **B6 (cycle 3) added one alternative: `P` drops to first person with
+   mouse look, and back.** So movement and aim are **camera-relative**: WASD is read
+   in screen axes and turned into world axes by `PerspectiveMode.MoveFrame`, which is
+   the identity under the ¾ camera (input Y still maps to **world Z** there) and the
+   look yaw in first person. Never author movement, aim or camera code in raw world
+   axes again — go through `PerspectiveMode`. Never add side-scroller logic, and
+   nothing else may control the camera.
 2. **Port, don't reinvent.** Before writing any gameplay script, check the 2D
    repo for its counterpart and apply the **porting tiers** in
    [.claude/docs/architecture.md](.claude/docs/architecture.md): Tier 0 copies
@@ -79,9 +86,10 @@ Physics layers and the collision matrix live in
 
 ## Controls (design contract — unchanged from 2D)
 
-`W/A/S/D` move on the ground plane · `J` shoot Seed projectile · `E` interact
-(NPC/chest) · `Esc` pause · `I/Tab` bag · `1–4` hotbar · `Q` quest log ·
-`C` codex. Read exactly as in the 2D repo: **direct polling of `Keyboard.current`**
+`W/A/S/D` move on the ground plane · `P` toggle ¾ ⇄ first person (mouse looks around
+in first person) · `J` shoot Seed projectile · `E` interact (NPC/chest) · `Esc` pause ·
+`I/Tab` bag · `1–4` hotbar · `Q` quest log · `C` codex · `H` how-to-play.
+Read exactly as in the 2D repo: **direct polling of `Keyboard.current`**
 from the Input System package (`kb.wKey.isPressed`, `kb.jKey.isPressed`, …), *not*
 through action maps. [Assets/InputSystem_Actions.inputactions](Assets/InputSystem_Actions.inputactions)
 is copied from the 2D repo and set as the project-wide asset, but gameplay

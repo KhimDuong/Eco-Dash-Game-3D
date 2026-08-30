@@ -59,6 +59,7 @@ and from the hub you portal into either stage and back again at will.
 | Key | Action | Vietnamese |
 |-----|--------|-----------|
 | **W / A / S / D** | Move around the ground plane — **W is always "away from the camera"**, whichever way Greenie is facing | Di chuyển |
+| **P** | Switch between the fixed ¾ view and **first person**, and back. In first person, move the **mouse** to look around; W follows where you are looking | Đổi góc nhìn |
 | **J** | Shoot a **Seed** projectile in the direction you're facing (hold to auto-fire) | Bắn hạt mầm |
 | **E** | Interact — open chests, grab keycards, talk to NPCs, use portals & the crafting bench, read lore notes | Tương tác |
 | **1 / 2 / 3 / 4** | Use the consumable in that **hotbar** slot (bottom of screen) | Dùng vật phẩm nhanh |
@@ -68,10 +69,16 @@ and from the hub you portal into either stage and back again at will.
 | **H** | Open / close the **how-to-play tutorial** popup | Hướng dẫn |
 | **Esc** | Pause / unpause (opens the pause menu) | Tạm dừng |
 
-There is **no jump, no gravity as a mechanic, and no camera control** — the
-three-quarter view is fixed, so W never stops meaning "up the screen". The world
-is 3D, but everything you fight and collect is reached by walking to it on the
-ground; height is scenery, never a platform.
+There is **no jump and no gravity as a mechanic**. The world is 3D, but everything
+you fight and collect is reached by walking to it on the ground; height is
+scenery, never a platform.
+
+The ¾ view is the game's default and is fixed — no yaw, no zoom — so W never
+stops meaning "up the screen" there. **P** is the one exception: it drops you to
+Greenie's eye level, where the mouse turns the camera and the movement keys turn
+with it. Seeds still fly flat along the ground in first person, so looking up or
+down changes what you see, never where you shoot; the centre dot marks where a
+Seed will go.
 
 ---
 
