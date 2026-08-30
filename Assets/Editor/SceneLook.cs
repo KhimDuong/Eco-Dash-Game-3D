@@ -70,34 +70,60 @@ public static class SceneLook
         return sun;
     }
 
+    /// <summary>
+    /// B7: the one colour a scene's distance is painted in — used for <b>both</b>
+    /// <see cref="RenderSettings.fogColor"/> and the procedural sky's <c>_GroundColor</c>.
+    ///
+    /// <para>This is the whole trick behind the horizon. Distant geometry fades toward the fog
+    /// colour; where the geometry stops, what shows through is the sky <i>below its own horizon
+    /// line</i>, which is exactly <c>_GroundColor</c>. Author those two independently — as B5
+    /// did, with warm tan fog against dark-brown sky-ground — and every far object ends on a
+    /// visible seam: at eye height Level 1's hills read as cardboard boxes cut out and pasted
+    /// onto a different sky. Author them as one value and the ground has nowhere to end.</para>
+    /// </summary>
+    static Color Horizon(Look look) => look switch
+    {
+        Look.Farm    => new Color(0.78f, 0.75f, 0.64f),   // smog held in a valley, lit from behind
+        Look.Factory => new Color(0.17f, 0.18f, 0.22f),   // cold haze in a plant hall
+        _            => new Color(0.72f, 0.78f, 0.85f),   // clean, cool, far away
+    };
+
     static void Ambient(Look look)
     {
         RenderSettings.ambientMode = AmbientMode.Trilight;
+        RenderSettings.fog = true;
+        RenderSettings.fogMode = FogMode.ExponentialSquared;
+        RenderSettings.fogColor = Horizon(look);
         switch (look)
         {
             case Look.Farm:
                 RenderSettings.ambientSkyColor = new Color(0.55f, 0.55f, 0.50f);
                 RenderSettings.ambientEquatorColor = new Color(0.42f, 0.40f, 0.35f);
                 RenderSettings.ambientGroundColor = new Color(0.25f, 0.22f, 0.18f);
-                RenderSettings.fog = true;
-                RenderSettings.fogMode = FogMode.ExponentialSquared;
-                RenderSettings.fogColor = new Color(0.72f, 0.69f, 0.58f);
-                RenderSettings.fogDensity = 0.012f;
+                // Sized against the real distances: the outer hills stand ~68 m out and the
+                // outer ground stops at 110 m, so this puts the far ridge ~55% into haze and
+                // the edge of the world ~90%, while leaving the ~19 m the ¾ camera can
+                // actually see almost untouched (7% at 20 m).
+                RenderSettings.fogDensity = 0.0138f;
                 break;
             case Look.Factory:
                 RenderSettings.ambientSkyColor = new Color(0.22f, 0.25f, 0.32f);
                 RenderSettings.ambientEquatorColor = new Color(0.16f, 0.17f, 0.21f);
                 RenderSettings.ambientGroundColor = new Color(0.07f, 0.07f, 0.09f);
-                RenderSettings.fog = true;
-                RenderSettings.fogMode = FogMode.ExponentialSquared;
-                RenderSettings.fogColor = new Color(0.14f, 0.15f, 0.18f);
-                RenderSettings.fogDensity = 0.020f;
+                // Level 2 is a hall now (TerrainKit.FactoryHall): its far shell is 45 m out and
+                // wants to read as depth, not as a wall. Raised only slightly from B5's 0.020 —
+                // this is the one scene where fog is fighting gameplay legibility for the same
+                // metres, and cycle-1 QA passed at that value.
+                RenderSettings.fogDensity = 0.024f;
                 break;
             case Look.Hub:
                 RenderSettings.ambientSkyColor = new Color(0.62f, 0.63f, 0.66f);
                 RenderSettings.ambientEquatorColor = new Color(0.48f, 0.48f, 0.50f);
                 RenderSettings.ambientGroundColor = new Color(0.28f, 0.27f, 0.26f);
-                RenderSettings.fog = false;
+                // B5 left the hub with no fog at all, which is why its ring of hills has the
+                // same hard edge Level 1's had. Light — it is the one clean-air place in the
+                // game and should not look sick.
+                RenderSettings.fogDensity = 0.0095f;
                 break;
         }
     }
@@ -125,28 +151,31 @@ public static class SceneLook
             AssetDatabase.CreateAsset(sky, path);
         }
 
+        // B7: the sky's ground half is the fog colour, always. See Horizon().
+        sky.SetColor("_GroundColor", Horizon(look));
+
         switch (look)
         {
             case Look.Farm:      // smog held in the valley: yellow-grey, sun burning through it
-                sky.SetColor("_SkyTint", new Color(0.62f, 0.58f, 0.45f));
-                sky.SetColor("_GroundColor", new Color(0.32f, 0.28f, 0.22f));
-                sky.SetFloat("_AtmosphereThickness", 1.75f);
-                sky.SetFloat("_Exposure", 1.15f);
+                sky.SetColor("_SkyTint", new Color(0.66f, 0.63f, 0.52f));
+                // Thick air is what a hazy horizon *is*: it whitens the band just above the
+                // skyline, which is the half of the seam _GroundColor cannot reach — the hills
+                // stand well above the horizon line and would otherwise end on open blue.
+                sky.SetFloat("_AtmosphereThickness", 2.30f);
+                sky.SetFloat("_Exposure", 1.28f);
                 sky.SetFloat("_SunSize", 0.06f);
                 sky.SetFloat("_SunDisk", 2f);
                 break;
-            case Look.Factory:   // a lid of cold cloud over the plant; no sun disk to find
+            case Look.Factory:   // roofed now, so this is only what leaks past the hall's edges
                 sky.SetColor("_SkyTint", new Color(0.34f, 0.38f, 0.46f));
-                sky.SetColor("_GroundColor", new Color(0.10f, 0.10f, 0.12f));
                 sky.SetFloat("_AtmosphereThickness", 0.85f);
                 sky.SetFloat("_Exposure", 0.70f);
                 sky.SetFloat("_SunSize", 0.02f);
                 sky.SetFloat("_SunDisk", 0f);
                 break;
             case Look.Hub:       // the one clean sky in the game
-                sky.SetColor("_SkyTint", new Color(0.48f, 0.62f, 0.80f));
-                sky.SetColor("_GroundColor", new Color(0.36f, 0.34f, 0.30f));
-                sky.SetFloat("_AtmosphereThickness", 1.05f);
+                sky.SetColor("_SkyTint", new Color(0.52f, 0.66f, 0.84f));
+                sky.SetFloat("_AtmosphereThickness", 1.35f);
                 sky.SetFloat("_Exposure", 1.30f);
                 sky.SetFloat("_SunSize", 0.05f);
                 sky.SetFloat("_SunDisk", 2f);

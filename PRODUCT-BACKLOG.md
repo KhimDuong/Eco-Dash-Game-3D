@@ -6,15 +6,15 @@
 > implemented and play-mode verified — see [Delivered](#delivered) for what changed and
 > what is still open. The findings are kept as written so the reasoning survives.
 >
-> **B6 is built** (2026-08-31) — see [Cycle 3 draft](#cycle-3-draft--the-movement--perspective-slice-b6b9)
-> and [Delivered — B6](#delivered--b6-the-perspective-toggle). Khiêm took the slice and chose to
-> start with B6, so **[golden rule #1](CLAUDE.md) has been rewritten** and the change is
-> announced here for the other two devs: the world is still one flat XZ plane with no jumping
-> and no gravity, but the ¾ camera is now the *default* framing rather than the only one, and
-> **movement and aim are camera-relative from now on** — go through `PerspectiveMode.MoveFrame`,
-> never raw world axes.
+> **B6 and B7 are built** (2026-08-31) — see [Cycle 3 draft](#cycle-3-draft--the-movement--perspective-slice-b6b9),
+> [Delivered — B6](#delivered--b6-the-perspective-toggle) and
+> [Delivered — B7](#delivered--b7-the-horizon). Khiêm took the slice and chose to start with B6,
+> so **[golden rule #1](CLAUDE.md) has been rewritten** and the change is announced here for the
+> other two devs: the world is still one flat XZ plane with no jumping and no gravity, but the ¾
+> camera is now the *default* framing rather than the only one, and **movement and aim are
+> camera-relative from now on** — go through `PerspectiveMode.MoveFrame`, never raw world axes.
 >
-> **B7–B9 remain unstarted.** B8 and B9 still change golden rule #1 in ways B6 did not (non-flat
+> **B8 and B9 remain unstarted.** They still change golden rule #1 in ways B6 did not (non-flat
 > ground; gravity and surface-climbing as mechanics) and are still PO decisions before they are
 > tickets; read the note at the head of that section before scheduling either.
 >
@@ -180,7 +180,7 @@ cleaning up instead of only ever seeing it from above.
     50°), and Level 2's corridor sightlines were all tuned for a fixed 50° yaw-0 camera.
     First person also exposes **B7** immediately — see below.
 
-### B7 — A sky and a horizon that survive being looked at
+### B7 — A sky and a horizon that survive being looked at — ✅ **built 2026-08-31**
 
 **As a player**, I want the sky to look like a real sky when I can actually see it, **so that**
 the world does not visibly end at the top of the boundary wall.
@@ -269,16 +269,17 @@ can climb the mesa in Level 1's north-west corner instead of walking around it.
 
 | # | Item | Take it? |
 |---|---|---|
-| 1 | **B7** sky & horizon | **Yes, independently.** Breaks no rule, small-to-medium, helps the A2 video today — and now that B6 has landed, the sky is a surface players can actually look at. |
+| 1 | **B7** sky & horizon | ✅ **Built.** Breaks no rule, and it turned out to be worth more than "polish": the reason Level 1's boundary looked cheap was a two-colour seam nobody had spotted, and Level 2 had no answer above its walls at all. |
 | 2 | *(gate)* projectiles become orientation- and terrain-aware | ✅ **Orientation half done with B6** — a Seed follows `PerspectiveMode.AimForward` in either framing and still flies flat. The **terrain half is untouched** and is still the prerequisite for B8/B9. |
 | 3 | **B6** perspective toggle | ✅ **Built.** The camera was easy, as predicted; camera-relative movement was the work, and it came out as one rotation rather than a second control scheme. |
 | 4 | **B8 + B9** together | One surface-aligned controller serves both. Biggest item on the list by a wide margin, and unchanged by B6. |
 
-**The order was taken out of sequence, deliberately.** Khiêm asked for the slice starting with
-its first item, so B6 went first rather than B7. That was the more expensive order — B6's own
-write-up predicted it would "expose B7 immediately", and it does: from eye height Level 1's sky
-is a gradient and Level 2 is an open-topped box. **B7 is now the obvious next item**, and it is
-still the cheap one.
+**The order was taken out of sequence, deliberately — and it paid off.** Khiêm asked for the
+slice starting with its first item, so B6 went first rather than B7. B6's own write-up predicted
+that would "expose B7 immediately", and it did. What was not predicted is that having first
+person available made B7 *diagnosable*: the horizon could be rendered from eye height and looked
+at, which is how the two-colour seam and the flat-topped hills were found. Doing B7 first, blind
+at pitch 50°, would have meant tuning a sky nobody could see.
 
 **B8/B9 are still not recommended before the A2 submission.** Cycle 2 closed with the game
 finishable end to end and QA clean. B6 was contained — it added a framing without touching the
@@ -371,3 +372,77 @@ person while looking east. `PlayerShooter` needed **no edit at all**: it reads
 - **Mouse sensitivity is a serialized field on `PerspectiveRig`, not a settings-panel slider.**
   0.12°/pixel felt right; if playtesting disagrees it belongs in `GameSettings` beside the
   volume controls, which is a small job nobody has asked for yet.
+
+---
+
+## Delivered — B7: the horizon
+
+Built and verified on 2026-08-31 (**20 invariant checks green**, B6 re-run **13/13** after the
+rebuilds, clean error log). Rebuild with **Eco-Dash → Rebuild Level 1 / Rebuild Level 2 /
+Rebuild the hub** — all three were re-run and committed. Evidence:
+[`QA/screenshots/b7_*`](QA/screenshots/).
+
+| Acceptance criterion | Result |
+|---|---|
+| From eye height, in both levels, all four cardinal directions show a deliberate horizon | ✅ rendered from Greenie's eye height (1.05 m, level) in N/E/S/W for all three scenes and looked at, rather than reasoned about |
+| Level 1's boundary reads as *distance*, not a 3 m wall with sky above it | ✅ ridges now recede behind the wall in three bands and dissolve into haze — see `b7_farm_horizon_south.png` |
+| Level 2 gets an answer for "what is above a factory maze?" | ✅ a roof at 12 m, a shell 25 m out, trusses and strip lights — `b7_factory_hall_interior.png` |
+| Fog / atmosphere tuned per scene alongside `SceneLook`, so the cut-off is a choice | ✅ and sized against the actual distances in the scene, not picked by eye |
+| Zero new assets | ✅ as predicted — `RenderSettings`, `SceneLook.cs`, and Nature Kit models already in the repo |
+
+**The Level 1 problem was not the sky. It was two colours that should have been one.**
+
+Distant geometry fades toward `RenderSettings.fogColor`. Where the geometry stops, what shows
+through is the procedural sky *below its own horizon line* — which is `_GroundColor`. B5 authored
+those independently, warm tan fog against dark-brown sky-ground, so **every far object ended on a
+visible seam**: the hills read as cardboard boxes cut out and pasted onto a different sky. There
+is now one value, `SceneLook.Horizon(look)`, feeding both, and no way to author them apart.
+
+Two supporting changes: fog density sized against the real distances (the far ridge is 68 m out,
+the world stops at 110 m — so 0.0138 puts the ridge ~55% into haze and leaves the ~19 m the ¾
+camera can see at 7%, i.e. **the framing the game is tuned for barely moves**), and the outer
+hills capped with `cliff_blockSlope_*` instead of flat cubes, which is what stops them reading as
+packing crates at eye level. The hub, which had **no fog at all**, got a light 0.0095 and its
+ridges pushed from 8/18 m out to 16/34 m so there is air for it to work in.
+
+**Level 2 got a roof, and QA C11 is the reason it is a roof and not a taller wall.**
+
+C11 reports Level 2's walls occluding the ¾ camera, so building upward is exactly the wrong
+instinct. A roof is exempt, and the argument is exact rather than hopeful: the ¾ camera sits
+9.693 m up at pitch 50° with a 60° vertical FOV, so its highest frustum ray — a top *corner*,
+higher than the top edge — still points **27.9° below horizontal**. Nothing at or above the
+camera's own height is ever in frame. The lowest thing the hall hangs is a strip light at
+10.84 m and the biggest camera shake in the game is the Mega-Smog's 0.32 m, leaving 0.83 m of
+margin. Checked empirically too: Level 2's ¾ framing rendered from three positions with the hall
+switched on and off gives **0 differing pixels out of 291 600, three times over.** Every QA pass
+ever run on Level 2 is still valid.
+
+The hall has no colliders (so the NavMesh, which bakes from `PhysicsColliders`, never sees it),
+casts no shadows (a roof that did would put the whole plant in shade), and is emissive rather
+than lit (a ceiling's underside faces down, so ambient shades it near-black and a lit material
+would give back a void).
+
+**One bug found on the way, and it is the more useful half of this ticket.**
+
+**The five Level 1 generators shared a single `System.Random`.** Every draw therefore depended on
+how many the *previous* generator had spent — so re-profiling the outer hills changed the number
+of ring points and silently re-rolled the mesa standing behind them: **34 rock cubes became 27**,
+in geometry cycle-2 QA had already signed off. Nothing about the mesa had been edited. Each
+generator now seeds its own stream. Worth knowing generally: *a shared RNG makes every generator
+a dependency of every generator before it*, and the failure is invisible until someone compares
+counts.
+
+**Still open, deliberately:**
+
+- **The mesa did move once, unavoidably** — 34 rock cubes → 28 — because insulating it means
+  drawing from a fresh stream rather than continuing the shared one. It is still a 4.2 m stepped
+  mesa with one box collider per column (QA C3's fix is structural, not random) and the spring at
+  its foot is at a fixed position. From here on it is stable against edits elsewhere.
+- **The toxic mud pools read as flat pale sheets** from eye height. Pre-existing, unrelated to
+  B7, and a gameplay element rather than scenery — flagging it because it was mistaken for a
+  rendering defect while diagnosing this.
+- **QA C10 / C11 / C12 are untouched** — B7 sits next to C11 and deliberately works around it
+  rather than fixing it. C12 in particular is a design-vs-QA disagreement, not a coding bug:
+  `Level2Builder.Dress()` states in the code that its 38 factory props carry no colliders on
+  purpose, "so the corridors the player and the NavMesh see are exactly the ones the tilemap
+  authored". That is a PO call, not a dev fix.

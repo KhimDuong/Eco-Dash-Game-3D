@@ -426,11 +426,56 @@ owners in [../../TEAM-TASKS.md](../../TEAM-TASKS.md).
     hiding with the `Visual` node left alone, aim in both views, seeds flat in both views,
     real-key WASD walking `+Z` in top-down and east in first person while looking east, `A`
     strafing, `P` gated by the bag, and the mode surviving a load into the hub
-- [ ] **B7** a sky and a horizon that survive being looked at — *B6 makes this visible; not started*
+- **B7** a sky and a horizon that survive being looked at — **done**
+  - [x] `SceneLook.Horizon(look)` — **one** colour for both `RenderSettings.fogColor` and the
+    procedural sky's `_GroundColor`, so distant ground has nowhere to end. B5 authored them
+    apart, which is why Level 1's hills read as boxes pasted onto a different sky
+  - [x] fog sized against the real distances (farm 0.0138: ~55% haze on the 68 m ridge, ~90% at
+    the 110 m edge, 7% at 20 m so the ¾ framing barely moves); the hub had **no fog at all** and
+    now has a light 0.0095; thicker atmosphere whitens the band above the skyline
+  - [x] `TerrainKit.Stack(ridge: true)` — outer ridges capped with `cliff_blockSlope_*` instead
+    of flat cubes, bands stepped back to 10/22/38 m; the hub's pushed out from 8/18 to 16/34 m.
+    The mesa deliberately keeps its flat steps (its colliders trace the rock — QA C3)
+  - [x] `TerrainKit.FactoryHall` — Level 2 was an open-topped box under a night sky. Roof at
+    12 m, shell 25 m beyond the maze, 8 trusses, 4 strip lights; no colliders, no shadows,
+    emissive so the underside is not a black void
+  - [x] **the roof is provably invisible from the ¾ camera** — its frustum tops out 27.9° below
+    horizontal, the lowest hall surface hangs at 10.84 m, and the biggest shake in the game is
+    0.32 m. Rendered A/B from three positions in the maze: **0 of 291 600 pixels differ**
+  - [x] **bug found: the five Level 1 generators shared one `System.Random`.** Re-profiling the
+    hills changed how many ring points there were and silently re-rolled the mesa behind them
+    (34 rock cubes → 27) — cycle-2 QA-verified geometry moving because something upstream of it
+    changed. One seed per generator now
+  - [x] verified 20/20 (fog/sky matched in all three scenes, ridge caps, the mesa's per-column
+    colliders intact, the hall collider-less and shadow-less, roof height, shell standoff, and
+    the NavMesh still pathing to both keycards and the boss door), plus B6 re-run 13/13 after
+    the rebuilds and a clean error log. Evidence in [../../QA/screenshots/](../../QA/screenshots/)
+    (`b7_*`)
 - [ ] **B8 + B9** hill ground and wall-walking — *still break golden rule #1; unstarted, PO call*
 
 ## Recent log
 
+- _(2026-08-31)_ **B7 — a horizon is one colour and one roof.** B6 turned the sky from a
+  gradient smear along the top of frame into a surface, and everything behind it was suddenly
+  load-bearing. Two things were wrong and neither was a shortage of assets.
+  **First, the seam was two colours that should have been one.** Distant geometry fades toward
+  the fog colour; where it stops, what shows through is the sky *below its own horizon line*,
+  which is `_GroundColor`. B5 authored those independently — warm tan fog against dark-brown
+  sky-ground — so every far object ended on a visible edge. One value now feeds both, and the
+  fog density is sized against the real distances (the far ridge is 68 m out, the world stops at
+  110 m) rather than picked by eye, which leaves the ~19 m the ¾ camera can see almost untouched.
+  **Second, the hills had flat tops** — invisible at pitch 50°, a row of packing crates at eye
+  height. Each column is capped with `cliff_blockSlope_*` now and the bands step back.
+  **Level 2 got a roof.** It was an open-topped box under a procedural night sky, and QA C11
+  rules out the obvious fix of building the walls taller. A roof is exempt: the ¾ camera's
+  frustum tops out **27.9° below horizontal**, so nothing at or above the camera's own 9.69 m is
+  ever in frame. Rendered A/B from three positions with the hall on and off: **0 of 291 600
+  pixels differ**, three times over — the framing every QA pass was run at is bit-identical.
+  One bug found on the way, and it is the more useful half: **the five Level 1 generators shared
+  a single `System.Random`**, so re-profiling the hills changed how many ring points there were
+  and silently re-rolled the mesa behind them — 34 rock cubes became 27, in geometry cycle-2 QA
+  had signed off. A shared RNG makes every generator a dependency of every generator before it.
+  One seed each now. 20/20 verified, B6 re-run 13/13 after the rebuilds, clean error log.
 - _(2026-08-31)_ **B6 — the perspective toggle, and the frame that made it cheap.** `P` now
   drops to Greenie's eyes and back. The interesting part is not the camera (a second
   `CinemachineCamera` at eye height, priority-swapped, is a dozen lines) but the movement: WASD

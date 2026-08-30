@@ -40,7 +40,9 @@ public class TutorialPopup : MonoBehaviour
          "• <b>W A S D</b> — di chuyển 4 hướng.\n" +
          "• <b>J</b> — bắn hạt mầm (giữ để bắn liên tục).\n" +
          "• <b>E</b> — tương tác: mở rương, nói chuyện, dùng cổng, bàn chế tạo.\n" +
-         "• <b>P</b> — đổi góc nhìn: từ trên xuống ↔ góc nhìn thứ nhất. Ở góc nhìn " +
+         // No arrow glyph here: LiberationSans' fallback atlas has no U+2194, so a nice-looking
+         // "top-down <-> first person" renders as a tofu box in the one screen that teaches the key.
+         "• <b>P</b> — đổi góc nhìn: trên xuống hoặc góc nhìn thứ nhất. Ở góc nhìn " +
          "thứ nhất, di <b>chuột</b> để nhìn quanh; hạt mầm vẫn bay ngang mặt đất.\n" +
          "• <b>Esc</b> — tạm dừng trò chơi."),
 

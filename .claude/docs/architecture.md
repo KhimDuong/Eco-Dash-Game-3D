@@ -802,6 +802,75 @@ remain unstarted and still break rule #1 in ways this does not** — B8 needs `G
 surface-aligned `Rigidbody`. The projectile "gate" the cycle-3 draft named is satisfied *for
 orientation* (a Seed follows the aim frame in either view) and untouched *for terrain*.
 
+## A horizon is one colour and one roof (B7)
+
+B5 gave every scene a tuned procedural sky and B2 put hills outside Level 1's walls, and at
+pitch 50° both were correct and neither was ever really seen — the ¾ camera's frustum tops out
+27.9° below horizontal, so the sky was a gradient smear along the top of frame. **B6 made the
+horizon a surface**, and everything behind it was suddenly load-bearing. B7 is what makes B6 not
+look broken.
+
+### The seam was two colours that should have been one
+
+Distant geometry fades toward `RenderSettings.fogColor`. Where the geometry stops, what shows
+through is the procedural sky *below its own horizon line*, which is exactly `_GroundColor`.
+B5 authored those independently — warm tan fog (0.72, 0.69, 0.58) against dark-brown sky-ground
+(0.32, 0.28, 0.22) — so every far object ended on a visible edge, and Level 1's hills read as
+cardboard boxes cut out and pasted onto a different sky.
+
+`SceneLook.Horizon(look)` is now a single value used for **both**. There is no way to author
+them apart any more, and the ground has nowhere to end. The other half of the seam — the hill
+tops, which stand *above* the sky's horizon line and so meet open sky rather than sky-ground —
+is handled by `_AtmosphereThickness`, which whitens the band just above the skyline: 1.75 → 2.30
+on the farm, 1.05 → 1.35 on the hub.
+
+Fog density is now sized against the real distances rather than picked by eye. On the farm the
+outer hills stand ~68 m out and the outer ground stops at 110 m, so 0.0138 puts the far ridge
+~55% into haze and the edge of the world ~90%, while leaving the ~19 m the ¾ camera can actually
+see almost untouched (7% at 20 m) — **the framing the game is tuned for barely moves.** The hub
+had no fog at all and now has a light 0.0095.
+
+### Ridges, not a skyline
+
+Colour was only half of it. `TerrainKit.Stack` built the outer hills from `cliff_block_*` cubes,
+which have flat tops — invisible at pitch 50°, a row of packing crates at eye height. The
+`ridge: true` path caps each column with `cliff_blockSlope_*` turned a random quarter-turn, and
+the three bands step back and up (10/22/38 m out) so the silhouette recedes. The mesa
+deliberately does **not** get this: its per-column colliders trace the rock that is there (QA C3)
+and a sloped cap would promise a walkable surface the collider does not have.
+
+> **One trap this uncovered, worth more than the feature.** The five Level 1 generators shared a
+> single `System.Random`, so every draw depended on how many the *previous* generator had spent.
+> Re-profiling the hills changed the number of ring points, which silently re-rolled the mesa
+> behind them — 34 rock cubes became 27, in geometry that cycle-2 QA had signed off. Each
+> generator now seeds its own stream (`20260820`…`20260824`). **A shared RNG makes every
+> generator a dependency of every generator before it.**
+
+### What is above a factory maze
+
+Level 2 shipped as an open-topped box: 3 m walls and a procedural sky over them, which from eye
+height reads as a night sky over an indoor level — a bug, not a choice. `TerrainKit.FactoryHall`
+closes it with a roof at 12 m, a shell 25 m beyond the maze, trusses and strip lights.
+
+**The instinct QA C11 rules out is building the walls taller** — they already occlude the ¾
+camera. A roof does not, and the reason is exact rather than approximate: the ¾ camera sits
+9.693 m up at pitch 50° with a 60° vertical FOV, so its highest frustum ray — a top *corner*,
+which is higher than the top edge — still points **27.9° below horizontal**. Nothing at or above
+the camera's own height is ever in frame. The lowest thing the hall hangs is a strip light at
+10.84 m; the biggest camera shake in the game is the Mega-Smog's 0.32 m. That is 0.83 m of
+margin, and it was checked the other way too: rendering Level 2's ¾ framing from three positions
+with the hall switched on and off gives **0 differing pixels out of 291 600, three times over.**
+
+The shell is the half that *is* at eye level, so it is placed by a different argument: the camera
+trails 7.71 m behind Greenie and would otherwise end up outside a nearer wall and shoot the level
+through it. At maze + 25 m it cannot.
+
+Everything in the hall is emissive rather than lit, because a ceiling's underside faces down —
+Trilight ambient shades it with `ambientGroundColor` (near black) and the directional light never
+reaches it. A lit material gives back a black void. Nothing casts shadows either, or the roof
+would put the whole plant in shade. And nothing has a collider, which is also why the NavMesh
+never sees it: `Level2Builder` bakes from `PhysicsColliders`.
+
 ## Communication patterns (unchanged — frozen contract)
 
 - `GameManager` static-instance + C# events (`OnCoresChanged`,

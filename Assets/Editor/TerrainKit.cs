@@ -45,15 +45,25 @@ public static class TerrainKit
     {
         log = builderLog;
         occupied = occupiedXZ;
-        rng = new System.Random(20260820);   // deterministic: a rebuild reproduces the valley
 
         var root = new GameObject("Terrain").transform;
         root.SetParent(envRoot, false);
 
+        // One seed per generator rather than one shared stream (B7). They used to share it,
+        // which made every draw depend on how many the *previous* generator had spent: B7 only
+        // meant to re-profile the outer hills, and because that changed how many ring points
+        // there were, it silently re-rolled the mesa behind it — 34 rock cubes became 27. The
+        // hills are the thing being edited; the mesa and the village are cycle-2 QA-verified
+        // geometry and must not move because something upstream of them changed.
+        rng = new System.Random(20260820);
         OuterGround(root, halfX, halfZ);
+        rng = new System.Random(20260821);
         OuterHills(root, halfX, halfZ);
+        rng = new System.Random(20260822);
         Mesa(root);
+        rng = new System.Random(20260823);
         Pond(root);
+        rng = new System.Random(20260824);
         Village(propRoot);
     }
 
@@ -73,13 +83,17 @@ public static class TerrainKit
         OuterGround(root, halfX, halfZ);
 
         int blocks = 0, trees = 0;
-        foreach (var (distance, size, storeys, step) in new[] { (8f, 6f, 1, 6f), (18f, 9f, 2, 8f) })
+        // B7: pushed out from 8/18 m. The hub is only 18 x 14 m, so a ridge 8 m past its wall
+        // stood almost on top of it — brown blocks stacked behind a fence, with no air in
+        // between for the (deliberately light) hub fog to work in.
+        foreach (var (distance, size, storeys, step) in new[] { (16f, 7f, 1, 7f), (34f, 10f, 2, 10f) })
         {
             foreach (var p in Ring(halfX + distance, halfZ + distance, step))
             {
                 var at = new Vector3(p.x + Jitter(step * 0.3f), 0f, p.y + Jitter(step * 0.3f));
                 int n = Mathf.Max(1, storeys + rng.Next(-1, 2));
-                float top = Stack(root, at, size * (0.8f + (float)rng.NextDouble() * 0.4f), n);
+                float top = Stack(root, at, size * (0.8f + (float)rng.NextDouble() * 0.4f), n,
+                                  ridge: true);
                 blocks += n;
 
                 if (rng.Next(3) != 0) continue;
@@ -113,6 +127,103 @@ public static class TerrainKit
         slab.GetComponent<Renderer>().sharedMaterial = ArtKit.SolidMaterial("PlantYard", colour, 0.2f);
         GameObjectUtility.SetStaticEditorFlags(slab, StaticEditorFlags.BatchingStatic);
         builderLog.AppendLine($"  underlay: {size.x:F0} x {size.y:F0} m slab under the maze");
+    }
+
+    /// <summary>
+    /// B7: an answer to "what is above a factory maze?".
+    ///
+    /// <para>Level 2 shipped as an open-topped box. Its walls are 3 m and there is nothing over
+    /// them, so from Greenie's eye height (B6) the level reads as a corridor under a dark navy
+    /// night sky — a procedural sky over an indoor level, which looks like a bug rather than a
+    /// choice. This closes it: a roof, a shell around the yard, roof trusses and strip lights.</para>
+    ///
+    /// <para><b>Why a roof is safe here and a taller wall would not be.</b> QA C11 already
+    /// reports Level 2's walls occluding the ¾ camera, so the obvious instinct — build upward —
+    /// is the wrong one. But the ¾ camera can never see a roof at all: it sits 9.69 m up at
+    /// pitch 50° with a 60° vertical FOV, so the highest ray in its frustum (a top *corner*,
+    /// which is higher than the top edge) still points <b>27.9° below horizontal</b>. Nothing
+    /// above the camera's own height is ever in frame. At <paramref name="roofHeight"/> = 12 m
+    /// that leaves 2.3 m of headroom for camera shake as well. The roof is invisible from the
+    /// framing the whole game is tuned for, and decisive from the one B6 added.</para>
+    ///
+    /// <para>The shell is the part that needed care, because it <i>is</i> at eye level. It
+    /// stands <paramref name="standoff"/> metres beyond the maze — far enough that the camera,
+    /// which trails 7.71 m behind Greenie, can never end up outside it and shoot the level
+    /// through a wall.</para>
+    ///
+    /// <para>Everything here is emissive rather than lit. A ceiling's underside faces down, so
+    /// Trilight ambient shades it with <c>ambientGroundColor</c> — near black — and the
+    /// directional light never touches it at all. Lit materials would give a black void back;
+    /// a dim emission gives a surface you can read, well under the bloom threshold (0.85).</para>
+    /// </summary>
+    public static void FactoryHall(Transform envRoot, StringBuilder builderLog, Vector2 mazeHalf,
+                                   float standoff = 25f, float roofHeight = 12f)
+    {
+        var hall = new GameObject("FactoryHall").transform;
+        hall.SetParent(envRoot, false);
+
+        Vector2 half = mazeHalf + Vector2.one * standoff;
+        const float shellThickness = 2f;
+        float shellTop = roofHeight + 1f;
+
+        var roofMat = ArtKit.SolidMaterial("PlantRoof", new Color(0.13f, 0.14f, 0.17f), 0f,
+                                           new Color(0.115f, 0.125f, 0.155f));
+        var shellMat = ArtKit.SolidMaterial("PlantShell", new Color(0.16f, 0.17f, 0.21f), 0.05f,
+                                            new Color(0.055f, 0.060f, 0.075f));
+        var trussMat = ArtKit.SolidMaterial("PlantTruss", new Color(0.09f, 0.10f, 0.12f), 0.1f,
+                                            new Color(0.045f, 0.050f, 0.065f));
+        var lampMat = ArtKit.SolidMaterial("PlantStripLight", new Color(0.85f, 0.90f, 0.98f), 0f,
+                                           new Color(1.35f, 1.42f, 1.55f));
+
+        // The roof, 1 m thick with its underside at roofHeight.
+        Slab(hall, "Roof", new Vector3(0f, roofHeight + 0.5f, 0f),
+             new Vector3(half.x * 2f, 1f, half.y * 2f), roofMat);
+
+        // Four shell walls, overlapping at the corners so no seam shows from inside.
+        float sx = half.x + shellThickness * 0.5f, sz = half.y + shellThickness * 0.5f;
+        Slab(hall, "Shell_N", new Vector3(0f, shellTop * 0.5f, sz),
+             new Vector3(half.x * 2f + shellThickness * 2f, shellTop, shellThickness), shellMat);
+        Slab(hall, "Shell_S", new Vector3(0f, shellTop * 0.5f, -sz),
+             new Vector3(half.x * 2f + shellThickness * 2f, shellTop, shellThickness), shellMat);
+        Slab(hall, "Shell_E", new Vector3(sx, shellTop * 0.5f, 0f),
+             new Vector3(shellThickness, shellTop, half.y * 2f), shellMat);
+        Slab(hall, "Shell_W", new Vector3(-sx, shellTop * 0.5f, 0f),
+             new Vector3(shellThickness, shellTop, half.y * 2f), shellMat);
+
+        // Trusses across the span, and a strip light along every other one. Both live above the
+        // ¾ camera's shake-adjusted ceiling — see the class remarks.
+        int trusses = 0, lamps = 0;
+        float reach = mazeHalf.y + 8f;
+        for (float z = -reach; z <= reach + 0.01f; z += 7f)
+        {
+            Slab(hall, "Truss", new Vector3(0f, roofHeight - 0.55f, z),
+                 new Vector3(half.x * 2f, 0.7f, 1.1f), trussMat);
+            trusses++;
+            if (trusses % 2 != 1) continue;
+            Slab(hall, "StripLight", new Vector3(0f, roofHeight - 1.05f, z),
+                 new Vector3(mazeHalf.x * 1.6f, 0.22f, 0.5f), lampMat);
+            lamps++;
+        }
+
+        builderLog.AppendLine($"  hall: roof at {roofHeight:F0} m over {half.x * 2f:F0} x " +
+                              $"{half.y * 2f:F0} m, 4 shell walls, {trusses} trusses, {lamps} strip lights");
+    }
+
+    /// <summary>A collider-less, shadow-less, batched box. The hall is scenery and nothing else.</summary>
+    static void Slab(Transform parent, string name, Vector3 centre, Vector3 size, Material material)
+    {
+        var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        go.name = name;
+        go.transform.SetParent(parent, false);
+        go.transform.position = centre;
+        go.transform.localScale = size;
+        Object.DestroyImmediate(go.GetComponent<Collider>());
+        var renderer = go.GetComponent<Renderer>();
+        renderer.sharedMaterial = material;
+        // A roof that casts shadows would put the whole plant in shade; the sun is what lights
+        // the floor, and it has to be allowed to pass straight through.
+        renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        GameObjectUtility.SetStaticEditorFlags(go, StaticEditorFlags.BatchingStatic);
     }
 
     // --- beyond the walls ---------------------------------------------------------------------
@@ -171,9 +282,12 @@ public static class TerrainKit
         var lake = new Rect(2f, 38f, 52f, 34f);
 
         int blocks = 0, trees = 0;
+        // Three bands stepping up and back. The near one is deliberately low: it stands ~44 m
+        // from the middle of the level, where fog has barely touched it, so anything tall there
+        // is a wall rather than a horizon.
         foreach (var (distance, size, storeys, step) in new[]
         {
-            (10f, 8f, 1, 7f), (21f, 10f, 2, 9f), (35f, 12f, 3, 11f),
+            (10f, 7f, 1, 7f), (22f, 9f, 2, 9f), (38f, 11f, 3, 11f),
         })
         {
             float x0 = halfX + distance, z0 = halfZ + distance;
@@ -183,7 +297,8 @@ public static class TerrainKit
                 if (lake.Contains(new Vector2(at.x, at.z))) continue;
 
                 int n = Mathf.Max(1, storeys + rng.Next(-1, 2));
-                float top = Stack(hills, at, size * (0.8f + (float)rng.NextDouble() * 0.4f), n);
+                float top = Stack(hills, at, size * (0.8f + (float)rng.NextDouble() * 0.4f), n,
+                                  ridge: true);
                 blocks += n;
 
                 // A treeline on the ridges, so the hills read as forest rather than as rock.
@@ -221,7 +336,16 @@ public static class TerrainKit
     /// the boundary walls where the player can never reach them, and colliding scenery there
     /// would only spend NavMesh budget.
     /// </param>
-    static float Stack(Transform parent, Vector3 at, float size, int count, bool solid = false)
+    /// <param name="ridge">
+    /// B7: cap the column with <c>cliff_blockSlope_*</c> instead of another flat-topped cube,
+    /// turned a random quarter-turn. At pitch 50° nobody ever saw these tops, so a stack of
+    /// cubes was free; from eye height the outer hills read as a skyline of cardboard boxes,
+    /// and a sloped cap is what turns each column back into a ridge. Scenery only — the mesa
+    /// keeps its flat steps, because its per-column colliders trace the rock that is there
+    /// (QA C3) and a slope would promise a walkable surface the collider does not have.
+    /// </param>
+    static float Stack(Transform parent, Vector3 at, float size, int count, bool solid = false,
+                       bool ridge = false)
     {
         Bounds? rock = null;
         for (int i = 0; i < count; i++)
@@ -229,7 +353,10 @@ public static class TerrainKit
             var holder = new GameObject("Rock");
             holder.transform.SetParent(parent, false);
             holder.transform.position = at + new Vector3(0f, i * size, 0f);
-            string face = rng.Next(3) == 0 ? "cliff_block_stone" : "cliff_block_rock";
+            string family = rng.Next(3) == 0 ? "stone" : "rock";
+            string face = ridge && i == count - 1
+                ? "cliff_blockSlope_" + family
+                : "cliff_block_" + family;
             var art = ArtKit.SpawnModule(ArtKit.Nature + face + ".fbx", holder.transform, size,
                                          rng.Next(4) * 90f);
             GameObjectUtility.SetStaticEditorFlags(holder, StaticEditorFlags.BatchingStatic);

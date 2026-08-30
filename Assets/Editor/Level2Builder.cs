@@ -71,6 +71,9 @@ public static class Level2Builder
         // between rooms onto the skybox — a black hole in the middle of a lit factory.
         TerrainKit.Underlay(envRoot, log, Vector2.zero, new Vector2(260f, 260f),
                             new Color(0.13f, 0.14f, 0.16f));
+        // B7: and the same question upwards. The maze had 3 m walls and open sky above them,
+        // which reads as a night sky over an indoor level the moment B6 lets the player look up.
+        TerrainKit.FactoryHall(envRoot, log, MazeHalfExtents());
         Dress();
         ScatterLitter();
         PlaceSystems();
@@ -380,6 +383,21 @@ public static class Level2Builder
             placed++;
         }
         log.AppendLine("  dressing: " + placed + " factory props against the walls");
+    }
+
+    /// <summary>
+    /// How far the maze's own floor reaches from the origin. B7's hall is sized off this rather
+    /// than off a constant, so a re-export of the 2D layout carries the roof and shell with it.
+    /// </summary>
+    static Vector2 MazeHalfExtents()
+    {
+        var half = new Vector2(20f, 17f);   // the layout's single 40 x 34 m floor, as a fallback
+        foreach (var (centre, size) in floors)
+        {
+            half.x = Mathf.Max(half.x, Mathf.Abs(centre.x) + size.x * 0.5f);
+            half.y = Mathf.Max(half.y, Mathf.Abs(centre.y) + size.y * 0.5f);
+        }
+        return half;
     }
 
     static float Lerp(System.Random rng, float a, float b) => a + (float)rng.NextDouble() * (b - a);
