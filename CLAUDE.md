@@ -22,9 +22,15 @@ per-developer breakdown is [TEAM-TASKS.md](TEAM-TASKS.md). Creative brief
 
 ## The golden rules (read these first)
 
-1. **Two framings over one flat XZ world, no platforming.** Greenie walks on flat
-   ground; no jumping, gravity is never a mechanic, and Seeds always fly flat at
-   y ≈ 0.6 in world axes. The **default and canonical framing is the fixed ¾
+1. **Two framings over one XZ world, no platforming.** **B8 (cycle 3) made Level 1's
+   ground rise and fall** — but Greenie only ever *walks* it. Still no jumping, nothing
+   to climb, and gravity is still never a mechanic: the relief peaks at 14.4°, chosen
+   against the `CharacterController`'s 45° `slopeLimit` so the controller that has
+   always resolved slopes keeps doing it unchanged. Seeds still fly **flat**, but flat
+   now means *flat over the ground* — a constant ~0.6 m above whatever is beneath them,
+   never on a world-Y line and never on an arc. **Height is `GroundHeight`'s to answer**,
+   in the editor and at runtime alike, and it is null (0 everywhere) in every flat
+   scene; never raycast for the ground or re-derive it. The **default and canonical framing is the fixed ¾
    Cinemachine camera** (pitch 50°, yaw 0) — every layout, sightline and QA pass is
    tuned at it. **B6 (cycle 3) added one alternative: `P` drops to first person with
    mouse look, and back.** So movement and aim are **camera-relative**: WASD is read
@@ -143,8 +149,9 @@ fixed**: the spring is a wade volume Greenie walks into (and Seeds fly over), th
 collider per column instead of one box standing in 6.5 m² of open ground, the hub yard and
 the three interactables are solid, reclamation blooms as a circle instead of repainting whole
 4 m tiles, and the ground's three earth tones no longer read as a checkerboard. C8 (the mesa's
-layer-cake silhouette) and R1 (undulating ground) are deliberately deferred — R1 would change
-golden rule #1 and put combat at risk, and is a PO call.
+layer-cake silhouette) is deliberately deferred. **R1 — undulating ground — is now done as
+cycle 3's B8**: the valley floor rises and falls by 2.20 m at up to 24.7°, and the combat risk
+R1 named was answered by making Seeds fly flat *over the ground* rather than flat in world Y.
 
 Next up: the three unplaced side-quest NPCs (Bé Mây, Ông Tài, Cô Lan — the village district
 B4 built is where they would live), a full manual playthrough + ~30-min time-budget check,

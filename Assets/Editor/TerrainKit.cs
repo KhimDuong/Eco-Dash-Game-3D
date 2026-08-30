@@ -581,6 +581,16 @@ public static class TerrainKit
     /// hamlet around them: taller houses, a square with a fountain, market stalls and the trees
     /// people would have planted.
     /// </summary>
+    /// <summary>
+    /// Where the village stands, as three overlapping circles. B8 holds the ground flat here:
+    /// a cottage is a rigid box with a flat sill, so a metre of relief under a 4 m building
+    /// either sinks a corner or floats one, and the fountain square is worse. The circles are
+    /// what <see cref="ValleyProfile"/> feeds to <see cref="GroundProfile.Flatten"/>; the
+    /// building list below has to stay inside them.
+    /// </summary>
+    static readonly Vector2[] VillageGround = { new(-10f, 20f), new(0f, 20f), new(10f, 20f) };
+    const float VillageFlat = 7f;
+
     static void Village(Transform parent)
     {
         var root = new GameObject("Village").transform;
@@ -645,6 +655,80 @@ public static class TerrainKit
 
         log.AppendLine($"  village: {placed} buildings + {trees.Length} living trees + 3 lanterns " +
                        "in the empty strip north of the 2D pen");
+    }
+
+    // --- B8: the ground the valley stands on -----------------------------------------------------
+
+    /// <summary>
+    /// The relief for Level 1, with everything that must stay level already masked out.
+    ///
+    /// <para>This runs <b>before</b> a single object is placed, because the ground has to exist
+    /// before anything can be put on it — so the flat zones are declared from the same constants
+    /// the features are later built from, not measured off the features afterwards. Whatever
+    /// this returns is both the shape of the 192 tile meshes and the shape gameplay reads back
+    /// through <see cref="GroundHeight"/>; there is no second copy to drift.</para>
+    ///
+    /// <para>The caller adds the zones it owns — the boss grove and the reclamation discs — see
+    /// <c>Level1Builder.BuildProfile</c>.</para>
+    /// </summary>
+    public static GroundProfile ValleyProfile(float halfX, float halfZ)
+    {
+        var profile = new GroundProfile { halfExtents = new Vector2(halfX, halfZ) };
+
+        // The mesa is a stepped rock stack whose 18 column colliders were grown down to y = 0
+        // (QA C3). Tilt the ground under it and every one of them either floats or buries a
+        // tier, so the rock keeps the level ground it was measured against.
+        profile.Flatten(MesaCentre, MesaSize.x * 0.5f + 2.5f);
+        // A pool's surface is level by definition, and its wade trigger is a sphere.
+        profile.Flatten(PondCentre, PondRadius + 1.6f);
+        foreach (var centre in VillageGround) profile.Flatten(centre, VillageFlat);
+
+        return profile;
+    }
+
+    /// <summary>
+    /// Drop a holder's direct children onto the relief. The whole level was authored at y = 0
+    /// against a flat plane — four generator files, ~1 500 objects — and this is what puts all
+    /// of it back on the ground in one pass instead of editing every placement call.
+    ///
+    /// <para>It <b>adds</b> the ground height rather than assigning it, so an authored lift
+    /// survives: a pickup floating 0.3 m above the floor still floats 0.3 m above the floor.
+    /// Anything deliberately off the ground — a flying enemy, a hanging lamp — is left alone by
+    /// the <paramref name="maxLift"/> guard.</para>
+    /// </summary>
+    /// <param name="align">
+    /// Also tilt the child to match the ground's normal, for children whose name starts with
+    /// this. Reserved for things that are flat by nature: the sludge pools and the ground
+    /// scatter. Never for anything that grows or is built upward — a leaning cottage or a
+    /// tree at 8 degrees off vertical reads as a bug, not as terrain.
+    /// </param>
+    public static int Drop(Transform holder, GroundProfile profile, string[] align = null,
+                           string skip = null, float maxLift = 1.5f)
+    {
+        if (holder == null || profile == null) return 0;
+        int moved = 0;
+        foreach (Transform child in holder)
+        {
+            if (skip != null && child.name == skip) continue;
+            Vector3 p = child.position;
+            if (Mathf.Abs(p.y) > maxLift) continue;
+
+            float h = profile.Evaluate(p.x, p.z);
+            child.position = new Vector3(p.x, p.y + h, p.z);
+            if (Aligns(child.name, align))
+                child.rotation = Quaternion.FromToRotation(
+                    Vector3.up, profile.NormalAt(p.x, p.z)) * child.rotation;
+            moved++;
+        }
+        return moved;
+    }
+
+    static bool Aligns(string name, string[] prefixes)
+    {
+        if (prefixes == null) return false;
+        foreach (var prefix in prefixes)
+            if (name.StartsWith(prefix)) return true;
+        return false;
     }
 
     // --- helpers ---------------------------------------------------------------------------------

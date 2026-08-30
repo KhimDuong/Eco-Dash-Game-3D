@@ -451,9 +451,73 @@ owners in [../../TEAM-TASKS.md](../../TEAM-TASKS.md).
     the NavMesh still pathing to both keycards and the boss door), plus B6 re-run 13/13 after
     the rebuilds and a clean error log. Evidence in [../../QA/screenshots/](../../QA/screenshots/)
     (`b7_*`)
-- [ ] **B8 + B9** hill ground and wall-walking — *still break golden rule #1; unstarted, PO call*
+- **B8** hill-like ground: tilts, rises and dips instead of a flat plane — **done**
+  - [x] `GroundHeight` / `GroundProfile` — one height function, and the only answer to "where is
+    the ground". Two octaves of Perlin times a mask; **2.20 m of range, peaking at 24.7°**
+  - [x] `GroundHeightField` publishes it from `OnEnable` (never `Awake` — rule 5) and hands it
+    back in `OnDisable`; `Profile` has an **internal setter**, so gameplay reads the ground and
+    never reshapes it. Level 2 and the hub have no field at all, so they are provably still flat
+  - [x] `Level1Builder.BuildGround` — 192 generated tile meshes instead of 192 flat slabs, each
+    sampling the shared function so neighbours meet **to the float** (no seam), with **analytic
+    normals** so they do not disagree on lighting either. Still 192 renderers, because
+    `GroundCleanser` tints them one at a time
+  - [x] `GroundProfile.Mask` — ten flat zones, all verified dead level: the boundary and its 112
+    fence posts, the mesa (QA C3's per-column colliders were grown to y = 0), the spring, the
+    village, the boss grove, and the four 9 m reclamation discs
+  - [x] `TerrainKit.Drop` — one settle pass puts **685 objects** back on the ground instead of
+    threading a height lookup through four generator files; it adds the height rather than
+    assigning it, so authored lifts survive
+  - [x] **the projectile gate, in seven lines** — `SeedProjectile` and `EnemyProjectile` record
+    their clearance at launch and hold it. Aim, spread and `travelDir` untouched; a null profile
+    returns immediately, so the flat scenes are bit-for-bit unchanged
+  - [x] **`PlayerController` needed no edit at all** — the `CharacterController`'s 45°
+    `slopeLimit` and the existing ground-stick already walk slopes, exactly as QA R1 predicted.
+    The backlog's claim that B8 and B9 need the same rewrite is wrong for B8
+  - [x] `CameraFollow` damps Y at 0.55 s against 0.15 s on X and Z
+  - [x] verified **30/30** static (seams, normals, flat zones, settled objects, NavMesh paths to
+    both far chests and the boss grove, the cleanser's footprint cap, the two flat scenes) and in
+    play: 4.0 cm of capsule drift over a 146 cm climb, **a shot uphill over 147 cm of rise hits
+    where the control misses underground, and one downhill over 150 cm hits where the control
+    sails 1.49 m over its head**, and the cleanser repaints 4 of 4 tiles on 24.7° ground
+  - [x] **tuned by looking at it.** The first tuning passed every number and *rendered flat*;
+    at this scale the diffuse term is the only cue available, so the slope had to go to 24.7°
+    before the ground read as terrain. Evidence in [../../QA/screenshots/](../../QA/screenshots/)
+    (`b8_*`)
+- [ ] **B9** Greenie climbs vertical walls — *unstarted; still needs the `Rigidbody` +
+  surface-aligned controller rewrite B8 turned out not to need, and still a PO call*
 
 ## Recent log
+
+- _(2026-08-31)_ **B8 — the ground is a function.** Level 1's floor rises and falls now: 2.20 m
+  of range at up to 24.7°, which is QA's R1 promoted to a backlog item and delivered.
+  **The expensive assumption turned out to be false.** The backlog scopes B8 with B9 because
+  they "want the same rewrite — a controller that follows a surface normal"; QA's own R1
+  write-up had already said otherwise, and it was right. A `CharacterController` walks slopes:
+  45° `slopeLimit`, 0.3 m `stepOffset`, and a ground-stick that was already there.
+  **`PlayerController` needed no edit at all** — nor did `PlayerAnimator`, the knockback, the
+  hazards or the contact-damage geometry, every one of which B9's cost estimate lists as a
+  landing site. The relief is capped at 24.7° precisely so that stays true.
+  The work went into the other four things. **One height function**, because five consumers have
+  to agree on where the ground is to the millimetre — the tile meshes (or there is a seam), their
+  normals (analytic, because `RecalculateNormals` gives a shared vertex two different answers and
+  the grid comes back as a lighting seam), 685 props authored at y = 0, the projectiles, and the
+  generator itself before any mesh exists. **A mask**, because ten things have flat footprints
+  and would otherwise float or bury themselves — the mesa's per-column colliders, the village,
+  and the four 9 m reclamation discs above all. **One settle pass** (`TerrainKit.Drop`) instead
+  of a height lookup threaded through four generator files. And **the projectile gate in seven
+  lines**: a Seed records its clearance at launch and holds it, so it still flies dead flat in
+  XZ but flat *over the ground*. Measured against a control: 147 cm of rise hits where the old
+  behaviour ends up underground, 150 cm of fall hits where the old behaviour sails 1.49 m over
+  the target's head.
+  **Two things are recorded as they came out rather than as they were hoped.** The first tuning
+  satisfied every acceptance number and rendered as a flat plane — at 65 × 49 m under a camera
+  9.7 m up there is no occlusion cue and no self-shadowing, so the diffuse term is all there is,
+  and 14.4° of slope is a few percent of it. 24.7° gives a 41% swing in `N·L` and the ground
+  reads; it is still understated from the ¾ camera and clearest at eye height. And the camera's
+  new vertical damping (0.55 s against 0.15 s) is right by construction but its benefit is
+  **unmeasured** — four different metrics came back either dominated by editor frame pacing or
+  too small to separate from noise.
+  30/30 static checks, the play-mode set above, clean error log.
 
 - _(2026-08-31)_ **B7 — a horizon is one colour and one roof.** B6 turned the sky from a
   gradient smear along the top of frame into a surface, and everything behind it was suddenly

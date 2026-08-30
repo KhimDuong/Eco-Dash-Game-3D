@@ -14,9 +14,19 @@
 > camera is now the *default* framing rather than the only one, and **movement and aim are
 > camera-relative from now on** — go through `PerspectiveMode.MoveFrame`, never raw world axes.
 >
-> **B8 and B9 remain unstarted.** They still change golden rule #1 in ways B6 did not (non-flat
-> ground; gravity and surface-climbing as mechanics) and are still PO decisions before they are
-> tickets; read the note at the head of that section before scheduling either.
+> **B8 is built** (2026-08-31) — see [Delivered — B8](#delivered--b8-the-ground). **Golden
+> rule #1 has been rewritten again** and the change is announced here: Level 1's ground now
+> rises and falls (2.20 m of range, peaking at 24.7°), so *"Greenie walks on flat ground"* is
+> gone and *"Seeds fly flat at y ≈ 0.6 in world axes"* becomes *flat over the ground* — a
+> constant clearance above whatever is beneath them. **Ask `GroundHeight` for the ground; never
+> raycast for it and never assume y = 0.** It is null in every flat scene, so Level 2, the hub
+> and the story scenes are unchanged.
+>
+> **B9 remains unstarted** — gravity and surface-climbing as mechanics, and still a PO decision
+> before it is a ticket. Note that **this backlog's own ordering note was wrong about it**: B8
+> and B9 do *not* need the same rewrite. B8 needed no controller change at all, exactly as
+> [QA R1](QA/exploratory-pass-2026-08-26.md#r1--undulating-ground-change-request-not-a-defect)
+> predicted; the rewrite belongs to B9 alone.
 >
 > **Scope of this draft.** This covers one slice only: environment feel — terrain
 > elevation, map scale, camera angle, and "does this look cheap" — gathered by
@@ -205,7 +215,7 @@ the world does not visibly end at the top of the boundary wall.
   `Level2Builder`. **Worth doing on its own** even if B6 is deferred: it costs little and it
   helps the A2 video, which wants sky in shot.
 
-### B8 — Hill-like ground: tilts, rises and dips instead of a flat plane
+### B8 — Hill-like ground: tilts, rises and dips instead of a flat plane — ✅ **built 2026-08-31**
 
 **As a player**, I want Level 1's ground to rise and fall — small hills and shallow dips —
 **so that** the valley reads as terrain rather than as a game-board.
@@ -272,7 +282,8 @@ can climb the mesa in Level 1's north-west corner instead of walking around it.
 | 1 | **B7** sky & horizon | ✅ **Built.** Breaks no rule, and it turned out to be worth more than "polish": the reason Level 1's boundary looked cheap was a two-colour seam nobody had spotted, and Level 2 had no answer above its walls at all. |
 | 2 | *(gate)* projectiles become orientation- and terrain-aware | ✅ **Orientation half done with B6** — a Seed follows `PerspectiveMode.AimForward` in either framing and still flies flat. The **terrain half is untouched** and is still the prerequisite for B8/B9. |
 | 3 | **B6** perspective toggle | ✅ **Built.** The camera was easy, as predicted; camera-relative movement was the work, and it came out as one rotation rather than a second control scheme. |
-| 4 | **B8 + B9** together | One surface-aligned controller serves both. Biggest item on the list by a wide margin, and unchanged by B6. |
+| 4 | **B8** hill ground | ✅ **Built.** And the premise of this row was wrong: B8 needed **no** controller change, so it was not the biggest item on the list — the work was the height function, the mask, the settle pass and the projectile clearance. |
+| 5 | **B9** wall-walking | Still open, still a PO call, and now the *only* item that needs the `Rigidbody` + surface-aligned rewrite. |
 
 **The order was taken out of sequence, deliberately — and it paid off.** Khiêm asked for the
 slice starting with its first item, so B6 went first rather than B7. B6's own write-up predicted
@@ -281,10 +292,16 @@ person available made B7 *diagnosable*: the horizon could be rendered from eye h
 at, which is how the two-colour seam and the flat-topped hills were found. Doing B7 first, blind
 at pitch 50°, would have meant tuning a sky nobody could see.
 
-**B8/B9 are still not recommended before the A2 submission.** Cycle 2 closed with the game
+**That was written of B8 and B9 together, and B8 has since been taken and shipped:**
+*"B8/B9 are still not recommended before the A2 submission. Cycle 2 closed with the game
 finishable end to end and QA clean. B6 was contained — it added a framing without touching the
 ground, the projectiles' flight or the character controller — but B8 and B9 rewrite exactly
-those, and the game's one fully-working system is combat.
+those, and the game's one fully-working system is combat."*
+
+**Half of that held and half did not.** B8 did touch the ground and the projectiles' flight, and
+the projectile work was indeed the load-bearing part — it is measured against a control run
+below. But it did **not** touch the character controller, which is where the "rewrite" cost was
+supposed to live. **The warning still stands in full for B9.**
 
 ---
 
@@ -446,3 +463,87 @@ counts.
   `Level2Builder.Dress()` states in the code that its 38 factory props carry no colliders on
   purpose, "so the corridors the player and the NavMesh see are exactly the ones the tilemap
   authored". That is a PO call, not a dev fix.
+
+---
+
+## Delivered — B8, the ground
+
+**Level 1's valley floor rises and falls: 2.20 m of range (−1.18 m to +1.02 m), peaking at
+24.7°.** QA raised this as
+[R1](QA/exploratory-pass-2026-08-26.md#r1--undulating-ground-change-request-not-a-defect) and
+deferred it as a PO call; it is now built. Full write-up:
+[architecture.md § The ground is a function](.claude/docs/architecture.md#the-ground-is-a-function-b8).
+
+**Golden rule #1 was rewritten first**, as B6's change was. It never said "the ground is flat" —
+it said *no platforming* — and all of that still holds: no jumping, nothing to fall off, nothing
+to climb, gravity still not a mechanic.
+
+### The costing in this document was wrong in one expensive place
+
+B9's **ordering note** says the two items "want the *same* rewrite — a controller that follows a
+surface normal handles both a hill and a wall, and doing them separately means doing it twice."
+**QA had already said otherwise and QA was right.** R1 lists under "three things already support
+it, for free": *"`PlayerController` already applies a constant `Vector3.down * 9.81` ground-stick
+every frame, and Greenie's `CharacterController` is already configured for terrain:
+`slopeLimit = 45°`, `stepOffset = 0.3`. Greenie would walk up and down slopes today, with no
+code change."*
+
+He does. **`PlayerController` was not edited** — not one line — and neither were `PlayerAnimator`,
+`PlayerHealth`'s knockback, the hazards or the contact-damage geometry, every one of which B9's
+cost estimate lists as a landing site. The relief is capped at 24.7° for exactly that reason: it
+is chosen against the 45° the controller *and* the NavMesh both already accept.
+
+### What the work actually was
+
+| | |
+|---|---|
+| **One height function** | `GroundHeight.At(x, z)` — five things must agree on where the ground is to the millimetre: the tile meshes (or there is a seam), their normals, 685 props authored at y = 0, the projectiles, and the generator itself *before any mesh exists*. |
+| **192 generated tiles** | Not one continuous mesh, because `GroundCleanser` tints the ground **a renderer at a time** and that is what drives Độ Sạch. Each tile samples the shared function, so neighbours meet to the float. **Normals are analytic** — `RecalculateNormals` gives a shared vertex two different answers and the 4 m grid comes back as a lighting seam. |
+| **Ten flat zones** | The boundary and its 112 fence posts, the mesa (QA C3 grew its per-column colliders down to y = 0), the spring, the village, the boss grove, and **the four 9 m reclamation discs** — a flat disc on a slope buries its uphill half and floats a lip along the downhill one. |
+| **One settle pass** | `TerrainKit.Drop` puts **685 objects** back on the ground after everything is placed, instead of threading a height lookup through four generator files and a CSV. It *adds* the height, so authored lifts survive. |
+| **The projectile gate, in seven lines** | A Seed records its **clearance** at launch and holds it for the flight. Aim, spread fan and `travelDir` untouched — a shot still goes exactly where it was pointed. A null profile returns immediately, so Level 2 and the hub are provably unaffected. |
+
+### Combat on a slope, measured against a control
+
+The acceptance criterion this item says *matters*, run both ways with the ground field switched
+off as the control — i.e. exactly what a Seed did before B8:
+
+| Shot | With B8 | Control |
+|---|---|---|
+| **147 cm of rise over 11 m** | **HIT** — clearance held at 0.58 m | **MISS** — ends 0.35 m *underground*, carries on to 18 m |
+| **150 cm of fall over 11 m** | **HIT** — clearance held at 0.61 m | **MISS** — ends **1.49 m above the ground beneath it**, sailing over its head |
+
+One layer fact that bounds the risk: **`PlayerProjectile` does not collide with `Ground`** in
+this project's physics matrix. A seed passes through a hillside rather than fizzling on it, so
+the relief can never make a shot die early — the only failure it could introduce is the vertical
+miss, and that is the one the clearance fixes.
+
+### Two things recorded as they came out
+
+**The first tuning rendered as a flat plane.** It satisfied every acceptance number — 1.56 m of
+range, 14.4° peak, 30 of 30 invariants green — and looked like nothing. At 65 × 49 m under a
+camera 9.7 m up there is no occlusion cue (a hill would need to be 9 m tall to hide anything)
+and no self-shadowing either (the sun sits at 48°, so nothing under a 42° slope can shade
+itself), which leaves the diffuse term as the only cue there is; at 14.4° that is a few percent
+under a strong ambient. At 24.7° it is a **41% swing** in `N·L` and the ground reads. It is still
+understated from the ¾ camera and clearest at eye height, and that is inherent to the scale
+rather than something more amplitude would fix without putting crates on slopes they would
+visibly slide down. Evidence: [QA/screenshots/](QA/screenshots/) `b8_*`.
+
+**The camera's new vertical damping is unmeasured.** `CameraFollow` now damps Y at 0.55 s against
+0.15 s on X and Z, which is the remedy this item's acceptance criterion names. Four attempts at
+measuring the benefit (peak vertical speed, RMS speed, vertical path length, lag) came back
+either dominated by editor frame-pacing hitches or too small to separate from run-to-run noise.
+The setting is right by construction and costs nothing; the improvement is not evidenced, and is
+recorded that way rather than dressed up with whichever number looked best.
+
+### Verification
+
+**30/30 static** — 192 tiles on the Ground layer with a `MeshCollider` each, neighbours meeting
+with no gap and no normal disagreement, all ten flat zones dead level to a millimetre, the
+boundary untouched, every settled prop / gameplay object / enemy sitting on the ground, the
+NavMesh still pathing to both far chests and the boss grove, the cleanser's footprint cap still
+cleared, and **no `GroundHeightField` in Level 2 or the hub**, so both are provably still flat.
+
+**In play** — 4.0 cm of capsule drift over a 146 cm climb; the two shots above; `GroundCleanser`
+repainting 4 of 4 tiles on 24.7° ground. Clean error log.

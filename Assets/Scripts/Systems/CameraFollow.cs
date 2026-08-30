@@ -42,6 +42,9 @@ public class CameraFollow : MonoBehaviour
     [Header("Follow")]
     [Tooltip("Cinemachine position damping, in seconds. Matches the old SmoothDamp feel.")]
     [SerializeField] float smoothTime = 0.15f;
+    [Tooltip("Damping on the world Y axis alone, in seconds. Much slower than the other two " +
+             "on purpose — see the remarks on ApplyFraming.")]
+    [SerializeField] float verticalSmoothTime = 0.55f;
 
     [Header("Shake")]
     [Tooltip("Impulse velocity (m/s) generated per 1 unit of Shake magnitude. Measured in " +
@@ -128,7 +131,15 @@ public class CameraFollow : MonoBehaviour
         {
             follow.FollowOffset = FollowOffset;
             follow.TrackerSettings.BindingMode = BindingMode.WorldSpace;
-            follow.TrackerSettings.PositionDamping = Vector3.one * smoothTime;
+            // Y is damped nearly four times as slowly as X and Z, and B8 is why. Greenie now
+            // walks over ground that rises and falls, and with one damping value on all three
+            // axes the camera tracked every bump: the entire frame — horizon, hills, village —
+            // rocked up and down as he crossed a hill, which reads as the *world* moving rather
+            // than the character. Slack on Y alone lets him ride up and down within the frame
+            // while the horizon stays put, and costs nothing on the flat scenes, where the
+            // target's Y never changes and there is nothing to damp.
+            follow.TrackerSettings.PositionDamping =
+                new Vector3(smoothTime, verticalSmoothTime, smoothTime);
         }
     }
 

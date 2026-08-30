@@ -871,6 +871,136 @@ reaches it. A lit material gives back a black void. Nothing casts shadows either
 would put the whole plant in shade. And nothing has a collider, which is also why the NavMesh
 never sees it: `Level2Builder` bakes from `PhysicsColliders`.
 
+## The ground is a function (B8)
+
+Level 1's valley floor rises and falls now. QA raised it as
+[R1](../../QA/exploratory-pass-2026-08-26.md#r1--undulating-ground-change-request-not-a-defect)
+and the backlog promoted it to **B8**; the relief peaks at **24.7°** and spans **2.20 m**, from
+−1.18 m to +1.02 m.
+
+**Golden rule #1 survives it.** The rule was never "the ground is flat" — it was "no
+platforming": no jumping, nothing to fall off, gravity not a mechanic. All three still hold.
+What changed is one word in the rule and one assumption underneath it.
+
+### B8 and B9 are not one piece of work, and QA said so first
+
+The backlog scopes them together: B9's **ordering note** claims the two "want the *same*
+rewrite — a controller that follows a surface normal handles both a hill and a wall, and doing
+them separately means doing it twice." **That is wrong for B8, and QA had already said why.**
+[R1](../../QA/exploratory-pass-2026-08-26.md#r1--undulating-ground-change-request-not-a-defect)
+lists under "three things already support it, for free": *"`PlayerController` already applies a
+constant `Vector3.down * 9.81` ground-stick every frame, and Greenie's `CharacterController` is
+already configured for terrain: `slopeLimit = 45°`, `stepOffset = 0.3`. Greenie would walk up
+and down slopes today, with no code change."*
+
+He does. **`PlayerController` needed no edit at all** — not one line — and neither did
+`PlayerAnimator`, `PlayerHealth`'s knockback, the hazards, or the contact-damage geometry, every
+one of which B9's cost estimate lists as a landing site. The rewrite is B9's alone: a wall is
+90° and a `CharacterController`'s capsule is permanently world-Y aligned.
+
+That is why the relief is capped at 24.7° rather than at whatever looked good: the number is
+chosen against the 45° the controller and the NavMesh both already accept, with most of a
+factor of two in hand. Steepen it past 45° and every one of those costs comes back at once.
+
+### One function, five consumers
+
+`GroundHeight.At(x, z)` is the only answer to "where is the ground", and everything that needs
+one asks it:
+
+| Consumer | Why it cannot use a mesh instead |
+|---|---|
+| The 192 tile meshes | Two neighbours must agree along a shared edge **to the float** or there is a seam |
+| Their normals | `RecalculateNormals` averages only the faces on *this* tile, so a shared vertex gets two different normals and the grid reappears as a lighting seam |
+| 685 settled objects | They were authored at y = 0 across four generator files and a CSV |
+| Seeds and smog orbs | At 60 fps, per projectile, a raycast is the wrong shape of answer |
+| The generator, before anything exists | There is no mesh yet to sample |
+
+`GroundProfile` is two octaves of Perlin times a mask; `GroundHeightField` publishes it from
+`OnEnable` (never `Awake` — rule 5) and hands it back in `OnDisable`, so nothing carries the
+valley's hills into the flat factory. `Profile` has an **internal setter**: gameplay reads the
+ground, it never reshapes it.
+
+**The noise window was chosen, not typed.** Perlin is not stationary — which patch of it you
+sample decides whether a valley rolls both ways or merely dips. The first one tried gave 0.49 m
+of range over 14% of the floor: a dented plane. Fourteen windows were measured and the one that
+ships gives the widest range with the rises and hollows in balance.
+
+**And then it was tuned by looking at it, which is the only way this part can be settled.** The
+first tuning that satisfied every number — 1.56 m of range, 14.4° peak, all 30 invariants green —
+*rendered as a flat plane* from both framings. There is no occlusion cue available at this scale
+(a hill would need to be 9 m tall to hide anything from a camera 9.7 m up) and no self-shadowing
+either (the sun sits at 48°, so nothing under a 42° slope can shade itself), which leaves the
+diffuse term as the only cue there is. At 14.4° that is a few percent under a strong Trilight
+ambient, and invisible. At 24.7° it is a **41% swing** in `N·L` across a hillside, and the ground
+reads. The relief is still understated from the ¾ camera and clearest at eye height — that is
+inherent to a 65 × 49 m valley seen from 12 m, not something more amplitude would fix without
+putting crates on slopes they would visibly slide down.
+
+### The relief is masked, and the mask is the design
+
+`GroundProfile.Mask` holds the ground at exactly y = 0 wherever something flat has to stand on
+it: the boundary and its 112 fence posts (a 4 m band, feathered over 5 m more), the mesa —
+whose 18 per-column colliders were grown down to y = 0 by QA C3 and would float or bury a tier
+otherwise — the spring, the village, the boss grove, and **the four reclamation discs**. That
+last one is the interesting case: a `ReclamationPatch` blooms into a *9 m flat disc*, and on a
+slope it buries its uphill half and floats a visible lip along the downhill one. Level ground
+under each is far cheaper than conforming geometry, and a healed glade being flat reads as
+intent rather than as a bug.
+
+Ten flat zones, all verified dead level to within a millimetre.
+
+### `TerrainKit.Drop`: one pass instead of a hundred edits
+
+Around 1 500 objects in this scene were authored at y = 0, across `Level1Builder`, `TerrainKit`,
+`ArtPass` and a CSV exported from the 2D project. Threading a height lookup through every
+placement call would mean touching all of them and trusting the next person who adds one to
+remember. `TerrainKit.Drop` runs once, after everything is placed and before the NavMesh bakes,
+and settles 685 of them. It **adds** the ground height rather than assigning it, so an authored
+lift survives; a `maxLift` guard leaves anything deliberately off the ground alone. A short list
+of names — the sludge pools and the ground scatter — is also tilted to the surface normal,
+because those lie on the ground rather than stand on it. **Nothing built or grown is in that
+list**: a cottage or a tree leaning 20° reads as a bug, not as terrain.
+
+### Seeds fly flat over the ground, not flat in world Y
+
+This is the "projectile gate" the backlog names as the prerequisite for B8, and it came out as
+seven lines. `SeedProjectile` and `EnemyProjectile` record their **clearance** at launch — the
+height above the ground beneath the muzzle, which on flat ground is the same 0.60 m it always
+was — and hold it for the whole flight. XZ velocity, aim, spread fan and `travelDir` are all
+untouched: a shot still goes exactly where it was pointed. `GroundHeight.Hug` steers with
+velocity rather than writing `rb.position`, because teleporting a dynamic trigger body past an
+enemy hurtbox is how you lose a hit. When `Profile` is null it returns immediately, which is why
+Level 2 and the hub are provably unaffected.
+
+**Measured, both directions, against a control.** Over 147 cm of rise across 11 m the shot hits
+with B8, clearance held at 0.58 m; with the ground field switched off it **misses**, ending
+0.35 m *underground* and carrying on to 18 m. Over 150 cm of fall it hits with B8 (0.61 m) and
+misses without, ending **1.49 m above the ground beneath it** — sailing over the target's head,
+exactly the failure the backlog predicted.
+
+One layer fact worth recording, because it bounds the risk: **`PlayerProjectile` does not collide
+with `Ground`** in this project's physics matrix (nor does `EnemyProjectile`). A seed therefore
+passes straight through a hillside rather than fizzling on it, which is why the un-hugged uphill
+shot ends up under the terrain instead of stopping at it. The relief can never make a shot die
+early; the only failure mode it could introduce is the vertical miss, and that is the one the
+clearance fixes.
+
+### What the camera does about it, honestly
+
+`CameraFollow` damped all three axes at 0.15 s, and the acceptance criterion asks for Y to be
+slacker so the frame stops rocking. It is now `(0.15, 0.55, 0.15)`.
+
+**The play-mode A/B could not measure an improvement in total camera travel, and that is the
+expected result rather than a disappointment.** Damping is a first-order *lag*: over a sustained
+traverse the camera covers the same ground whatever the time constant, so walking a ramp shows
+nothing (76 cm of camera travel against 75 cm). What a longer constant buys is how far the
+camera is allowed to fall behind — Greenie riding up and down *inside* the frame instead of the
+frame riding with him, which only shows on a reversal. Four attempts at measuring it (peak
+vertical speed, RMS speed, vertical path length, lag) each came back either dominated by editor
+frame-pacing hitches or too small to separate from run-to-run noise. The setting is right by
+construction and costs nothing; the improvement is **unmeasured**, and it is recorded that way
+rather than dressed up with the one number that happened to look good.
+
 ## Communication patterns (unchanged — frozen contract)
 
 - `GameManager` static-instance + C# events (`OnCoresChanged`,

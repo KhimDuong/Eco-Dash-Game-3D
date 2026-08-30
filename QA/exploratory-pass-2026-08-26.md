@@ -49,14 +49,14 @@ Consequences, all still open:
 | C6 | S4 | The three earth tones differ by **8.6%** on 4 m tiles and read as a visible checkerboard | `Level1Builder.cs:86` | new | **fixed** |
 | C7 | S4 | Level 1 walk-through props: **3 village lanterns (2.6 m)** and the beached canoe | `TerrainKit.cs:464` | new | **fixed** |
 | C8 | S4 | The mesa reads as a stacked layer-cake rather than a rock formation | `TerrainKit.cs:255` | new | **open** — deferred, see [C8](#c8--the-mesa-reads-as-a-stacked-layer-cake-s4) |
-| R1 | — | *Undulating ground* — **change request, not a defect**; asks to change golden rule #1 | golden rule #1 | **Khiêm** | **open** — PO call, see [R1](#r1--undulating-ground-change-request-not-a-defect) |
+| R1 | — | *Undulating ground* — **change request, not a defect**; asks to change golden rule #1 | golden rule #1 | **Khiêm** | **done 2026-08-31** as cycle-3 **B8** — see [R1](#r1--undulating-ground-change-request-not-a-defect) |
 
 **C1–C7 were fixed in commit `e3d42ac` ("Fixed bug")** and re-verified on 2026-08-26 — see
 [Fix log](#fix-log--2026-08-26) at the bottom for what changed and how each one was measured.
 The finding write-ups below are left as they were written, so the evidence trail still reads
-straight. **C8 and R1 are deliberately deferred**, both as PO calls: R1 would change golden
-rule #1 and put combat at risk, and C8 is cosmetic polish not worth spending before the A2
-build.
+straight. **C8 is deliberately deferred** as a PO call — cosmetic polish not worth spending
+before the A2 build. **R1 was deferred here and has since been taken**: it shipped on
+2026-08-31 as cycle-3 **B8**, and this pass's costing of it is what the work was scoped from.
 
 **C1 and C2 are one bug with two symptoms** — a single oversized sphere — and one change fixes
 both. **C4 and C7 are also one bug**: `ArtKit.Spawn` places a visual and never a collider, so
@@ -382,6 +382,14 @@ worth doing before the A2 build — logged so it is not re-discovered.
 Khiêm: *"the ground in Level 1 should be ups and downs, like slightly tilted in many ways,
 making the robot able to go up and down in height."*
 
+> **Resolved 2026-08-31 — taken as cycle-3 [B8](../PRODUCT-BACKLOG.md#b8--hill-like-ground-tilts-rises-and-dips-instead-of-a-flat-plane).**
+> Level 1's floor now spans **2.20 m at up to 24.7°**. The costing below held up almost exactly,
+> including the part everyone else got wrong: *"Greenie would walk up and down slopes today,
+> with no code change"* was correct, and `PlayerController` was not edited. The combat break
+> named as item 1 was answered by making Seeds hold their **clearance above the ground** rather
+> than a world-Y line. See
+> [architecture.md § The ground is a function](../.claude/docs/architecture.md#the-ground-is-a-function-b8).
+
 **This is not a bug — it asks to change golden rule #1**, which says the ground is the flat XZ
 plane and gravity is never a mechanic. So it is a PO decision, not something QA can just file
 and someone quietly fixes. Here is what it would actually cost, because the answer is less
@@ -463,8 +471,10 @@ not need to be** — the `ArtKit` diff in `e3d42ac` is purely additive (the new 
 
 - **C8** (the mesa's layer-cake silhouette) — cosmetic, not worth spending before the A2 build.
   Confirmed still open: `Stack()` uses a fixed 1.4 m cell with no per-column XZ jitter.
-- **R1** (undulating ground) — PO call, and it would change golden rule #1. Confirmed still
-  open: the Level 1 floor is still one flat plane of 192 tiles.
+- **R1** (undulating ground) — was a PO call and was taken: **done 2026-08-31 as cycle-3 B8**.
+  The Level 1 floor is 192 generated meshes over a shared height field now, spanning 2.20 m at
+  up to 24.7°, and golden rule #1 was rewritten to match. *(Stated as of this pass: it was still
+  one flat plane of 192 tiles.)*
 - **The four `LoreNote` signs** (0.85 m) are still walk-through — left to the PO, as originally
   written up in [C7](#c7--level-1-walk-through-props-three-lanterns-and-the-canoe-s4).
 - Everything under [Not covered by this pass](#not-covered-by-this-pass) is still not covered.

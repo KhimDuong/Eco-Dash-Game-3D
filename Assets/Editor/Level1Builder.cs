@@ -29,13 +29,20 @@ public static class Level1Builder
     // The 2D level's walls sat at x = ±32.5 and y = ±24.5, 1 m thick.
     const float HalfX = 32.5f, HalfZ = 24.5f, WallHeight = 3f, Tile = 4f;
 
+    // The boss grove's centre, shared by BossGrove (which builds it) and BuildProfile (which
+    // holds the ground flat under it).
+    static readonly Vector3 GroveCentre = new(-27f, 0f, -19f);
+
     static StringBuilder log;
     static Transform envRoot, propRoot, playRoot, enemyRoot;
+    static string[] layout;      // the CSV, read once: the profile needs it before placement does
+    static GroundProfile ground; // B8: the valley's relief, and the only copy of it
 
     public static string Execute()
     {
         log = new StringBuilder();
         if (!File.Exists(LayoutCsv)) return "ERROR: " + LayoutCsv + " missing — run export_layout.py first";
+        layout = File.ReadAllLines(LayoutCsv);
 
         var scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
 
@@ -48,6 +55,7 @@ public static class Level1Builder
         playRoot = new GameObject("Gameplay").transform;
         enemyRoot = new GameObject("Enemies").transform;
 
+        BuildProfile();
         BuildGround();
         BuildWalls();
         int placed = PlaceFromLayout();
@@ -56,6 +64,7 @@ public static class Level1Builder
         WireChestsAndGate();
         TerrainKit.Level1(envRoot, propRoot, occupied, log, HalfX, HalfZ);
         Dress();
+        SettleToGround();
         PlaceSystems();
         SetupLighting();
         int navOk = BakeNavMesh();
@@ -72,9 +81,61 @@ public static class Level1Builder
 
     // --- geometry ---------------------------------------------------------------------
 
+    /// <summary>
+    /// B8: decide the shape of the ground before anything is built on it.
+    ///
+    /// <para><see cref="TerrainKit.ValleyProfile"/> supplies the relief and masks out the
+    /// features it owns (the mesa, the spring, the village). The two this file owns are added
+    /// here, because this file is what places them.</para>
+    /// </summary>
+    static void BuildProfile()
+    {
+        ground = TerrainKit.ValleyProfile(HalfX, HalfZ);
+
+        // A ring of dead trees round a boss fight, tight against two boundary walls.
+        ground.Flatten(new Vector2(GroveCentre.x, GroveCentre.z), 5.5f);
+
+        // A reclamation patch blooms into a 9 m disc of clean ground, and the teleport gate's
+        // pad is one of them. That disc is a single flat mesh: on a slope it buries its uphill
+        // half and floats a visible lip along the downhill one — the classic decal-on-a-hill
+        // tell. Level ground under each is far cheaper than conforming geometry, and a healed
+        // glade being flat is not something anyone will read as wrong.
+        foreach (var line in layout)
+        {
+            if (string.IsNullOrWhiteSpace(line)) continue;
+            var f = line.Split(',');
+            if (f.Length < 4 || f[0] != "patch") continue;
+            ground.Flatten(new Vector2(P(f[2]), P(f[3])), 5.2f, 3.5f);
+        }
+    }
+
+    /// <summary>
+    /// The valley floor: 192 tiles, each a generated surface sampled from
+    /// <see cref="GroundHeight"/>'s field rather than a flat 4 m slab.
+    ///
+    /// <para><b>Why generated meshes and not prefab instances.</b> Two requirements pull in
+    /// opposite directions. The ground has to be <i>seamless</i> — B8's first acceptance line
+    /// is "no step or seam at tile boundaries" — and it has to stay <i>192 separate
+    /// renderers</i>, because <c>GroundCleanser.TintGround</c> repaints the ground a renderer
+    /// at a time and that is what drives the codex's Độ Sạch metric. A single continuous mesh
+    /// satisfies the first and breaks the second. Tiles that each sample one shared height
+    /// function satisfy both: two neighbours evaluate the same function at the same world
+    /// position along their shared edge, so their vertices land on the same point to the
+    /// float, and the tiles remain separate objects.</para>
+    ///
+    /// <para>Normals come from the field too, analytically, and that is not a detail —
+    /// <c>RecalculateNormals</c> averages only the faces present <i>on this tile</i>, so the
+    /// same shared vertex gets a different normal from each of its two owners and the grid
+    /// reappears as a lighting seam even though the geometry is watertight.</para>
+    ///
+    /// <para>Everything else about the tiles is unchanged: same 4 m grid, same three earth
+    /// tones picked by the same smooth noise (QA C6), same Ground layer, same batching, same
+    /// bounds — <c>TintGround</c>'s footprint cap compares 16 m² against 30.7 m² exactly as
+    /// before. The <c>BoxCollider</c> becomes a <c>MeshCollider</c>, which is what the
+    /// CharacterController walks and what the NavMesh bakes.</para>
+    /// </summary>
     static void BuildGround()
     {
-        var floor = AssetDatabase.LoadAssetAtPath<GameObject>(Kit + "Greybox_Floor.prefab");
         var parent = new GameObject("Ground").transform;
         parent.SetParent(envRoot, false);
 
@@ -89,10 +150,6 @@ public static class Level1Builder
         // the whole spread along a dead-straight 4 m seam, which is the one thing natural ground
         // never has. Smooth noise over (i, j) instead puts neighbours in the same band and the
         // grid stops being legible.
-        //
-        // The tiles still have to stay separate meshes: GroundCleanser repaints them one at a
-        // time, and its runtime tint goes through a MaterialPropertyBlock, so it overrides
-        // whichever of the three a tile got.
         var earths = new[]
         {
             ArtKit.SolidMaterial("FarmGround", new Color(0.420f, 0.380f, 0.260f)),
@@ -102,8 +159,12 @@ public static class Level1Builder
         var soil = new System.Random(20260820);
         float drift = (float)soil.NextDouble() * 128f;   // deterministic, but not on a lattice node
 
+        int layer = LayerMask.NameToLayer("Ground");
+        if (layer < 0) log.AppendLine("  WARNING: no Ground layer — the cleanser will not tint");
+
         int nx = Mathf.RoundToInt(HalfX * 2f / Tile);      // 16 tiles across
         int nz = Mathf.RoundToInt(HalfZ * 2f / Tile);      // 12 tiles deep
+        var meshes = new List<Mesh>(nx * nz);
         int n = 0;
         for (int i = 0; i < nx; i++)
         {
@@ -111,23 +172,130 @@ public static class Level1Builder
             {
                 float x = -HalfX + Tile * 0.5f + i * Tile;
                 float z = -HalfZ + Tile * 0.5f + j * Tile;
-                var t = (GameObject)PrefabUtility.InstantiatePrefab(floor, parent);
-                t.name = $"Floor_{i}_{j}";
-                t.transform.position = new Vector3(x, -0.25f, z);   // slab top sits at y = 0
-                if (t.TryGetComponent<Renderer>(out var r))
-                {
-                    // ~7 tiles per noise period. At 3 the bands still changed at 47% of the 356
-                    // tile edges and the grid stayed readable, just fainter; this drops it to a
-                    // quarter, so what is left reads as patches of earth rather than as a lattice.
-                    float shade = Mathf.PerlinNoise(drift + i * 0.145f, drift + j * 0.145f);
-                    r.sharedMaterial = shade < 0.44f ? earths[2] : shade < 0.58f ? earths[0] : earths[1];
-                }
+
+                var t = new GameObject($"Floor_{i}_{j}") { layer = Mathf.Max(0, layer) };
+                t.transform.SetParent(parent, false);
+                t.transform.position = new Vector3(x, 0f, z);
+
+                var mesh = TileMesh(x, z);
+                meshes.Add(mesh);
+                t.AddComponent<MeshFilter>().sharedMesh = mesh;
+                t.AddComponent<MeshCollider>().sharedMesh = mesh;
+
+                // ~7 tiles per noise period. At 3 the bands still changed at 47% of the 356
+                // tile edges and the grid stayed readable, just fainter; this drops it to a
+                // quarter, so what is left reads as patches of earth rather than as a lattice.
+                float shade = Mathf.PerlinNoise(drift + i * 0.145f, drift + j * 0.145f);
+                t.AddComponent<MeshRenderer>().sharedMaterial =
+                    shade < 0.44f ? earths[2] : shade < 0.58f ? earths[0] : earths[1];
+
                 GameObjectUtility.SetStaticEditorFlags(t, StaticEditorFlags.BatchingStatic);
                 n++;
             }
         }
+
+        SaveMeshes(meshes);
+
+        var (low, high, slope) = MeasureRelief();
         log.AppendLine("ground: " + n + " tiles (" + nx + "x" + nz + " @ " + Tile + " m), " +
                        "3 earth tones within 2.9%, picked by smooth noise");
+        log.AppendLine($"  relief: y {low:F2} to {high:F2} m, steepest slope {slope:F1} deg " +
+                       $"(CharacterController.slopeLimit is 45), {ground.flat.Count} flat zones");
+    }
+
+    /// <summary>
+    /// Persist the 192 tile meshes into one asset beside the scene, for the same reason
+    /// <see cref="BakeNavMesh"/> does it with the NavMesh: anything a scene references but that
+    /// is not an asset gets serialised *into the .unity file*. Left inline they add roughly
+    /// 900 KB of vertex YAML, and every rebuild rewrites all of it — which in a repo where three
+    /// devs own scenes between them is a diff nobody can read. As one asset the scene keeps 192
+    /// plain references and its diff stays about the objects that moved.
+    /// </summary>
+    static void SaveMeshes(List<Mesh> meshes)
+    {
+        if (meshes.Count == 0) return;
+        const string dir = "Assets/_Scenes/Level1_BarrenFarm";
+        Directory.CreateDirectory(dir);
+        const string assetPath = dir + "/GroundMesh-Level1.asset";
+
+        AssetDatabase.DeleteAsset(assetPath);
+        AssetDatabase.CreateAsset(meshes[0], assetPath);
+        for (int i = 1; i < meshes.Count; i++)
+            AssetDatabase.AddObjectToAsset(meshes[i], assetPath);
+        AssetDatabase.SaveAssets();
+        log.AppendLine("  ground meshes saved to " + assetPath);
+    }
+
+    /// <summary>Quads per tile edge: 1 m facets, fine enough that a 16 m roll reads as smooth.</summary>
+    const int TileSub = 4;
+
+    /// <summary>
+    /// One tile's surface, in the tile's own local space. Vertices are sampled at world
+    /// coordinates so that neighbouring tiles agree exactly along the edge they share.
+    /// </summary>
+    static Mesh TileMesh(float cx, float cz)
+    {
+        const int n = TileSub + 1;
+        const float step = Tile / TileSub, half = Tile * 0.5f;
+
+        var verts = new Vector3[n * n];
+        var norms = new Vector3[n * n];
+        var uvs = new Vector2[n * n];
+        for (int j = 0; j < n; j++)
+        {
+            for (int i = 0; i < n; i++)
+            {
+                float lx = -half + i * step, lz = -half + j * step;
+                float wx = cx + lx, wz = cz + lz;
+                int k = j * n + i;
+                verts[k] = new Vector3(lx, ground.Evaluate(wx, wz), lz);
+                norms[k] = ground.NormalAt(wx, wz);
+                uvs[k] = new Vector2(wx * 0.25f, wz * 0.25f);
+            }
+        }
+
+        var tris = new int[TileSub * TileSub * 6];
+        int at = 0;
+        for (int j = 0; j < TileSub; j++)
+        {
+            for (int i = 0; i < TileSub; i++)
+            {
+                int a = j * n + i, b = a + 1, c = a + n, d = c + 1;
+                tris[at++] = a; tris[at++] = c; tris[at++] = b;   // wound to face +Y
+                tris[at++] = b; tris[at++] = c; tris[at++] = d;
+            }
+        }
+
+        var mesh = new Mesh { name = $"GroundTile_{cx:0.#}_{cz:0.#}" };
+        mesh.vertices = verts;
+        mesh.normals = norms;
+        mesh.uv = uvs;
+        mesh.triangles = tris;
+        mesh.RecalculateBounds();
+        return mesh;
+    }
+
+    /// <summary>
+    /// What the relief actually came out as, sampled on a half-metre grid. Logged rather than
+    /// guessed, because the number that matters — the steepest slope — has to stay well under
+    /// the CharacterController's 45 degree <c>slopeLimit</c> and the NavMesh's own 45 degree
+    /// cutoff, and "well under" is a judgement about a measured value, not about a Perlin
+    /// gradient somebody reasoned their way to.
+    /// </summary>
+    static (float low, float high, float slope) MeasureRelief()
+    {
+        float low = 0f, high = 0f, steepest = 0f;
+        for (float x = -HalfX; x <= HalfX; x += 0.5f)
+        {
+            for (float z = -HalfZ; z <= HalfZ; z += 0.5f)
+            {
+                float h = ground.Evaluate(x, z);
+                low = Mathf.Min(low, h);
+                high = Mathf.Max(high, h);
+                steepest = Mathf.Max(steepest, Vector3.Angle(Vector3.up, ground.NormalAt(x, z)));
+            }
+        }
+        return (low, high, steepest);
     }
 
     static void BuildWalls()
@@ -166,7 +334,7 @@ public static class Level1Builder
     {
         patches.Clear(); chests.Clear(); occupied.Clear(); gate = null; slimeCount = 0;
         int n = 0;
-        foreach (var line in File.ReadAllLines(LayoutCsv))
+        foreach (var line in layout)
         {
             if (string.IsNullOrWhiteSpace(line)) continue;
             var f = line.Split(',');
@@ -364,7 +532,7 @@ public static class Level1Builder
     /// </summary>
     static void BossGrove()
     {
-        var at = new Vector3(-27f, 0f, -19f);
+        var at = GroveCentre;
 
         // Ring radius stays under 4.5 m: the boundary wall's inner face is at x = -32 / z = -24
         // and B5's fence posts run just inside that.
@@ -467,9 +635,43 @@ public static class Level1Builder
 
     // --- systems ------------------------------------------------------------------------
 
+    /// <summary>
+    /// B8: put the whole level back on the ground.
+    ///
+    /// <para>Every one of the ~1 500 objects in this scene was authored at y = 0 against a flat
+    /// plane, across four generator files and a CSV exported from the 2D project. Rather than
+    /// thread a height lookup through every placement call — and have the next person who adds
+    /// one forget — this drops them all in a single pass, after everything is placed and before
+    /// the NavMesh is baked.</para>
+    ///
+    /// <para>What is deliberately left alone: the ground itself, the boundary walls (the relief
+    /// is masked to zero along the perimeter, so there is nothing to follow), and the Terrain
+    /// holder — the mesa, the spring and the outer hills all stand on ground that
+    /// <see cref="BuildProfile"/> holds flat for exactly that reason.</para>
+    /// </summary>
+    static void SettleToGround()
+    {
+        // Flat by nature, so they tilt with the ground: the sludge pools are lying films, and
+        // the ground scatter grows out of the surface rather than out of the vertical. Nothing
+        // built or grown is in this list — a cottage or a tree leaning 8 degrees reads as a bug
+        // rather than as terrain.
+        string[] lieFlat = { "ToxicMud", "GroveSludge", "Detail_" };
+
+        int props = TerrainKit.Drop(propRoot, ground, skip: "Village")
+                  + TerrainKit.Drop(propRoot.Find("Village"), ground);
+        int play = TerrainKit.Drop(playRoot, ground, lieFlat);
+        int foes = TerrainKit.Drop(enemyRoot, ground);
+        int dress = TerrainKit.Drop(envRoot.Find("Dressing"), ground, lieFlat);
+
+        log.AppendLine($"  settled onto the relief: {props} props, {play} gameplay objects, " +
+                       $"{foes} enemies, {dress} pieces of dressing");
+    }
+
     static void PlaceSystems()
     {
-        Inst("Assets/Prefabs/Player.prefab", "Greenie", playerStart + Vector3.up * 0.7f);
+        // Greenie starts standing on the ground, whatever height the relief put it at.
+        Inst("Assets/Prefabs/Player.prefab", "Greenie",
+             playerStart + Vector3.up * (0.7f + ground.Evaluate(playerStart.x, playerStart.z)));
         Inst("Assets/Prefabs/CameraRig.prefab", "CameraRig", Vector3.zero);
         Inst("Assets/Prefabs/HUD.prefab", "HUD", Vector3.zero);
 
@@ -482,6 +684,15 @@ public static class Level1Builder
             so.ApplyModifiedPropertiesWithoutUndo();
             log.AppendLine("  GameManager.requiredCores = 3");
         }
+
+        // The one thing that carries B8 out of the editor: gameplay reads the ground back
+        // through GroundHeight, and this is what puts the field there. Nothing else in the
+        // project has one, which is why every other scene is provably still flat.
+        var field = new GameObject("GroundField");
+        field.transform.SetParent(envRoot, false);
+        field.AddComponent<GroundHeightField>().Author(ground);
+        EditorUtility.SetDirty(field);
+        log.AppendLine("  GroundField published (" + ground.flat.Count + " flat zones)");
     }
 
     static GameObject Inst(string path, string name, Vector3 pos)

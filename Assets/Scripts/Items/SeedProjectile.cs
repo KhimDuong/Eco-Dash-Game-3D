@@ -23,6 +23,7 @@ public class SeedProjectile : MonoBehaviour
 
     Rigidbody rb;
     Vector3 travelDir = Vector3.forward;
+    float clearance;              // metres above the ground, held for the whole flight (B8)
 
     void Awake()
     {
@@ -36,8 +37,15 @@ public class SeedProjectile : MonoBehaviour
         direction.y = 0f;
         travelDir = direction.sqrMagnitude > 0.0001f ? direction.normalized : Vector3.forward;
         rb.linearVelocity = travelDir * speed;
+        // Measured, not assumed: on Level 1's relief the muzzle is already at the hill's
+        // height, so this comes out as the same ~0.60 m it has always been on flat ground.
+        clearance = GroundHeight.ClearanceOf(transform.position);
         Destroy(gameObject, lifeTime);
     }
+
+    /// <summary>Follow the ground's rise and fall without ever leaving the XZ line it was
+    /// fired along. A no-op in every flat scene — see <see cref="GroundHeight.Hug"/>.</summary>
+    void FixedUpdate() => GroundHeight.Hug(rb, clearance);
 
     void OnTriggerEnter(Collider other)
     {
