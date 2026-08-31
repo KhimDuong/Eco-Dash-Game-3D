@@ -81,7 +81,9 @@ public class PlayerHealth : MonoBehaviour
         if (knockbackForce > 0f && controller != null)
         {
             Vector3 away = transform.position - sourcePosition;
-            away.y = 0f;   // shove along the ground, never upward
+            // Shove along the surface, never off it. On the ground SurfaceFrame.Up is
+            // Vector3.up and this projection is exactly the old away.y = 0 (B9).
+            away = Vector3.ProjectOnPlane(away, SurfaceFrame.Up);
             away = away.sqrMagnitude > 0.0001f ? away.normalized : Vector3.forward;
             controller.ApplyKnockback(away * knockbackForce, knockbackDuration);
         }

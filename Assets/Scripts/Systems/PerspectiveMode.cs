@@ -14,6 +14,14 @@ using UnityEngine;
 /// has to mean "forward" or the controls invert the moment the player turns around. Nothing
 /// branches on the view mode; it just multiplies by this.</para>
 ///
+/// <para><b>B9 composed a second frame in front of this one.</b> <see cref="MoveFrame"/> and
+/// <see cref="LookRotation"/> are now multiplied by <see cref="SurfaceFrame.Rotation"/>, which
+/// is the identity everywhere except on a climbable wall. The two frames answer different
+/// questions and stack cleanly: the surface frame says which way is up and which way is uphill,
+/// this one says which way the player is looking within that. On a wall the composition makes
+/// <c>W</c> climb and the mouse yaw swing around the wall normal, so first person on a wall has
+/// the ant's answer to "which way is up" — <i>his</i> up — and the horizon rolls with him.</para>
+///
 /// <para>Statics survive Play (CLAUDE.md rule 4), which is exactly what the "toggle survives a
 /// scene change" requirement wants — the mode outlives <c>LoadScene</c> on purpose — but it
 /// must not outlive the play session, or the game starts in whatever view the last run ended
@@ -39,14 +47,24 @@ public static class PerspectiveMode
     /// <summary>The yaw WASD and aiming are expressed in. Always 0 under the ¾ camera.</summary>
     public static float MoveYaw => IsFirstPerson ? LookYaw : 0f;
 
-    /// <summary>Rotation that takes screen-space WASD into world space. Identity in top-down.</summary>
-    public static Quaternion MoveFrame => Quaternion.Euler(0f, MoveYaw, 0f);
+    /// <summary>
+    /// Rotation that takes screen-space WASD into world space. Identity in top-down on the
+    /// ground — both factors are the identity there, so every pre-B6 path is untouched.
+    /// </summary>
+    public static Quaternion MoveFrame => SurfaceFrame.Rotation * Quaternion.Euler(0f, MoveYaw, 0f);
 
-    /// <summary>Unit XZ vector the player is aiming along. Seeds still fly flat (rule 1).</summary>
+    /// <summary>
+    /// Unit vector the player is aiming along. On the ground it lies on XZ and seeds still fly
+    /// flat (rule 1); on a wall it lies in the wall plane, which is why firing is disabled there.
+    /// </summary>
     public static Vector3 AimForward => MoveFrame * Vector3.forward;
 
-    /// <summary>Full look rotation for the first-person camera, pitch included.</summary>
-    public static Quaternion LookRotation => Quaternion.Euler(LookPitch, LookYaw, 0f);
+    /// <summary>
+    /// Full look rotation for the first-person camera, pitch included — and, on a wall, rolled
+    /// into the surface frame so the rock reads as the floor.
+    /// </summary>
+    public static Quaternion LookRotation =>
+        SurfaceFrame.VisualRotation * Quaternion.Euler(LookPitch, LookYaw, 0f);
 
     public static void Toggle() => Set(IsFirstPerson ? View.TopDown : View.FirstPerson);
 

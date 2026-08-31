@@ -80,6 +80,7 @@ GameObject:
   - component: {fileID: 1572063898719045729}
   - component: {fileID: 2165908733798768013}
   - component: {fileID: 7883677233677670182}
+  - component: {fileID: 274271755351035236}
   m_Layer: 8
   m_Name: Player
   m_TagString: Player
@@ -331,6 +332,28 @@ MonoBehaviour:
   m_IgnoreFromBuild: 1
   m_ApplyToChildren: 1
   m_AffectedAgents: ffffffff
+--- !u!114 &274271755351035236
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5702238885245974311}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3ea295a8eb89eca499b7277f2c59db2a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WallClimber
+  climbMask:
+    serializedVersion: 2
+    m_Bits: 0
+  attachDwell: 0.25
+  attachReach: 0.35
+  minWallAngle: 60
+  reattachDelay: 0.35
+  holdReach: 0.4
+  footHeight: 0.08
+  climbSpeedFactor: 0.5
 --- !u!1 &8242160608271155102
 GameObject:
   m_ObjectHideFlags: 0

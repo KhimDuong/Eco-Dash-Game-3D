@@ -7,6 +7,14 @@ using UnityEngine.InputSystem;
 ///
 /// 3D port note: the spread fan is unchanged, just swung around the world Y axis
 /// so it fans out across the ground plane instead of the screen plane.
+///
+/// <para><b>B9: no firing while Greenie is on a wall, by design.</b> The acceptance criterion
+/// allows combat on a wall to be "explicitly disabled there by design", and that is the honest
+/// choice rather than the flattering one. A seed launched up a rock face would hold its B8
+/// ground clearance and curve away into the sky, and there is nothing on the mesa to shoot at:
+/// the enemies are NavMesh-bound to the valley floor. Firing anyway would mean either a second
+/// flight rule for the projectiles B8 just settled, or a shot that visibly does nothing. Both
+/// hands on the rock is the cheaper answer and it leaves the projectile system untouched.</para>
 /// </summary>
 [RequireComponent(typeof(PlayerController))]
 public class PlayerShooter : MonoBehaviour
@@ -35,7 +43,8 @@ public class PlayerShooter : MonoBehaviour
 
     void Update()
     {
-        if (DialogueRunner.IsActive) return; // no shooting mid-dialogue (M7)
+        if (DialogueRunner.IsActive) return;   // no shooting mid-dialogue (M7)
+        if (SurfaceFrame.IsClimbing) return;   // both hands on the rock (B9)
 
         var kb = Keyboard.current;
         if (kb == null || seedPrefab == null) return;

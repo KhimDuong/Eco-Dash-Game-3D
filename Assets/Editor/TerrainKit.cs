@@ -380,11 +380,19 @@ public static class TerrainKit
     /// the height rule rolled empty fell inside it, leaving 6.5 m² of invisible wall in open
     /// ground and phantom corners up to 1.75 m deep (QA C3). A box per column is exact, and the
     /// three dozen of them are static and batched.</para>
+    ///
+    /// <para>B9 hung a <see cref="Climbable"/> marker on each of them, which is what makes the
+    /// stepped stack the only climbable thing in the game — and what makes the seams between
+    /// these boxes the hard case rather than the flat faces.</para>
     /// </summary>
     static void Column(Transform parent, Bounds rock)
     {
         var go = new GameObject("Column");
         go.layer = LayerMask.NameToLayer("Obstacle");
+        // B9: the mesa is the one thing in the valley Greenie may ant-walk up. The permission
+        // lives on the collider because the climber tests whichever column its probe hit, and it
+        // is generated with the rock rather than dragged on afterwards (CLAUDE.md rule 5).
+        go.AddComponent<Climbable>();
         go.transform.SetParent(parent, false);
         go.transform.position = new Vector3(rock.center.x, 0f, rock.center.z);
         var box = go.AddComponent<BoxCollider>();

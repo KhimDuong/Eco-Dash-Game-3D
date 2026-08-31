@@ -22,23 +22,36 @@ per-developer breakdown is [TEAM-TASKS.md](TEAM-TASKS.md). Creative brief
 
 ## The golden rules (read these first)
 
-1. **Two framings over one XZ world, no platforming.** **B8 (cycle 3) made Level 1's
-   ground rise and fall** — but Greenie only ever *walks* it. Still no jumping, nothing
-   to climb, and gravity is still never a mechanic: the relief peaks at 14.4°, chosen
-   against the `CharacterController`'s 45° `slopeLimit` so the controller that has
-   always resolved slopes keeps doing it unchanged. Seeds still fly **flat**, but flat
-   now means *flat over the ground* — a constant ~0.6 m above whatever is beneath them,
-   never on a world-Y line and never on an arc. **Height is `GroundHeight`'s to answer**,
-   in the editor and at runtime alike, and it is null (0 everywhere) in every flat
-   scene; never raycast for the ground or re-derive it. The **default and canonical framing is the fixed ¾
-   Cinemachine camera** (pitch 50°, yaw 0) — every layout, sightline and QA pass is
-   tuned at it. **B6 (cycle 3) added one alternative: `P` drops to first person with
-   mouse look, and back.** So movement and aim are **camera-relative**: WASD is read
-   in screen axes and turned into world axes by `PerspectiveMode.MoveFrame`, which is
-   the identity under the ¾ camera (input Y still maps to **world Z** there) and the
-   look yaw in first person. Never author movement, aim or camera code in raw world
-   axes again — go through `PerspectiveMode`. Never add side-scroller logic, and
-   nothing else may control the camera.
+1. **Two framings, two frames, one XZ world — and still no platforming.** **B8 made
+   Level 1's ground rise and fall** (2.20 m of range, peaking at 24.7°, chosen against
+   the `CharacterController`'s 45° `slopeLimit`) and **B9 let Greenie ant-walk the
+   mesa's rock faces**. Neither made gravity a mechanic: **there is still nothing to
+   jump, nothing to fall off and no air control.** A climb is *walking on a wall* — he
+   hangs there indefinitely with no key held, and lets go only at the top or the bottom.
+   Two things follow, and both are non-negotiable:
+   - **Height is `GroundHeight`'s to answer**, in the editor and at runtime alike, and
+     it is null (0 everywhere) in every flat scene; never raycast for the ground or
+     re-derive it. Seeds still fly **flat**, but flat means *flat over the ground* — a
+     constant ~0.6 m above whatever is beneath them, never on a world-Y line, never on
+     an arc.
+   - **Up is `SurfaceFrame`'s to answer.** `SurfaceFrame.Up` is `Vector3.up` unless
+     Greenie is on a wall, and `SurfaceFrame.Rotation` is the identity there. Never
+     write `Vector3.up` (or `v.y = 0`) in player, camera or aim code again — ask the
+     frame, so the expression stays correct on a rock face and identical on the ground.
+     Only a collider carrying **`Climbable`** may be climbed; the mesa's 18 columns are
+     the only ones in the game, and adding the marker anywhere else is a design change.
+
+   The **default and canonical framing is the fixed ¾ Cinemachine camera** (pitch 50°,
+   yaw 0) — every layout, sightline and QA pass is tuned at it, and **it never rolls,
+   even on a wall**. **B6 added one alternative: `P` drops to first person with mouse
+   look, and back**; in first person on a wall the look *does* roll into the surface
+   frame, because up there his up is the answer. So movement and aim are
+   **camera- and surface-relative**: WASD is read in screen axes and turned into world
+   axes by `PerspectiveMode.MoveFrame`, which is the identity under the ¾ camera on the
+   ground (input Y still maps to **world Z** there), the look yaw in first person, and
+   the wall frame while climbing — `W` is always up the face. Never author movement, aim
+   or camera code in raw world axes again — go through `PerspectiveMode` and
+   `SurfaceFrame`. Never add side-scroller logic, and nothing else may control the camera.
 2. **Port, don't reinvent.** Before writing any gameplay script, check the 2D
    repo for its counterpart and apply the **porting tiers** in
    [.claude/docs/architecture.md](.claude/docs/architecture.md): Tier 0 copies
@@ -153,6 +166,15 @@ layer-cake silhouette) is deliberately deferred. **R1 — undulating ground — 
 cycle 3's B8**: the valley floor rises and falls by 2.20 m at up to 24.7°, and the combat risk
 R1 named was answered by making Seeds fly flat *over the ground* rather than flat in world Y.
 
+**Cycle 3 is complete: B6, B7, B8 and B9 are all in.** **B9** is the last of them — Greenie
+ant-walks the mesa's rock faces, three 1.4 m tiers to the 4.2 m summit and back down, on a new
+`SurfaceFrame` that is the identity everywhere he is not on a wall. Like B8, it did **not** need
+the `Rigidbody` rewrite the backlog costed it at: `CharacterController.Move` takes a world-space
+delta, so the capsule climbs a face it is pressed against without ever being re-oriented. What
+that costs is a hitbox that does not match the silhouette on a wall — paid deliberately, and
+recorded in
+[architecture.md](.claude/docs/architecture.md#which-way-is-up-is-a-state-b9).
+
 Next up: the three unplaced side-quest NPCs (Bé Mây, Ông Tài, Cô Lan — the village district
 B4 built is where they would live), a full manual playthrough + ~30-min time-budget check,
 the A2 demo video, and the submission build.
@@ -247,5 +269,10 @@ prefab — the next rebuild would throw it away.
    `OnEnable`, not just `Awake`. And while you're picking a random number: `UnityEngine.Random`
    is **one global sequence that gameplay is spending** — the slimes draw their wander from it —
    so anything cosmetic (audio pitch, particle scatter) needs its own generator or it will
-   quietly change what the enemies do.
+   quietly change what the enemies do. And one that is not about lifecycle but lives in the same
+   family of "the object is there, so it must be running": **a disabled `MonoBehaviour` still
+   answers a direct method call.** `if (thing != null) thing.Tick()` runs `Tick` on a component
+   whose `enabled` is false — which is how B9's control run, whose entire job was to demonstrate
+   the *pre*-B9 behaviour with `WallClimber.enabled = false`, climbed the mesa. Guard with
+   `isActiveAndEnabled`.
    See [architecture.md](.claude/docs/architecture.md#audio-is-two-services-and-a-generated-table-c5).

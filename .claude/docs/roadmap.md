@@ -483,10 +483,72 @@ owners in [../../TEAM-TASKS.md](../../TEAM-TASKS.md).
     at this scale the diffuse term is the only cue available, so the slope had to go to 24.7°
     before the ground read as terrain. Evidence in [../../QA/screenshots/](../../QA/screenshots/)
     (`b8_*`)
-- [ ] **B9** Greenie climbs vertical walls — *unstarted; still needs the `Rigidbody` +
-  surface-aligned controller rewrite B8 turned out not to need, and still a PO call*
+- **B9** Greenie climbs vertical walls like an ant — **done**
+  - [x] `SurfaceFrame` — one owner for "which way is up", `Up` and `Rotation` exact (physics and
+    the movement frame), `VisualRotation` eased at 420 deg/s (the mesh and the first-person
+    camera). **The identity while he is on the ground**, so every expression that now routes
+    through it collapses back to the arithmetic it replaced
+  - [x] `Climbable` — climbing is a permission per collider, not a rule about geometry. Without
+    it every boundary wall, cottage and fence is a vertical face and Greenie climbs out of the
+    level. `TerrainKit.Column` hangs one on each of the mesa's 18 columns as it builds them
+  - [x] `WallClimber` — attach on 0.25 s of pushing into a face steeper than 60 deg, hold across
+    the seams between columns, step over the lip at the top, let go at the bottom. Movement on a
+    wall runs at half ground speed: at the full 5 m/s a 1.4 m tier is over in 0.28 s
+  - [x] **`PlayerController` needed one substitution**, not a rewrite: `Vector3.down` became
+    `-SurfaceFrame.Up`. The `CharacterController` is untouched (r 0.35, h 1.15, slope 45,
+    step 0.3), and so are the hazards, the contact-damage geometry and `CameraFollow` — all of
+    which B9's own cost estimate listed as landing sites
+  - [x] `PerspectiveMode.MoveFrame` and `LookRotation` compose with the surface frame, so `W`
+    climbs and `A`/`D` traverse on every face with no branch; `PlayerAnimator` bobs, squashes and
+    turns in it; `PlayerHealth`/`ApplyKnockback` project onto it instead of zeroing `y`
+  - [x] **firing is disabled on a wall, by design** — a seed would hold its B8 ground clearance
+    and curve into the sky, and there is nothing up there to shoot. `PlayerShooter` returns early
+  - [x] verified **22/22 static** (18 markers and only 18, all on the collider itself, under the
+    Highlands root, on a mesa that is stepped 1.4/2.8/4.2 m over dead-level B8 ground; Level 2
+    and the hub carry none) and **31/31 in play** driving the real keyboard: 3 attaches and 3
+    dismounts to the summit in 3.1 s, no frame off a lip over 5 cm, hangs with 0.0 cm of drift
+    for 1.5 s, traverses 2.09 m across a seam between two colliders and **stops** at the end of
+    the rock, walks back down to 0 m, fires nothing while climbing and normally again on the
+    ground, cannot be knocked off a face (1.6 cm along the normal), rolls 90 deg in first person
+    with the eye 1.05 m out along it — and a control run with the climber off gets 0.00 m up
+  - [x] known and reported, not papered over: on a wall the **hitbox is not the silhouette**
+    (the capsule stays world-Y aligned), first person on a 4.2 m rock **shows mostly sky**, and
+    the ¾ camera **cannot see the north face** — the last of which is pre-existing and measurable
+    at ground level with no climbing involved
 
 ## Recent log
+
+- _(2026-08-31)_ **B9 — which way is up is a state.** Greenie ant-walks the Level 1 mesa: into a
+  rock face, up it, over the lip, across the roof, up the next one, summit at 4.2 m, and back
+  down. Cycle 3 is complete.
+  **The backlog costed this as a `Rigidbody` rewrite of `PlayerController` and it was wrong** —
+  the same way it was wrong about B8, and for the same reason. The estimate reasons from a
+  *component's* limit ("a `CharacterController`'s capsule is permanently world-Y aligned"), which
+  is true, rather than from the *API's* — `CharacterController.Move` takes a world-space delta and
+  has no opinion about gravity, so a capsule pressed against a wall climbs it the moment you hand
+  it a delta pointing up the face. `PlayerController`'s share of B9 is **one substitution**:
+  `Vector3.down` became `-SurfaceFrame.Up`. The hazards, the contact-damage geometry and
+  `CameraFollow` — all named as landing sites — were not touched at all.
+  The work went into a **frame**, the third of cycle 3 after B6's and B8's and the same shape as
+  both: `SurfaceFrame` answers "which way is up for Greenie right now", is the identity whenever
+  he is on the ground, and composes into `PerspectiveMode.MoveFrame` so that `W` climbs and
+  `A`/`D` traverse without a branch anywhere. And into a **permission**: `Climbable`, on 18
+  colliders, because the natural rule — push into a vertical face — applied to geometry lets him
+  climb the boundary wall and stand on the skybox.
+  **Two bugs worth keeping, both invisible from the code.** "Stop climbing when you are back at
+  ground level" fired on the frame after every attach, because every climb *starts* at ground
+  level: 15 attach/dismount cycles in nine seconds and he never left the floor. And
+  `climber != null` does not disable anything — a disabled `MonoBehaviour` still answers a direct
+  call, so the control run whose whole job was to show the pre-B9 behaviour climbed the mesa.
+  **Three things are reported rather than smoothed over.** The hitbox on a wall is not the
+  silhouette (the capsule cannot tilt) — free today because nothing can reach him up there, and
+  the moment something shoots at him on a wall it is not. First person on a wall rolls into his
+  frame, which is the answer the item asked for and which, on a rock only 4.2 m tall, means
+  looking at the sky. And the ¾ camera cannot see the mesa's north face at all — measured
+  *blocked by Column at 9.0 m*, and pre-existing: the same ray at ground level with no climbing
+  involved is blocked at 7.2 m.
+  22/22 static checks, 31/31 in play driving the real keyboard, clean error log. Evidence in
+  [../../QA/screenshots/](../../QA/screenshots/) (`b9_*`).
 
 - _(2026-08-31)_ **B8 — the ground is a function.** Level 1's floor rises and falls now: 2.20 m
   of range at up to 24.7°, which is QA's R1 promoted to a backlog item and delivered.

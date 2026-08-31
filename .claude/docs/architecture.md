@@ -895,8 +895,15 @@ and down slopes today, with no code change."*
 
 He does. **`PlayerController` needed no edit at all** — not one line — and neither did
 `PlayerAnimator`, `PlayerHealth`'s knockback, the hazards, or the contact-damage geometry, every
-one of which B9's cost estimate lists as a landing site. The rewrite is B9's alone: a wall is
-90° and a `CharacterController`'s capsule is permanently world-Y aligned.
+one of which B9's cost estimate lists as a landing site.
+
+> **Postscript, once B9 was built: the rewrite was nobody's.** This section originally closed
+> "the rewrite is B9's alone: a wall is 90° and a `CharacterController`'s capsule is permanently
+> world-Y aligned". The capsule really is — and it did not matter, because
+> `CharacterController.Move` takes a *world-space delta* and has no opinion about gravity. See
+> [Which way is up is a state (B9)](#which-way-is-up-is-a-state-b9). What the fixed capsule
+> actually costs is a hitbox that does not match the silhouette on a wall, which is a real
+> price, paid deliberately, and much smaller than a controller rewrite.
 
 That is why the relief is capped at 24.7° rather than at whatever looked good: the number is
 chosen against the 45° the controller and the NavMesh both already accept, with most of a
@@ -1000,6 +1007,157 @@ vertical speed, RMS speed, vertical path length, lag) each came back either domi
 frame-pacing hitches or too small to separate from run-to-run noise. The setting is right by
 construction and costs nothing; the improvement is **unmeasured**, and it is recorded that way
 rather than dressed up with the one number that happened to look good.
+
+## Which way is up is a state (B9)
+
+Greenie ant-walks the Level 1 mesa: he walks into a rock face, keeps pushing, and climbs it
+under his own orientation — three 1.4 m tiers to a 4.2 m summit, and back down. QA never raised
+it; the backlog did, as the last and largest item of cycle 3, and it is now built.
+
+### The same shape as B6 and B8, one layer up
+
+Each of the three added a *frame* that is the identity in the case that already worked:
+
+| | Owner | Identity when |
+|---|---|---|
+| B6 | `PerspectiveMode.MoveFrame` | the ¾ camera is live (yaw locked at 0) |
+| B8 | `GroundHeight.Profile` | the scene has no `GroundHeightField` — every flat scene |
+| B9 | `SurfaceFrame.Rotation` / `.Up` | Greenie is on the ground — every frame of every other scene |
+
+`SurfaceFrame` is the single answer to *which way is up for Greenie right now*. Before it, six
+places said `Vector3.up` in their own hand: the ground stick, the movement frame, the aim, the
+visual's bob and turn, the first-person eye offset, and the knockback direction. Every one of
+them now asks, and every one of them collapses back to exactly the arithmetic it replaced when
+the answer is `Vector3.up` — `-Up * stick` **is** `Vector3.down * stick`;
+`ProjectOnPlane(v, Up)` **is** `v.y = 0`. That is the whole safety argument, and it is why
+Level 2, the hub and the story scenes are provably untouched: they contain no
+[`Climbable`](../../Assets/Scripts/World/Climbable.cs) surface, so nothing can move the frame
+off the identity.
+
+The composition is what makes it cost so little. `PerspectiveMode.MoveFrame` became
+`SurfaceFrame.Rotation * Quaternion.Euler(0, MoveYaw, 0)`, and `SurfaceFrame.Rotation` maps local
+forward onto **straight up the wall**. So `W` climbs, `A`/`D` traverse and `S` descends with no
+branch anywhere — the same trick B6 used to make WASD camera-relative, applied to a second
+frame stacked in front of it.
+
+### The backlog's cost estimate was wrong twice, and the second time was expensive
+
+B9's estimate reads: *"a `CharacterController`'s capsule is permanently world-Y aligned and
+cannot be re-oriented — so ant-walking means **replacing it with a `Rigidbody` plus a
+surface-aligned controller**. That is a rewrite of the one script the whole game's feel rests
+on, and it lands on `PlayerAnimator`, `PlayerHealth`'s knockback, every hazard that calls
+`EnterMud`/`ExitMud`, the contact-damage geometry, and `CameraFollow`."*
+
+The capsule really cannot be re-oriented. **But `CharacterController.Move` takes a world-space
+delta and has no opinion about gravity**, so a capsule pressed against a wall climbs it the
+moment you hand it a delta pointing up the face — collide-and-slide holds him against the rock
+for free, exactly as it holds him against it on the ground. `PlayerController`'s share of B9 is
+*one substitution* — `Vector3.down` became `-SurfaceFrame.Up` — plus two lines that hand the
+frame's velocity to the climber. The hazards and the contact-damage geometry were not touched at
+all. `CameraFollow` was not touched at all.
+
+**Having now been wrong about this twice in a row, the useful lesson is not "the estimates were
+pessimistic".** It is that both estimates reasoned from a *component's* limits (`CharacterController`
+cannot tilt) instead of from the *API's* (`Move` takes any vector). The thing that looked like it
+needed replacing turned out to need asking differently.
+
+### What the fixed capsule actually costs
+
+This is the price, and it is real. On a wall Greenie's **mesh** lies flat against the face — soles
+on the rock, head pointing out of it — while his **collider** stays a 1.15 m upright capsule flush
+with that face. Roughly the same volume, turned 90°: hugging the wall rather than standing out of
+it. So the hitbox is not the silhouette up there.
+
+Nothing in the game can exploit the difference *today*: the enemies are NavMesh-bound to the
+valley floor and cannot reach a wall, and seeds fly at ground clearance (B8). It would matter the
+moment something shot at Greenie on a wall — that is the line where this shortcut stops being
+free, and the point at which the `Rigidbody` rewrite becomes worth its price.
+
+### Climbing is a permission, not a rule about geometry
+
+The natural rule — walk into a vertical face and keep pushing — is the right feel and costs no
+new key (the control contract has none free). Applied to geometry it is also a catastrophe: every
+boundary wall, cottage, fence and factory partition in the project is a vertical face, so the
+unrestricted rule lets Greenie climb out of Level 1 and stand on the skybox.
+
+So the permission is per-collider. `TerrainKit.Column` hangs a `Climbable` on each of the mesa's
+**18 per-column `BoxCollider`s** as it builds them — generated with the rock rather than dragged
+on afterwards — and they are the only 18 of the valley's 140 solid obstacles that carry it. The
+marker sits on the collider itself, not a parent, because the climber tests `hit.collider`.
+
+A `attachDwell` of 0.25 s of continuous pushing is what separates a climb from a brush past the
+rock, and `minWallAngle` of 60° is what keeps it clear of both the `CharacterController`'s 45°
+`slopeLimit` and B8's 24.7° ground: relief can never be mistaken for a wall.
+
+### The stepped stack is the interesting case, and C3 is why
+
+QA's [C3](../../QA/exploratory-pass-2026-08-26.md) replaced the mesa's single box with one
+collider per column. That fix is what makes the climb worth having: the mesa is not one 4.2 m
+wall but a staircase of 1.4 m faces with a roof between each, so a climb up the x = −25.20 lane
+is **attach → climb → step over the lip → walk the roof → attach again**, three times. Measured:
+3 attaches, 3 dismounts, summit in 3.1 s.
+
+Two rules keep that from throwing him off:
+
+- **Off the top is a dismount.** When the foot probe finds no rock ahead of a *rising* move,
+  `WallClimber` steps him `radius + 0.3` m in over the lip and lets go. Without that step the
+  ground stick catches the lip and drops him straight back down the way he came. The probe is
+  cast from ankle height precisely so it only misses once his whole capsule is above the top
+  face, which is what makes that step unobstructed.
+- **Off the side is an edge.** When the same probe finds no rock at the destination of a
+  *traverse*, that component of the velocity is cancelled and the rest is kept. A climber who
+  slides off a column at 4 m and is then handed to the ground stick falls the whole way at
+  9.81 m/s, which is the "launched or stuck" failure the item forbids. Measured: he traverses
+  2.09 m across a seam, is handed between two separate column colliders, and **stops** at the
+  end of the rock at y = 0.84 m.
+
+### Two bugs worth keeping, because both were invisible from the code
+
+**The bottom-out check cancelled the climb it was meant to end.** "Stop climbing when you are
+back at ground level" is obviously right and was obviously wrong: every climb *starts* at ground
+level, so it fired on the frame after every attach. The symptom was 15 attach/dismount cycles in
+nine seconds of holding `W` with Greenie never leaving the floor. The fix is a high-water mark —
+you cannot bottom out of a climb you have not begun.
+
+**A disabled `MonoBehaviour` still answers a direct call.** `PlayerController` guarded its calls
+into the climber with `climber != null`, so `WallClimber.enabled = false` disabled nothing: the
+B9 control run — the run whose entire job is to show the pre-B9 behaviour — climbed the mesa.
+`isActiveAndEnabled` is the check that guard needed.
+
+### First person on a wall: his up, and it shows a lot of sky
+
+The backlog asked the design question outright — *"in first person, on a wall, which way is
+up?"* — and the answer shipped is **Greenie's**. `PerspectiveMode.LookRotation` composes with the
+eased `SurfaceFrame.VisualRotation`, so the camera rolls 90° with him and the rock reads as the
+floor; the eye offset rides out along the wall normal rather than above his head. Measured: 90.0°
+of roll, the eye 1.05 m out along the normal, the camera's own up within 0.0° of it.
+
+**And it is worth being straight about how that looks.** His forward is up the wall, so at level
+pitch he is looking at the sky with the valley lying sideways at the edge of frame — which is
+correct for an ant and which, on a 4.2 m rock, means there is almost no wall left above him to
+look at. See [`QA/screenshots/b9_climb_firstperson_wall.png`](../../QA/screenshots/b9_climb_firstperson_wall.png).
+The mechanic is self-consistent and the frame is legible once you know what you are looking at;
+whether it is *good* on a rock this short is a judgement for the PO, and the screenshot is there
+so it can be made from evidence rather than from this paragraph.
+
+### The ¾ camera is not touched, and the north face is hidden
+
+Rolling the fixed ¾ camera would break golden rule #1, and rolling the whole valley around a
+climbing robot reads as the world tipping over — so `CameraFollow` is untouched. Greenie simply
+rises within the frame, which is what B8's slow vertical damping was already tuned for. On the
+south face he is dead centre with a clear line of sight.
+
+**On the north face the mesa hides him completely.** The camera looks from −Z at pitch 50°, so a
+4.2 m rock stands directly between it and anything behind it: the line-of-sight ray comes back
+*blocked by Column at 9.0 m*, and
+[`b9_climb_threequarter_north.png`](../../QA/screenshots/b9_climb_threequarter_north.png) shows an
+empty rock.
+
+This is **not something B9 introduced** — the same measurement at ground level, standing north of
+the mesa with no climbing involved, is blocked at 7.2 m. It is a pre-existing camera limitation
+that B9 makes easier to reach, it applies to the village cottages too, and the fix is an occluder
+pass for the whole game rather than anything belonging to this item. First person (`P`) is the
+workaround that exists today.
 
 ## Communication patterns (unchanged — frozen contract)
 

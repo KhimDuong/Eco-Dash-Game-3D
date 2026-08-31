@@ -14,6 +14,14 @@ using UnityEngine.InputSystem;
 /// every top-down path behaves exactly as it did before — and becomes the look yaw in first
 /// person, where W has to mean "forward" or the controls invert the moment the player turns
 /// round. There is no branch on the view mode here; there is a multiply.</para>
+///
+/// <para><b>B9 added a second frame the same way.</b> <see cref="SurfaceFrame"/> says which way
+/// is up; <c>MoveFrame</c> now carries it, so on a wall <c>W</c> climbs and <c>A</c>/<c>D</c>
+/// traverse with no branch here either. The ground stick went from <c>Vector3.down</c> to
+/// <c>-SurfaceFrame.Up</c> — the same vector on the ground, the direction into the rock on a
+/// wall — and that one substitution is the whole of the climbing change to this file. The
+/// <see cref="CharacterController"/> is unchanged and still world-Y aligned;
+/// <see cref="WallClimber"/> explains what that costs.</para>
 /// </summary>
 [RequireComponent(typeof(CharacterController))]
 public class PlayerController : MonoBehaviour
@@ -41,8 +49,17 @@ public class PlayerController : MonoBehaviour
     /// <summary>True while a movement key is held (drives walk vs idle visuals).</summary>
     public bool IsMoving => moveInput != Vector3.zero;
 
+    /// <summary>
+    /// Is the wall climber present <i>and</i> switched on? Both halves matter: a disabled
+    /// MonoBehaviour still answers a direct method call, so a plain null check kept Greenie
+    /// climbing after <c>WallClimber.enabled = false</c> — which made the B9 control run,
+    /// the one that is supposed to show the pre-B9 behaviour, climb the mesa.
+    /// </summary>
+    bool Climbing => climber != null && climber.isActiveAndEnabled;
+
     CharacterController body;
-    Vector3 moveInput;            // on XZ, magnitude <= 1
+    WallClimber climber;          // optional (B9); null everywhere it is not on the prefab
+    Vector3 moveInput;            // in the surface frame, magnitude <= 1
     int mudContacts;              // how many overlapping mud zones we're inside
     float speedBoost = 1f;        // 1 = normal; >1 from energy drink
     float knockbackUntil;         // input-driven movement is suspended until this time
@@ -52,12 +69,17 @@ public class PlayerController : MonoBehaviour
     void Awake()
     {
         body = GetComponent<CharacterController>();
+        climber = GetComponent<WallClimber>();
         moveSpeed *= PlayerProgress.SpeedMultiplier; // permanent move-speed upgrade (M4 shop)
         if (animator == null) animator = GetComponentInChildren<Animator>();
     }
 
     void Update()
     {
+        // The climber runs first and on last frame's input: the input it judges was read in the
+        // frame it was read in, and ReadInput below then builds this frame's input in whichever
+        // frame the climber just settled on.
+        if (Climbing) climber.Tick(moveInput, Time.deltaTime);
         ReadInput();
         Move();
         UpdateAnimator();
@@ -78,7 +100,11 @@ public class PlayerController : MonoBehaviour
             horizontal = moveInput * speed;
         }
 
-        body.Move((horizontal + Vector3.down * groundStickSpeed) * Time.deltaTime);
+        // -SurfaceFrame.Up is Vector3.down on the ground, to the bit; on a wall it points into
+        // the rock, which is what holds Greenie against it.
+        Vector3 velocity = horizontal - SurfaceFrame.Up * groundStickSpeed;
+        if (Climbing) velocity = climber.Constrain(velocity, Time.deltaTime);
+        body.Move(velocity * Time.deltaTime);
     }
 
     void ReadInput()
@@ -120,12 +146,13 @@ public class PlayerController : MonoBehaviour
 
     /// <summary>
     /// Shove the body and suspend input-steering for <paramref name="duration"/> seconds.
-    /// A zero impulse just roots Greenie in place (ManholeTrap). Any vertical component
-    /// is dropped — knockback never lifts Greenie off the ground.
+    /// A zero impulse just roots Greenie in place (ManholeTrap). The component along
+    /// <see cref="SurfaceFrame.Up"/> is dropped — knockback never lifts Greenie off the surface
+    /// he is on, and on the ground that projection is exactly the old <c>velocity.y = 0</c>.
     /// </summary>
     public void ApplyKnockback(Vector3 velocity, float duration)
     {
-        knockbackVelocity = new Vector3(velocity.x, 0f, velocity.z);
+        knockbackVelocity = Vector3.ProjectOnPlane(velocity, SurfaceFrame.Up);
         knockbackUntil = Time.time + duration;
     }
 

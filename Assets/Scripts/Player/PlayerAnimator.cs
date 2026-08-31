@@ -9,6 +9,14 @@ using UnityEngine;
 /// 3D port note: the bob and squash are the same trick on the same axis (Y is up in
 /// both projects); the 2D horizontal sprite flip becomes a yaw rotation of the visual
 /// child, so Greenie faces all four directions instead of just left/right.
+///
+/// <para><b>B9 made "up" a variable.</b> Every axis here used to be world Y; they are now
+/// <see cref="SurfaceFrame.VisualUp"/>, which is world Y unless Greenie is on a wall. The eased
+/// <see cref="SurfaceFrame.VisualRotation"/> is deliberately the one used rather than the exact
+/// frame — attaching swings up through 90 degrees in a single frame, and the mesh has to roll
+/// onto the rock rather than cut to it. The squash needs no change at all: it scales the
+/// visual's own local Y, and the rotation below has already pointed that axis along the
+/// normal.</para>
 /// </summary>
 public class PlayerAnimator : MonoBehaviour
 {
@@ -72,7 +80,10 @@ public class PlayerAnimator : MonoBehaviour
         bobPhase += Time.deltaTime * bobHz * Mathf.PI * 2f;
         float wave = Mathf.Sin(bobPhase);
 
-        visual.localPosition = baseLocalPos + new Vector3(0f, wave * amp + SinkOffset, 0f);
+        // baseLocalPos is a rest height above the feet, so it turns with the surface too;
+        // on the ground SurfaceFrame.VisualRotation is the identity and this is the old line.
+        visual.localPosition = SurfaceFrame.VisualRotation * baseLocalPos
+                             + SurfaceFrame.VisualUp * (wave * amp + SinkOffset);
 
         // Squash/stretch only matters while moving; volume roughly preserved.
         float s = moving ? moveSquash : 0f;
@@ -83,9 +94,13 @@ public class PlayerAnimator : MonoBehaviour
             baseScale.z * flatten);
 
         // Turn toward the facing direction; keeps the last heading when standing still.
+        // Flattening against the surface keeps LookRotation well-conditioned when a dismount
+        // leaves a facing that still points up a wall; on the ground it only strips a zero.
+        Vector3 up = SurfaceFrame.VisualUp;
+        facing = Vector3.ProjectOnPlane(facing, up);
         if (facing.sqrMagnitude > 0.0001f)
         {
-            Quaternion target = Quaternion.LookRotation(facing, Vector3.up);
+            Quaternion target = Quaternion.LookRotation(facing, up);
             visual.rotation = Quaternion.RotateTowards(visual.rotation, target, turnSpeed * Time.deltaTime);
         }
     }

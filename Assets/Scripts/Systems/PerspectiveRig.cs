@@ -22,6 +22,18 @@ using UnityEngine.InputSystem;
 /// back on is the documented way to lose Greenie's rest pose (CLAUDE.md rule 2's ownership
 /// trap). Toggling <c>Renderer.enabled</c> touches nothing the animator or the colliders own.</para>
 ///
+/// <para><b>B9: the eye offset follows Greenie's own up.</b> On a wall the first-person camera
+/// sits out from the rock along its normal and rolls with <see cref="PerspectiveMode.LookRotation"/>,
+/// so the face he is standing on reads as the floor — the ant's answer to the design question
+/// the backlog raised. The offset has to be pushed every frame rather than once at build time,
+/// because it is now a value that changes; on the ground it is the authored
+/// <c>Vector3.up * eyeHeight</c> and nothing moves.</para>
+///
+/// <para><b>The three-quarter camera is deliberately not touched.</b> Rolling it would break the
+/// fixed framing golden rule #1 protects, and rolling the whole valley around a climbing robot
+/// reads as the world tipping over. Greenie simply rises within the frame, which is what B8's
+/// slow vertical damping on <see cref="CameraFollow"/> was already tuned for.</para>
+///
 /// <para><b>The cursor is a shared resource.</b> It is locked only while first person is live
 /// <i>and</i> no screen is up — <see cref="UiModal"/> is what makes opening the bag mid-look
 /// give the mouse back instead of stranding the player with an invisible pointer. It is also
@@ -48,6 +60,7 @@ public class PerspectiveRig : MonoBehaviour
     [SerializeField] int firstPersonPriority = 20;
 
     CinemachineCamera fpCam;
+    CinemachineFollow fpFollow;
     CinemachineBrain brain;
     Transform player;
     Renderer[] body;
@@ -82,6 +95,8 @@ public class PerspectiveRig : MonoBehaviour
         // transform rotation (there is no Rotation Control behaviour on it, exactly as on
         // CM_PlayerCam), and it has to be correct on the first frame of the blend.
         if (fpCam != null) fpCam.transform.rotation = PerspectiveMode.LookRotation;
+        // B9: the eye rides out along whichever way is up for Greenie right now.
+        if (fpFollow != null) fpFollow.FollowOffset = SurfaceFrame.VisualUp * eyeHeight;
 
         ApplyCursor();
     }
@@ -131,10 +146,10 @@ public class PerspectiveRig : MonoBehaviour
         lens.NearClipPlane = 0.05f;   // the eye sits inside Greenie's own capsule
         fpCam.Lens = lens;
 
-        var follow = go.AddComponent<CinemachineFollow>();
-        follow.TrackerSettings.BindingMode = BindingMode.WorldSpace;
-        follow.TrackerSettings.PositionDamping = Vector3.zero;   // damping at eye height is nausea
-        follow.FollowOffset = Vector3.up * eyeHeight;
+        fpFollow = go.AddComponent<CinemachineFollow>();
+        fpFollow.TrackerSettings.BindingMode = BindingMode.WorldSpace;
+        fpFollow.TrackerSettings.PositionDamping = Vector3.zero; // damping at eye height is nausea
+        fpFollow.FollowOffset = Vector3.up * eyeHeight;
 
         fpCam.Follow = player;
         SetPriority(0);
