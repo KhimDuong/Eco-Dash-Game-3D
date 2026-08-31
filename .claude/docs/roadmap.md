@@ -518,6 +518,23 @@ owners in [../../TEAM-TASKS.md](../../TEAM-TASKS.md).
 
 ## Recent log
 
+- _(2026-08-31)_ **First person is now the framing the game opens in.** A PO call, taken once B9
+  was in: `PerspectiveMode.Default` went from `TopDown` to `FirstPerson`, so `P` now goes *out*
+  to the ¾ camera instead of into first person. One constant, because the mode is read on the
+  first frame — before any component's `Start` — by `PlayerController` for its move frame and
+  `PlayerShooter` for its aim.
+  Three things already made it cheap: `MoveFrame` is the identity at yaw 0, so `W` is still world
+  +Z on the opening frame either way; only the three gameplay scenes carry a `CameraRig`, so the
+  cursor lock can never strand a player in a menu; and the opening is a **cut**, not a dive —
+  measured, the camera never rises above 1.05 m in the first 60 frames against the ¾ rig's 9.7 m.
+  **The ¾ camera stays canonical** — every layout, sightline and QA pass is still tuned at it, and
+  it is still what nothing else may control. What this does change is which caveats are on the
+  default path: B9's first-person notes (the camera rolls on a wall; a 4.2 m rock mostly shows
+  sky) now apply to a player who never presses anything.
+  14/14 checks on the opening state and the round trip, and the B9 suite re-run at 31/31 with no
+  regression. Opening view in
+  [../../QA/screenshots/](../../QA/screenshots/) (`fp_default_level1_opening*`).
+
 - _(2026-08-31)_ **B9 — which way is up is a state.** Greenie ant-walks the Level 1 mesa: into a
   rock face, up it, over the lip, across the roof, up the next one, summit at 4.2 m, and back
   down. Cycle 3 is complete.

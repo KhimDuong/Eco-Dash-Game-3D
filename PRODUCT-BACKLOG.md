@@ -38,6 +38,13 @@
 >
 > **Cycle 3 is complete: B6, B7, B8, B9.**
 >
+> **PO decision, 2026-08-31: the game now opens in first person.** `P` goes *out* to the ¾
+> camera rather than into first person. One constant (`PerspectiveMode.Default`) — see
+> [architecture.md](.claude/docs/architecture.md#which-framing-the-game-opens-in-changed-2026-08-31).
+> The ¾ camera stays **canonical**: every layout, sightline and QA pass is tuned at it. What the
+> flip moves onto the default path is B9's first-person caveats — on a wall the camera rolls, and
+> a 4.2 m rock mostly shows sky — for a player who never presses anything.
+>
 > **Scope of this draft.** This covers one slice only: environment feel — terrain
 > elevation, map scale, camera angle, and "does this look cheap" — gathered by
 > playtesting the current build and cross-checking it against the **A2 course

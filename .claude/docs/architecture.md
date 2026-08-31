@@ -754,6 +754,35 @@ still. Seeds keep flying flat on XZ, so **looking up or down changes what you se
 where you shoot**; `FirstPersonReticle`'s centre dot exists to say so, because at eye height
 Greenie's body is no longer on screen to indicate his facing.
 
+### Which framing the game opens in (changed 2026-08-31)
+
+`PerspectiveMode.Default` is **`FirstPerson`**, so a play session opens at Greenie's eye and `P`
+goes *out* to the ¾ camera rather than into first person. It was `TopDown` when B6 shipped; the
+PO asked for the flip once B9 was in.
+
+It is a `const` rather than a serialized field on `PerspectiveRig`, and that is not laziness: the
+mode is read on the **first frame** — `PlayerController` for its move frame, `PlayerShooter` for
+its aim — and a component's `Start` is already a frame too late to be the authority. `ResetStatics`
+puts it back to `Default` on every play session, which is what stops a run that ended in one
+framing from starting the next in it.
+
+Three things make the flip cheap, and they are worth naming because none of them is accidental:
+
+- **`MoveFrame` is still the identity at yaw 0**, so `W` is world +Z on the opening frame in
+  either framing. Nothing about the layouts' assumed control mapping changes at t = 0.
+- **Only the three gameplay scenes carry a `CameraRig`.** `MainMenu`, `Intro_Story` and
+  `Ending_Story` have none, so `PerspectiveRig` — and with it the cursor lock that would make a
+  menu unclickable — never runs there.
+- **The opening is a cut, not a dive.** The first-person vcam claims its priority in the rig's
+  `Start`, before any brain blend has a previous camera to blend *from*; measured, the camera
+  never rises above 1.05 m in the opening 60 frames, against the ¾ rig's 9.7 m.
+
+**What did not change is the more important half.** The ¾ camera is still the framing every
+layout, sightline and QA pass is tuned at, and B8's relief is still understated from it and
+clearest at eye height — which is now what a player sees first. The first-person caveats recorded
+under [B9](#which-way-is-up-is-a-state-b9) are now default-path caveats rather than
+toggle-path ones: on a wall the camera rolls and, on a 4.2 m rock, mostly shows sky.
+
 ### Four things a perspective swap drags behind it
 
 `PerspectiveRig` (on `CameraRig.prefab`, beside `CameraFollow`) owns all four, and three of

@@ -25,7 +25,7 @@ using UnityEngine;
 /// <para>Statics survive Play (CLAUDE.md rule 4), which is exactly what the "toggle survives a
 /// scene change" requirement wants — the mode outlives <c>LoadScene</c> on purpose — but it
 /// must not outlive the play session, or the game starts in whatever view the last run ended
-/// in. Hence <see cref="ResetStatics"/>.</para>
+/// in. Hence <see cref="ResetStatics"/>, which puts it back to <see cref="Default"/>.</para>
 /// </summary>
 public static class PerspectiveMode
 {
@@ -34,7 +34,22 @@ public static class PerspectiveMode
     /// <summary>How far up/down first person can look, in degrees.</summary>
     public const float MaxPitch = 80f;
 
-    public static View Current { get; private set; } = View.TopDown;
+    /// <summary>
+    /// The framing the game starts in, and the one every play session resets to.
+    ///
+    /// <para><b>This is the knob.</b> It is deliberately one constant rather than a serialized
+    /// field on <see cref="PerspectiveRig"/>: the mode is read from the very first frame — by
+    /// <see cref="PlayerController"/> for its move frame and by <see cref="PlayerShooter"/> for
+    /// its aim — and a component's <c>Start</c> is already too late to be the authority on it.
+    /// The three gameplay scenes are the only ones that carry a rig at all, so nothing else in
+    /// the project is affected by what this says.</para>
+    ///
+    /// <para>Note what it does <i>not</i> change: the ¾ camera is still the framing every layout,
+    /// sightline and QA pass is tuned at, and it is still one press of <c>P</c> away.</para>
+    /// </summary>
+    public const View Default = View.FirstPerson;
+
+    public static View Current { get; private set; } = Default;
 
     public static bool IsFirstPerson => Current == View.FirstPerson;
 
@@ -92,7 +107,7 @@ public static class PerspectiveMode
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics()
     {
-        Current = View.TopDown;
+        Current = Default;
         LookYaw = 0f;
         LookPitch = 0f;
     }

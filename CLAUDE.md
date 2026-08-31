@@ -41,11 +41,15 @@ per-developer breakdown is [TEAM-TASKS.md](TEAM-TASKS.md). Creative brief
      Only a collider carrying **`Climbable`** may be climbed; the mesa's 18 columns are
      the only ones in the game, and adding the marker anywhere else is a design change.
 
-   The **default and canonical framing is the fixed ¾ Cinemachine camera** (pitch 50°,
-   yaw 0) — every layout, sightline and QA pass is tuned at it, and **it never rolls,
-   even on a wall**. **B6 added one alternative: `P` drops to first person with mouse
-   look, and back**; in first person on a wall the look *does* roll into the surface
-   frame, because up there his up is the answer. So movement and aim are
+   **The game starts in first person, and the ¾ camera is one press of `P` away.** The two
+   halves of that are separate facts and both matter. `PerspectiveMode.Default` is the
+   single knob that decides which framing a play session opens in — it is read on the
+   first frame, before any component's `Start`, so it is a constant and not a serialized
+   field. But the **fixed ¾ Cinemachine camera** (pitch 50°, yaw 0) is still the
+   **canonical** framing: every layout, sightline and QA pass is tuned at it, it is what
+   a screenshot of this game should look like, and **it never rolls, even on a wall**.
+   In first person the look *does* roll into the surface frame while climbing, because up
+   there his up is the answer. So movement and aim are
    **camera- and surface-relative**: WASD is read in screen axes and turned into world
    axes by `PerspectiveMode.MoveFrame`, which is the identity under the ¾ camera on the
    ground (input Y still maps to **world Z** there), the look yaw in first person, and
@@ -105,8 +109,8 @@ Physics layers and the collision matrix live in
 
 ## Controls (design contract — unchanged from 2D)
 
-`W/A/S/D` move on the ground plane · `P` toggle ¾ ⇄ first person (mouse looks around
-in first person) · `J` shoot Seed projectile · `E` interact (NPC/chest) · `Esc` pause ·
+`W/A/S/D` move on the ground plane · `P` toggle first person ⇄ ¾ (**the game opens in
+first person**; the mouse looks around there) · `J` shoot Seed projectile · `E` interact (NPC/chest) · `Esc` pause ·
 `I/Tab` bag · `1–4` hotbar · `Q` quest log · `C` codex · `H` how-to-play.
 Read exactly as in the 2D repo: **direct polling of `Keyboard.current`**
 from the Input System package (`kb.wKey.isPressed`, `kb.jKey.isPressed`, …), *not*
