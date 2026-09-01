@@ -490,8 +490,8 @@ public static class ArtPass
         {
             Kill(root.transform.Find("Leaf"));
             Kill(root.transform.Find("Stem"));
-            ArtKit.Spawn("Assets/Models/Custom/medicinal_herb.obj", root.transform, 1.4f);
-            Log.AppendLine("Herb: custom 3D medicinal herb OBJ model (1.4 m)");
+            ArtKit.Spawn("Assets/Models/Custom/HerbModel/marijuanna.fbx", root.transform, 1.4f);
+            Log.AppendLine("Herb: marijuanna 3D model (1.4 m)");
         });
 
         Edit(Greybox + "Litter.prefab", root =>
