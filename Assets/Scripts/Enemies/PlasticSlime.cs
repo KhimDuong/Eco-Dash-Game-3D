@@ -63,7 +63,7 @@ public class PlasticSlime : MonoBehaviour, IDamageable, IKnockbackable
 
     [Header("Contact")]
     [Tooltip("Centre-to-centre distance on the ground plane that counts as touching.")]
-    [SerializeField] float contactRange = 0.9f;
+    [SerializeField] float contactRange = 1.3f;
 
     [Header("NavMesh")]
     [Tooltip("How far to search for the nearest walkable point when the slime is placed off-mesh.")]
@@ -215,8 +215,23 @@ public class PlasticSlime : MonoBehaviour, IDamageable, IKnockbackable
 
     void TryContactDamage()
     {
+        if (player == null || playerHealth == null) return;
         if (FlatDistance(player.position) > contactRange) return;
         playerHealth.TakeDamage(contactDamage, transform.position, contactKnockback);
+    }
+
+    void OnTriggerStay(Collider other)
+    {
+        if (dead) return;
+        if (other.CompareTag("Player") && playerHealth != null)
+            playerHealth.TakeDamage(contactDamage, transform.position, contactKnockback);
+    }
+
+    void OnCollisionStay(Collision collision)
+    {
+        if (dead) return;
+        if (collision.gameObject.CompareTag("Player") && playerHealth != null)
+            playerHealth.TakeDamage(contactDamage, transform.position, contactKnockback);
     }
 
     public void TakeDamage(int amount)

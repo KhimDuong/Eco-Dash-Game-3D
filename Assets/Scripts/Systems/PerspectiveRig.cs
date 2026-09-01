@@ -118,23 +118,18 @@ public class PerspectiveRig : MonoBehaviour
         Apply(force: false);
 
         Vector3 shakePosOffset = Vector3.zero;
-        Quaternion shakeRotOffset = Quaternion.identity;
         if (Time.time < shakeEndTime)
         {
             float p = (shakeEndTime - Time.time);
             float m = shakeMagnitude * p;
             Vector2 r = Random.insideUnitCircle * m;
             shakePosOffset = new Vector3(r.x, r.y, 0f);
-            shakeRotOffset = Quaternion.Euler(
-                Random.Range(-m * 15f, m * 15f),
-                Random.Range(-m * 15f, m * 15f),
-                Random.Range(-m * 10f, m * 10f));
         }
 
         // Push the look angles every frame, not only on change: the brain reads this vcam's own
         // transform rotation (there is no Rotation Control behaviour on it, exactly as on
         // CM_PlayerCam), and it has to be correct on the first frame of the blend.
-        if (fpCam != null) fpCam.transform.rotation = PerspectiveMode.LookRotation * shakeRotOffset;
+        if (fpCam != null) fpCam.transform.rotation = PerspectiveMode.LookRotation;
         // B9: the eye rides out along whichever way is up for Greenie right now.
         if (fpFollow != null) fpFollow.FollowOffset = SurfaceFrame.VisualUp * eyeHeight + shakePosOffset;
 
