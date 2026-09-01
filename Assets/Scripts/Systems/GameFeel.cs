@@ -50,6 +50,8 @@ public class GameFeel : MonoBehaviour
     public static void Shake(float duration, float magnitude)
     {
         if (CameraFollow.Instance != null) CameraFollow.Instance.Shake(duration, magnitude);
+        if (PerspectiveRig.Instance != null) PerspectiveRig.Instance.Shake(duration, magnitude);
+        DamageOverlayUI.FlashRed(duration);
     }
 
     /// <summary>

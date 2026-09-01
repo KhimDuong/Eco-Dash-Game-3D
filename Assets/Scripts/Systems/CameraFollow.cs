@@ -98,6 +98,8 @@ public class CameraFollow : MonoBehaviour
         if (vcam == null) vcam = GetComponent<CinemachineCamera>();
         if (follow == null) follow = GetComponent<CinemachineFollow>();
         if (impulse == null) impulse = GetComponent<CinemachineImpulseSource>();
+        if (vcam != null && vcam.GetComponent<CinemachineImpulseListener>() == null)
+            vcam.gameObject.AddComponent<CinemachineImpulseListener>();
     }
 
     void Start()

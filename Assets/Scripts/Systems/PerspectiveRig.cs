@@ -59,6 +59,8 @@ public class PerspectiveRig : MonoBehaviour
     [Tooltip("Priority the first-person camera claims. CM_PlayerCam sits at 10.")]
     [SerializeField] int firstPersonPriority = 20;
 
+    public static PerspectiveRig Instance { get; private set; }
+
     CinemachineCamera fpCam;
     CinemachineFollow fpFollow;
     CinemachineBrain brain;
@@ -66,6 +68,30 @@ public class PerspectiveRig : MonoBehaviour
     Renderer[] body;
     PerspectiveMode.View applied;
     bool built;
+
+    float shakeEndTime;
+    float shakeMagnitude;
+
+    void Awake()
+    {
+        Instance = this;
+    }
+
+    void OnEnable()
+    {
+        Instance = this;
+    }
+
+    void OnDestroy()
+    {
+        if (Instance == this) Instance = null;
+    }
+
+    public void Shake(float duration, float magnitude)
+    {
+        shakeEndTime = Time.time + duration;
+        shakeMagnitude = magnitude;
+    }
 
     void Start()
     {
@@ -91,12 +117,26 @@ public class PerspectiveRig : MonoBehaviour
         ReadLook();
         Apply(force: false);
 
+        Vector3 shakePosOffset = Vector3.zero;
+        Quaternion shakeRotOffset = Quaternion.identity;
+        if (Time.time < shakeEndTime)
+        {
+            float p = (shakeEndTime - Time.time);
+            float m = shakeMagnitude * p;
+            Vector2 r = Random.insideUnitCircle * m;
+            shakePosOffset = new Vector3(r.x, r.y, 0f);
+            shakeRotOffset = Quaternion.Euler(
+                Random.Range(-m * 15f, m * 15f),
+                Random.Range(-m * 15f, m * 15f),
+                Random.Range(-m * 10f, m * 10f));
+        }
+
         // Push the look angles every frame, not only on change: the brain reads this vcam's own
         // transform rotation (there is no Rotation Control behaviour on it, exactly as on
         // CM_PlayerCam), and it has to be correct on the first frame of the blend.
-        if (fpCam != null) fpCam.transform.rotation = PerspectiveMode.LookRotation;
+        if (fpCam != null) fpCam.transform.rotation = PerspectiveMode.LookRotation * shakeRotOffset;
         // B9: the eye rides out along whichever way is up for Greenie right now.
-        if (fpFollow != null) fpFollow.FollowOffset = SurfaceFrame.VisualUp * eyeHeight;
+        if (fpFollow != null) fpFollow.FollowOffset = SurfaceFrame.VisualUp * eyeHeight + shakePosOffset;
 
         ApplyCursor();
     }
@@ -121,7 +161,6 @@ public class PerspectiveRig : MonoBehaviour
         BindPlayer();
         BuildFirstPersonCamera();
         FirstPersonReticle.Ensure();
-        FirstPersonHitOverlay.Ensure();
     }
 
     void BindPlayer()
@@ -142,6 +181,7 @@ public class PerspectiveRig : MonoBehaviour
         go.transform.SetParent(transform, false);
 
         fpCam = go.AddComponent<CinemachineCamera>();
+        go.AddComponent<CinemachineImpulseListener>();
         var lens = fpCam.Lens;
         lens.FieldOfView = fieldOfView;
         lens.NearClipPlane = 0.05f;   // the eye sits inside Greenie's own capsule
