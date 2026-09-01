@@ -398,6 +398,21 @@ Three things it has to respect:
   deliver a second `OnTriggerEnter` with no exit between — and one unbalanced pair leaves
   Greenie permanently at half speed. `WaterWade` keeps a `HashSet<Collider>`, which cannot
   double-count. `ToxicMud` has the same exposure and has simply never been teleported into.
+  **`ToxicMud` is out of the build as of 2026-08-31** — see below — which parks the exposure
+  rather than fixing it; the note is repeated on the script so whoever brings it back finds it.
+
+**Toxic Mud is switched off, and the switch is in the generator.** `Level1Builder.ToxicMudEnabled`
+is `false`, so neither the three `mud` rows in the CSV nor the two `GroveSludge` pools in the boss
+grove are instanced. Level 1 was the only scene that ever used the prefab, so that one constant is
+the whole of its presence in the game; the script, the prefab and the CSV rows are all kept, and
+flipping it back plus a rebuild restores it.
+
+The reason is a QA note that outlived its context: the pools "read as flat pale sheets from eye
+height", filed against B7 as a footnote *because eye height was then one press of `P` away*. Once
+`PerspectiveMode.Default` became `FirstPerson` that stopped being a footnote and became the first
+thing a player sees. The lesson generalises past the mud: **changing the default framing re-prices
+every defect that was only visible from the other one**, and the backlog's "still open,
+deliberately" list is where to go looking for the rest.
 
 **The mesa gets one box per column.** `Mesa()` builds a ragged radial mound and deliberately
 skips cells that roll zero storeys — that broken edge is the whole point of the silhouette.

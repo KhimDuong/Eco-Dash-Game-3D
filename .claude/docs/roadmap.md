@@ -518,6 +518,25 @@ owners in [../../TEAM-TASKS.md](../../TEAM-TASKS.md).
 
 ## Recent log
 
+- _(2026-08-31)_ **Toxic Mud is switched off, pending an art redraw.** PO call.
+  `Level1Builder.ToxicMudEnabled = false` removes both the three `mud` rows out on the farm and
+  the two `GroveSludge` pools around the Slime King — the same prefab under two names — and
+  Level 1 is the only scene that has ever used it, so that one constant is the whole of its
+  presence in the game. The script, the prefab, the CSV rows and the design spec are all kept;
+  flipping it back and rebuilding Level 1 restores it.
+  **What is interesting is why it surfaced now.** QA had already written that the pools "read as
+  flat pale sheets from eye height" and filed it as a footnote — correctly, at the time, because
+  eye height was one press of `P` away. Making first person the default re-priced it into the
+  first thing a player sees. That generalises: **a change of default framing re-prices every
+  defect that was only visible from the other one**, and the backlog's "still open, deliberately"
+  list is where the rest of them are.
+  Recorded on the way past, on `ToxicMud` itself so it is found when the art comes back: the
+  script counts `EnterMud`/`ExitMud` by *event*, and an unbalanced pair leaves Greenie
+  permanently at half speed. `WaterWade` hit this first and answered it with a
+  `HashSet<Collider>`; the mud never has, only because nothing teleports into a pool.
+  **The pond is deliberately untouched** — it is a separate script on a separate prefab and only
+  shares the speed hook — so the valley keeps a slow-you-down hazard.
+
 - _(2026-08-31)_ **First person is now the framing the game opens in.** A PO call, taken once B9
   was in: `PerspectiveMode.Default` went from `TopDown` to `FirstPerson`, so `P` now goes *out*
   to the ¾ camera instead of into first person. One constant, because the mode is read on the

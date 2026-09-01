@@ -175,7 +175,7 @@ small props are primitives. Materials live in `Assets/Models/Materials/Greybox_*
 | `Greybox_Hut` | `RusticHut` | village hut |
 | `Greybox_Fence` | fence post (36 ring the village) | fence section |
 | `Greybox_DeadTree` | dead tree (30 across the field) | withered tree; the crown has no collider on purpose |
-| `Chest` · `EnergyCore` · `Litter` · `ToxicMud` · `ReclamationPatch` · `TeleportGate` · `NPC_Villager` · `Herb` · `LoreNote` · `ItemPickup` | every interactable in L1 | swap the meshes only — the scripts, trigger colliders and "Nhấn E" prompts are the contract |
+| `Chest` · `EnergyCore` · `Litter` · `ToxicMud` · `ReclamationPatch` · `TeleportGate` · `NPC_Villager` · `Herb` · `LoreNote` · `ItemPickup` | every interactable in L1 | swap the meshes only — the scripts, trigger colliders and "Nhấn E" prompts are the contract. **`ToxicMud` is switched off in the build** (2026-08-31) because its flat pale sheet reads badly at eye height — it is the one on this list that needs a *redraw* rather than a swap. Turn it back on with `Level1Builder.ToxicMudEnabled` and rebuild Level 1. |
 
 ### C1/C2 enemy kit — `Assets/Prefabs/Enemies/`
 
