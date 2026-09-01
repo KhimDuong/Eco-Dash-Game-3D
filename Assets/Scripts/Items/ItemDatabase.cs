@@ -70,6 +70,16 @@ public static class ItemDatabase
         foreach (var def in BuiltInCatalog())
             if (!byId.ContainsKey(def.id))
                 byId[def.id] = def;
+
+        // Auto-bind Sprite icons from Resources/Items/icon_<id> if def.icon is null
+        foreach (var def in byId.Values)
+        {
+            if (def != null && def.icon == null)
+            {
+                var sprite = Resources.Load<Sprite>("Items/icon_" + def.id);
+                if (sprite != null) def.icon = sprite;
+            }
+        }
     }
 
     // Built-in defaults so the systems work before any asset exists. Names/effects
