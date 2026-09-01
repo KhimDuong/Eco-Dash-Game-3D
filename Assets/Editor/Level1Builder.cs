@@ -598,7 +598,10 @@ public static class Level1Builder
         king.name = "SlimeKing";
         king.transform.position = at;
         occupied.Add(new Vector2(at.x, at.z));
-        log.AppendLine("  boss grove at " + at + ": SlimeKing, " + trees + " dead trees, 2 sludge pools");
+        // Report what was built, not what the code used to build: the sludge count was a
+        // literal 2 and went on claiming two pools after ToxicMudEnabled removed them.
+        log.AppendLine("  boss grove at " + at + ": SlimeKing, " + trees + " dead trees, " +
+                       (ToxicMudEnabled ? "2 sludge pools" : "no sludge (ToxicMudEnabled is off)"));
     }
 
     static void Note(string id, Vector3 pos)
