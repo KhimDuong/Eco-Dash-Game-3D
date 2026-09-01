@@ -110,7 +110,7 @@ Physics layers and the collision matrix live in
 ## Controls (design contract — unchanged from 2D)
 
 `W/A/S/D` move on the ground plane · `P` toggle first person ⇄ ¾ (**the game opens in
-first person**; the mouse looks around there) · `J` shoot Seed projectile · `E` interact (NPC/chest) · `Esc` pause ·
+first person**; the mouse looks around there) · `J` / **Left Click** shoot Seed projectile (**Left Click** in first person, **J** in ¾ view) · `E` interact (NPC/chest) · `Esc` pause ·
 `I/Tab` bag · `1–4` hotbar · `Q` quest log · `C` codex · `H` how-to-play.
 Read exactly as in the 2D repo: **direct polling of `Keyboard.current`**
 from the Input System package (`kb.wKey.isPressed`, `kb.jKey.isPressed`, …), *not*

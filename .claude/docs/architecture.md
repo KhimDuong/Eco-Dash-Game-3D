@@ -16,7 +16,7 @@ Systems/      GameManager, Inventory, SaveSystem, QuestLog, Codex, PlayerProgres
               Crafting, ItemUse, SceneProgress, CameraFollow (3D ¾ rig + Shake), catalogs
 Items/        ItemDef, ItemDatabase, CraftingRecipe, SeedProjectile, pickups
 UI/           HudController, ObjectiveTracker, InventoryUI, Hotbar, QuestLogUI, CodexUI,
-              CraftingUI, BossHealthBar, Pause/EndScreen/Settings, Dialogue/, UIFactory
+              CraftingUI, BossHealthBar, DamageOverlayUI, Pause/EndScreen/Settings, Dialogue/, UIFactory
 World/        IInteractable, Chest, NPCs, portals/gates, BossDoor, CraftingBench,
               ReclamationPatch, Litter, LoreNote, Keycard
 Hazards/      ToxicMud, ToxicGasZone, ManholeTrap, SweepingLaser
@@ -532,9 +532,12 @@ into a scene:
   call builds a `ParticleSystem` in code, plays it once and destroys itself
   (`stopAction = Destroy`). No VFX prefab exists, so no generator can throw one away.
 - [GameFeel.cs](../../Assets/Scripts/Systems/GameFeel.cs) — `Shake` (a null-safe wrapper
-  over `CameraFollow.Instance.Shake`, so callers stop copying the null check around) and
-  `HitStop`. Durations live here as constants rather than as serialized fields on four
-  enemy prefabs.
+  over `CameraFollow.Instance.Shake` and `PerspectiveRig.Instance.Shake`, so callers stop
+  copying the null check around) and `HitStop`. Durations live here as constants rather
+  than as serialized fields on four enemy prefabs.
+- [DamageOverlayUI.cs](../../Assets/Scripts/UI/DamageOverlayUI.cs) — a full-screen runtime uGUI
+  bloody red vignette overlay (sortingOrder 99). Flashes a procedural crimson border on
+  landed player damage (`PlayerHealth.TakeDamage`).
 - [GroundCleanser.cs](../../Assets/Scripts/World/GroundCleanser.cs) — clearing trash
   cleans the ground around it and raises that stage's **Độ Sạch**.
 
