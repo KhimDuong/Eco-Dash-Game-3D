@@ -51,7 +51,6 @@ public class GameFeel : MonoBehaviour
     {
         if (CameraFollow.Instance != null) CameraFollow.Instance.Shake(duration, magnitude);
         if (PerspectiveRig.Instance != null) PerspectiveRig.Instance.Shake(duration, magnitude);
-        DamageOverlayUI.FlashRed(duration);
     }
 
     /// <summary>
