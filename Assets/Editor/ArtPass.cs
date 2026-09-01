@@ -490,8 +490,8 @@ public static class ArtPass
         {
             Kill(root.transform.Find("Leaf"));
             Kill(root.transform.Find("Stem"));
-            ArtKit.Spawn(ArtKit.Nature + "flower_purpleB.fbx", root.transform, 1.65f);
-            Log.AppendLine("Herb: nature-kit purple medicinal flower (1.65 m)");
+            ArtKit.Spawn(ArtKit.Nature + "plant_bush.fbx", root.transform, 1.35f);
+            Log.AppendLine("Herb: nature-kit bush (1.35 m)");
         });
 
         Edit(Greybox + "Litter.prefab", root =>
