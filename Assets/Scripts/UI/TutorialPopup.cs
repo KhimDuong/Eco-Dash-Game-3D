@@ -38,7 +38,7 @@ public class TutorialPopup : MonoBehaviour
 
         ("Di chuyển & Chiến đấu",
          "• <b>W A S D</b> — di chuyển 4 hướng.\n" +
-         "• <b>J</b> — bắn hạt mầm (giữ để bắn liên tục).\n" +
+         "• <b>Click chuột trái</b> (Góc nhìn 1st) / <b>J</b> (Góc nhìn ¾) — bắn hạt mầm.\n" +
          "• <b>E</b> — tương tác: mở rương, nói chuyện, dùng cổng, bàn chế tạo.\n" +
          // No arrow glyph here: LiberationSans' fallback atlas has no U+2194, so a nice-looking
          // "top-down <-> first person" renders as a tofu box in the one screen that teaches the key.

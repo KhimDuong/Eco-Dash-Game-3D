@@ -60,7 +60,7 @@ and from the hub you portal into either stage and back again at will.
 |-----|--------|-----------|
 | **W / A / S / D** | Move around the ground plane — **W is always "away from the camera"**, whichever way Greenie is facing | Di chuyển |
 | **P** | Switch between the fixed ¾ view and **first person**, and back. In first person, move the **mouse** to look around; W follows where you are looking | Đổi góc nhìn |
-| **J** | Shoot a **Seed** projectile in the direction you're facing (hold to auto-fire) | Bắn hạt mầm |
+| **J** / **Left Click** | Shoot a **Seed** projectile in the direction you're facing (**Left Click** in first person, **J** in ¾ view) | Bắn hạt mầm |
 | **E** | Interact — open chests, grab keycards, talk to NPCs, use portals & the crafting bench, read lore notes | Tương tác |
 | **1 / 2 / 3 / 4** | Use the consumable in that **hotbar** slot (bottom of screen) | Dùng vật phẩm nhanh |
 | **I** or **Tab** | Open / close the **bag** ("Túi Đồ") — items & materials | Túi đồ |

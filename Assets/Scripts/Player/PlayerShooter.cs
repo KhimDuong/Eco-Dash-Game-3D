@@ -45,12 +45,27 @@ public class PlayerShooter : MonoBehaviour
     {
         if (DialogueRunner.IsActive) return;   // no shooting mid-dialogue (M7)
         if (SurfaceFrame.IsClimbing) return;   // both hands on the rock (B9)
+        if (UiModal.AnyOpen) return;           // no shooting when UI screen is open
 
-        var kb = Keyboard.current;
-        if (kb == null || seedPrefab == null) return;
+        if (seedPrefab == null) return;
+
+        bool wantsToFire = false;
+
+        if (PerspectiveMode.IsFirstPerson)
+        {
+            var mouse = Mouse.current;
+            if (mouse != null && mouse.leftButton.isPressed)
+                wantsToFire = true;
+        }
+        else
+        {
+            var kb = Keyboard.current;
+            if (kb != null && kb.jKey.isPressed)
+                wantsToFire = true;
+        }
 
         // Hold-to-fire with cooldown so it feels responsive but not spammy.
-        if (kb.jKey.isPressed && Time.time >= nextFireTime)
+        if (wantsToFire && Time.time >= nextFireTime)
             Fire();
     }
 
