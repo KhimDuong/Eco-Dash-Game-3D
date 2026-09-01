@@ -494,12 +494,13 @@ public static class ArtPass
             if (plant != null)
             {
                 plant.transform.localRotation = Quaternion.Euler(-90f, 0f, 0f);
-                plant.transform.localPosition = new Vector3(0f, -0.65f, 0f);
+                plant.transform.localPosition = new Vector3(0f, -0.15f, 0f);
                 var leafMat = AssetDatabase.LoadAssetAtPath<Material>("Assets/Models/Custom/HerbModel/Mat_Marijuana_Leaf.mat");
-                if (leafMat != null)
+                var branchMat = AssetDatabase.LoadAssetAtPath<Material>("Assets/Models/Custom/HerbModel/Mat_Marijuana_Branch.mat");
+                if (leafMat != null && branchMat != null)
                 {
                     foreach (var r in plant.GetComponentsInChildren<Renderer>())
-                        r.sharedMaterials = new Material[] { leafMat, leafMat };
+                        r.sharedMaterials = new Material[] { leafMat, branchMat };
                 }
             }
             Log.AppendLine("Herb: marijuanna 3D model with URP leaf textures (1.4 m grounded & fully colored)");
