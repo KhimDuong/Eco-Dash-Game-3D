@@ -121,6 +121,7 @@ public class PerspectiveRig : MonoBehaviour
         BindPlayer();
         BuildFirstPersonCamera();
         FirstPersonReticle.Ensure();
+        FirstPersonHitOverlay.Ensure();
     }
 
     void BindPlayer()

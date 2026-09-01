@@ -28,6 +28,8 @@ public class PlayerHealth : MonoBehaviour
 
     /// <summary>Raised with (current, max) whenever health changes.</summary>
     public event Action<int, int> OnHealthChanged;
+    /// <summary>Raised whenever player takes a landed hit.</summary>
+    public event Action OnDamaged;
     /// <summary>Raised once when health reaches zero.</summary>
     public event Action OnDied;
 
@@ -76,8 +78,15 @@ public class PlayerHealth : MonoBehaviour
         CurrentHealth = Mathf.Max(0, CurrentHealth - amount);
         invulnUntil = Time.time + invulnDuration;
         OnHealthChanged?.Invoke(CurrentHealth, maxHealth);
+        OnDamaged?.Invoke();
 
         if (canFlash) StartCoroutine(FlashRoutine());
+        if (PerspectiveMode.IsFirstPerson)
+        {
+            float pitchKick = UnityEngine.Random.Range(2.5f, 4f);
+            float yawKick = UnityEngine.Random.Range(-3f, 3f);
+            PerspectiveMode.Look(yawKick, pitchKick);
+        }
         if (knockbackForce > 0f && controller != null)
         {
             Vector3 away = transform.position - sourcePosition;
