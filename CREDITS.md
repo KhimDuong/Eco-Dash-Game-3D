@@ -4,7 +4,7 @@ Eco-Dash 3D is a **university Game-Development course project (not published,
 not monetized)**. We still acknowledge every borrowed asset here, per our
 [asset policy](ASSETS.md). If you add/borrow any asset, **add a row below.**
 
-Template for a new entry:
+Template for the new entry:
 
 ```
 ### <Pack/Asset name> — by <Author>
