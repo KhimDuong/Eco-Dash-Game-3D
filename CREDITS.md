@@ -104,6 +104,12 @@ except the Fantasy Town Kit, which cycle 2 added.
   a one-state Idle animator controller is generated per model. All by
   `Assets/Editor/ArtPass.cs` — the source files are untouched.
 
+### 3D Medicinal Herb Model (Marijuana Plant)
+- **Used for:** Ông Sáu's Medicinal Herb quest collectible (`Herb.prefab`) in Level 1.
+- **Source:** User provided package (`6y992g5owvi8-marijuanna.rar`).
+- **Files:** `Assets/Models/Custom/HerbModel/` (`marijuanna.fbx`, `marijuanna.obj`, textures).
+- **Modifications:** Model rotated -90° X-axis upright, local Y position aligned to -0.05m to sit flush on terrain ground, scaled to 0.46m height (1/3 scale), and textured with URP Lit materials (`Mat_Marijuana_Leaf` & `Mat_Marijuana_Branch`).
+
 > Read via `.glb`, which Unity cannot import on its own — hence the
 > **`com.unity.cloud.gltfast`** package added to `Packages/manifest.json` in B5.
 

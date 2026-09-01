@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &1284405161040515691
+--- !u!1 &878257165278291318
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -8,9 +8,9 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 1916509363863800017}
-  - component: {fileID: 3258095436346476404}
-  - component: {fileID: 780217576080815038}
+  - component: {fileID: 539273695205195724}
+  - component: {fileID: 3518499901604753513}
+  - component: {fileID: 1671062292457129123}
   m_Layer: 0
   m_Name: Art_marijuanna
   m_TagString: Untagged
@@ -18,36 +18,36 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &1916509363863800017
+--- !u!4 &539273695205195724
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1284405161040515691}
+  m_GameObject: {fileID: 878257165278291318}
   serializedVersion: 2
   m_LocalRotation: {x: -0.7071068, y: 0, z: 0, w: 0.7071068}
   m_LocalPosition: {x: 0, y: -0.05, z: 0}
-  m_LocalScale: {x: 0.2211, y: 0.2211, z: 0.2211}
+  m_LocalScale: {x: 0.21795206, y: 0.21795206, z: 0.21795206}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1220795519762706911}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!33 &3258095436346476404
+--- !u!33 &3518499901604753513
 MeshFilter:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1284405161040515691}
+  m_GameObject: {fileID: 878257165278291318}
   m_Mesh: {fileID: -8613549880523055091, guid: 5a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d, type: 3}
---- !u!23 &780217576080815038
+--- !u!23 &1671062292457129123
 MeshRenderer:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1284405161040515691}
+  m_GameObject: {fileID: 878257165278291318}
   m_Enabled: 1
   m_CastShadows: 1
   m_ReceiveShadows: 1
@@ -122,7 +122,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 1916509363863800017}
+  - {fileID: 539273695205195724}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!135 &69967460872229861
