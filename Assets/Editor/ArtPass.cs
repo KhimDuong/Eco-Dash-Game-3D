@@ -490,8 +490,20 @@ public static class ArtPass
         {
             Kill(root.transform.Find("Leaf"));
             Kill(root.transform.Find("Stem"));
-            ArtKit.Spawn(ArtKit.Nature + "plant_bush.fbx", root.transform, 0.45f);
-            Log.AppendLine("Herb: nature-kit bush (0.45 m)");
+            var plant = ArtKit.Spawn("Assets/Models/Custom/HerbModel/marijuanna.fbx", root.transform, 0.46f);
+            if (plant != null)
+            {
+                plant.transform.localRotation = Quaternion.Euler(-90f, 0f, 0f);
+                plant.transform.localPosition = new Vector3(0f, -0.05f, 0f);
+                var leafMat = AssetDatabase.LoadAssetAtPath<Material>("Assets/Models/Custom/HerbModel/Mat_Marijuana_Leaf.mat");
+                var branchMat = AssetDatabase.LoadAssetAtPath<Material>("Assets/Models/Custom/HerbModel/Mat_Marijuana_Branch.mat");
+                if (leafMat != null && branchMat != null)
+                {
+                    foreach (var r in plant.GetComponentsInChildren<Renderer>())
+                        r.sharedMaterials = new Material[] { leafMat, branchMat };
+                }
+            }
+            Log.AppendLine("Herb: marijuanna 3D model with URP leaf textures (0.46 m grounded & fully colored)");
         });
 
         Edit(Greybox + "Litter.prefab", root =>
