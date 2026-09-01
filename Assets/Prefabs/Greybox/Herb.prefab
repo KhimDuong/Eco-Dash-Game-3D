@@ -31,7 +31,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 2996801010903271579}
+  - {fileID: 3215536769706653179}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!135 &69967460872229861
@@ -53,8 +53,8 @@ SphereCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Radius: 1.4
-  m_Center: {x: 0, y: 0.6, z: 0}
+  m_Radius: 1.5
+  m_Center: {x: 0, y: 0.7, z: 0}
 --- !u!114 &7696853921010365840
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -82,7 +82,7 @@ GameObject:
   - component: {fileID: 2177803991157884734}
   - component: {fileID: 4169746635048629236}
   m_Layer: 0
-  m_Name: Art_flower_redA
+  m_Name: Art_medicinal_herb
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -98,7 +98,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 4.8, y: 4.8, z: 4.8}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1220795519762706911}
@@ -110,14 +110,14 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2512188394513863201}
-  m_Mesh: {fileID: -6502364138876806263, guid: 26fee42ddb47e8047a39321ba72d5505, type: 3}
---- !u!23 &4169746635048629236
+  m_Mesh: {fileID: 4300000, guid: 7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d, type: 3}
+--- !u!23 &4383354267190005396
 MeshRenderer:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2512188394513863201}
+  m_GameObject: {fileID: 2869972787234221889}
   m_Enabled: 1
   m_CastShadows: 1
   m_ReceiveShadows: 1
@@ -137,6 +137,7 @@ MeshRenderer:
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 2100000, guid: 67b675aa9615af44b942f9ace8e12e35, type: 2}
+  - {fileID: 2100000, guid: 8c67235cf702aa8408f4f731ee4d8b8c, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
