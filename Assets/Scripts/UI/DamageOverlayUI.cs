@@ -4,16 +4,17 @@ using UnityEngine.UI;
 
 /// <summary>
 /// Hiệu ứng viền đỏ máu màn hình (Bloody Red Vignette & Damage Overlay).
-/// Tạo kết cấu Vignette bo tròn viền đỏ tối/máu ở runtime (không cần file ảnh bên ngoài)
-/// và nhấp nháy mạnh ở các mép màn hình khi người chơi bị quái vật đánh trúng.
+/// Khởi tạo Canvas uGUI phẳng toàn màn hình ở runtime và bật sáng viền đỏ máu khi bị quái đánh.
 /// </summary>
+[RequireComponent(typeof(RectTransform))]
+[RequireComponent(typeof(Image))]
 public class DamageOverlayUI : MonoBehaviour
 {
     static DamageOverlayUI instance;
+    static Sprite vignetteSprite;
 
     Image flashImage;
     Coroutine fadeRoutine;
-    static Sprite vignetteSprite;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics()
@@ -24,48 +25,49 @@ public class DamageOverlayUI : MonoBehaviour
 
     void Awake()
     {
-        if (instance != null && instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
         instance = this;
-
-        UIFactory.EnsureCanvas(this, sortingOrder: 99);
-        Build();
-    }
-
-    void Build()
-    {
-        var go = new GameObject("DamageBloodVignetteOverlay", typeof(RectTransform), typeof(Image));
-        go.transform.SetParent(transform, false);
-
-        var rt = (RectTransform)go.transform;
-        UIFactory.Fill(rt);
+        flashImage = GetComponent<Image>();
 
         if (vignetteSprite == null)
             vignetteSprite = CreateVignetteSprite();
 
-        flashImage = go.GetComponent<Image>();
         flashImage.sprite = vignetteSprite;
         flashImage.type = Image.Type.Simple;
         flashImage.color = new Color(1f, 1f, 1f, 0f);
-        flashImage.raycastTarget = false; // Không cản trở click chuột/gameplay
+        flashImage.raycastTarget = false; // Không cản trở gameplay
     }
 
-    /// <summary>Kích hoạt hiệu ứng viền đỏ máu nhấp nháy khi trúng đạn/bị đánh.</summary>
-    public static void FlashRed(float duration = 0.4f, float maxAlpha = 0.85f)
+    /// <summary>Kích hoạt hiệu ứng viền đỏ máu lóe lên trên màn hình.</summary>
+    public static void FlashRed(float duration = 0.45f, float maxAlpha = 0.95f)
     {
-        EnsureInstance();
-        if (instance != null) instance.TriggerFlash(duration, maxAlpha);
+        var ui = EnsureInstance();
+        if (ui != null) ui.TriggerFlash(duration, maxAlpha);
     }
 
-    static void EnsureInstance()
+    public static DamageOverlayUI EnsureInstance()
     {
-        if (instance != null) return;
-        var go = new GameObject("~DamageOverlayUI");
-        instance = go.AddComponent<DamageOverlayUI>();
-        DontDestroyOnLoad(go);
+        if (instance != null) return instance;
+
+        // Tạo Canvas Overlay 1920x1080
+        var canvasGo = new GameObject("~DamageCanvas", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+        var canvas = canvasGo.GetComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 99; // Trên hết các UI ngoại trừ Modal/Tutorial
+
+        var scaler = canvasGo.GetComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920, 1080);
+
+        // Tạo GameObject đại diện cho lớp phủ tràn màn hình
+        var overlayGo = new GameObject("DamageBloodOverlay", typeof(RectTransform), typeof(Image), typeof(DamageOverlayUI));
+        overlayGo.transform.SetParent(canvasGo.transform, false);
+
+        var rt = (RectTransform)overlayGo.transform;
+        UIFactory.Fill(rt);
+
+        instance = overlayGo.GetComponent<DamageOverlayUI>();
+        DontDestroyOnLoad(canvasGo);
+        return instance;
     }
 
     void TriggerFlash(float duration, float maxAlpha)
@@ -83,8 +85,8 @@ public class DamageOverlayUI : MonoBehaviour
         {
             elapsed += Time.unscaledDeltaTime;
             float t = elapsed / duration;
-            // Bùng lên viền đỏ máu và mờ dần mượt mà
-            float alpha = Mathf.Lerp(maxAlpha, 0f, Mathf.SmoothStep(0f, 1f, t));
+            // Giữ độ sáng ban đầu một chút rồi giảm mượt mà về 0
+            float alpha = Mathf.Lerp(maxAlpha, 0f, t * t);
             flashImage.color = new Color(1f, 1f, 1f, alpha);
             yield return null;
         }
@@ -93,7 +95,7 @@ public class DamageOverlayUI : MonoBehaviour
         fadeRoutine = null;
     }
 
-    /// <summary>Tạo Texture2D hiệu ứng viền đỏ máu (Vignette) ở 4 góc và viền màn hình.</summary>
+    /// <summary>Tạo Texture2D hiệu ứng viền đỏ máu (Vignette) bo tròn xung quanh màn hình.</summary>
     static Sprite CreateVignetteSprite()
     {
         int width = 256;
@@ -112,22 +114,20 @@ public class DamageOverlayUI : MonoBehaviour
                 // Khoảng cách từ tâm màn hình
                 float distRadial = Mathf.Sqrt(u * u * 4f + v * v * 4f);
                 float distBox = Mathf.Max(Mathf.Abs(u * 2f), Mathf.Abs(v * 2f));
-                
-                // Kết hợp giữa dạng hình tròn và dạng hộp viền màn hình
-                float factor = Mathf.Lerp(distBox, distRadial, 0.45f);
 
-                // Ở giữa màn hình trong suốt (alpha = 0), ở viền tăng dần lên 1
-                float alpha = Mathf.Clamp01((factor - 0.3f) / 0.7f);
-                alpha = Mathf.Pow(alpha, 1.6f);
+                float factor = Mathf.Lerp(distBox, distRadial, 0.4f);
 
-                // Tông màu đỏ máu sẫm (Crimson Red) ở viền và tối thẫm ở 4 góc
-                Color bloodEdgeColor = Color.Lerp(
-                    new Color(0.85f, 0.05f, 0.05f, alpha), 
-                    new Color(0.35f, 0.01f, 0.01f, alpha), 
-                    factor * 0.75f
+                // Tâm trong suốt hoàn toàn, viền màn hình và 4 góc lên màu đỏ thẫm
+                float alpha = Mathf.Clamp01((factor - 0.25f) / 0.75f);
+                alpha = Mathf.Pow(alpha, 1.4f);
+
+                Color bloodColor = Color.Lerp(
+                    new Color(0.95f, 0.03f, 0.03f, alpha), // Viền đỏ tươi
+                    new Color(0.40f, 0.00f, 0.00f, alpha), // Góc đỏ thẫm
+                    factor * 0.7f
                 );
 
-                pixels[y * width + x] = bloodEdgeColor;
+                pixels[y * width + x] = bloodColor;
             }
         }
 

@@ -88,6 +88,7 @@ public class PlayerHealth : MonoBehaviour
             controller.ApplyKnockback(away * knockbackForce, knockbackDuration);
         }
         GameFeel.Shake(hitShakeDuration, hitShakeMagnitude);
+        DamageOverlayUI.FlashRed(0.45f, 0.95f);
 
         if (CurrentHealth == 0)
         {
