@@ -486,9 +486,15 @@ counts.
   drawing from a fresh stream rather than continuing the shared one. It is still a 4.2 m stepped
   mesa with one box collider per column (QA C3's fix is structural, not random) and the spring at
   its foot is at a fixed position. From here on it is stable against edits elsewhere.
-- **The toxic mud pools read as flat pale sheets** from eye height. Pre-existing, unrelated to
+- ~~**The toxic mud pools read as flat pale sheets** from eye height. Pre-existing, unrelated to
   B7, and a gameplay element rather than scenery — flagging it because it was mistaken for a
-  rendering defect while diagnosing this.
+  rendering defect while diagnosing this.~~ **Acted on 2026-08-31: the mud is switched off.**
+  This note was filed as a footnote because eye height was then one press of `P` away; once
+  first person became the default it was the first thing a player sees, and the PO called it.
+  `Level1Builder.ToxicMudEnabled = false` takes out both the three farm pools and the two
+  `GroveSludge` pools in the boss grove — one constant, because Level 1 is the only scene that
+  ever used the prefab. Script, prefab and CSV rows are all kept; flip it back and rebuild.
+  The **pond is untouched** and still wades at −50%, so the valley keeps a slow hazard.
 - **QA C10 / C11 / C12 are untouched** — B7 sits next to C11 and deliberately works around it
   rather than fixing it. C12 in particular is a design-vs-QA disagreement, not a coding bug:
   `Level2Builder.Dress()` states in the code that its 38 factory props carry no colliders on

@@ -117,8 +117,12 @@ four consumables in your bag. Press the number to use one.
 - If the HP bar empties, you lose (see §12).
 
 ### Hazards
-- **Toxic Mud** (purple pools, **"bùn lầy hóa chất"**) — **only slows you to 50%
-  speed**; it does **NOT** deal damage.
+- **Shallow water** (the spring at the foot of the north-west mesa) — wading
+  **slows you to 50% speed**; it does **NOT** deal damage. Seeds fly over it.
+- ~~**Toxic Mud** (purple pools, **"bùn lầy hóa chất"**) — only slows you to 50%
+  speed; it does NOT deal damage.~~ **Temporarily out of the build** (2026-08-31)
+  while its art is redrawn — there are no mud pools in Level 1 at the moment. The
+  spring above is the slow-you-down hazard you will actually meet.
 - **Toxic Gas Zones** (Level 2 / boss) — circles that **flash a harmless warning
   first**, then turn toxic-green and deal damage while you stand in them.
 - **Sweeping lasers** and **manhole traps** (Level 2) — timed factory hazards.

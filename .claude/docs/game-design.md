@@ -83,6 +83,9 @@ corporation's minions, and revives the valley's water and plant life.
   toxic purple.
 - **Hazards:**
   - **Toxic mud pools (purple):** walking in them = **−50% move speed**.
+    *(Built, then switched off 2026-08-31 pending an art redraw — see
+    `Level1Builder.ToxicMudEnabled`. The design stays as written; only the build is missing it.
+    The spring at the mesa's foot carries the −50% wade in the meantime.)*
   - **Rusty debris piles:** solid obstacles forcing detours.
 - **Enemy (simple AI):** **Plastic Slime** — blobs that **patrol to random points**
   near junk piles (intermittent random-destination wander). Touching the player

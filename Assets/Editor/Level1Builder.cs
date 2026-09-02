@@ -33,6 +33,29 @@ public static class Level1Builder
     // holds the ground flat under it).
     static readonly Vector3 GroveCentre = new(-27f, 0f, -19f);
 
+    /// <summary>
+    /// Whether the valley gets its Toxic Mud pools. <b>Temporarily false</b> (2026-08-31, PO
+    /// call): the art reads badly and the hazard has a defect, so the mud is out until it is
+    /// redrawn. Flip this back to <c>true</c> and rebuild to restore it — nothing else needs
+    /// changing, and the <c>mud</c> rows are still in
+    /// <see href="../../Tools/level1_layout.csv">level1_layout.csv</see>.
+    ///
+    /// <para>It governs <b>both</b> uses of the prefab, because they are the same pool with the
+    /// same art: the three <c>mud</c> rows out on the farm, and the two <c>GroveSludge</c> pools
+    /// <see cref="BossGrove"/> puts around the Slime King. Level 1 is the only scene that has
+    /// ever used it, so this switch is the whole of its presence in the game.</para>
+    ///
+    /// <para><b>The pond is unaffected and deliberately so.</b> <see cref="WaterWade"/> is a
+    /// separate script on a separate prefab; it only shares
+    /// <c>PlayerController.EnterMud</c>/<c>ExitMud</c>, which is a speed hook and not a mud
+    /// hook. Wading still slows Greenie exactly as before.</para>
+    ///
+    /// <para><c>static readonly</c> rather than <c>const</c> deliberately: a <c>const false</c>
+    /// is folded at compile time and every line it guards becomes unreachable code the compiler
+    /// warns about. This is a switch meant to be flipped, not dead code.</para>
+    /// </summary>
+    static readonly bool ToxicMudEnabled = false;
+
     static StringBuilder log;
     static Transform envRoot, propRoot, playRoot, enemyRoot;
     static string[] layout;      // the CSV, read once: the profile needs it before placement does
@@ -355,6 +378,9 @@ public static class Level1Builder
                 case "gate": gate = Spawn("TeleportGate", playRoot, pos).transform; break;
                 case "litter": Spawn("Litter", playRoot, pos).name = name; break;
                 case "mud":
+                    // continue, not break: skipping the row must also leave its footprint out of
+                    // `occupied`, so the dressing pass is free to fill the ground the pool left.
+                    if (!ToxicMudEnabled) continue;
                     var mud = Spawn("ToxicMud", playRoot, pos);
                     mud.transform.localScale = new Vector3(a, 1f, b);   // 2D box size → XZ footprint
                     break;
@@ -547,16 +573,20 @@ public static class Level1Builder
             trees++;
         }
 
-        foreach (var (offset, size) in new[]
-        {
-            (new Vector3(2f, 0f, 2f), new Vector3(3f, 1f, 3f)),
-            (new Vector3(-2.2f, 0f, -1.8f), new Vector3(2.5f, 1f, 2.5f)),
-        })
-        {
-            var mud = Spawn("ToxicMud", playRoot, at + offset);
-            mud.name = "GroveSludge";
-            mud.transform.localScale = size;
-        }
+        // The grove's sludge is the same ToxicMud prefab wearing a different name, so it comes
+        // and goes with the same switch (see ToxicMudEnabled). Without it the Slime King fights
+        // on bare ground, which is a look, not a bug.
+        if (ToxicMudEnabled)
+            foreach (var (offset, size) in new[]
+            {
+                (new Vector3(2f, 0f, 2f), new Vector3(3f, 1f, 3f)),
+                (new Vector3(-2.2f, 0f, -1.8f), new Vector3(2.5f, 1f, 2.5f)),
+            })
+            {
+                var mud = Spawn("ToxicMud", playRoot, at + offset);
+                mud.name = "GroveSludge";
+                mud.transform.localScale = size;
+            }
 
         var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Enemies/SlimeKing.prefab");
         if (prefab == null)
@@ -568,7 +598,10 @@ public static class Level1Builder
         king.name = "SlimeKing";
         king.transform.position = at;
         occupied.Add(new Vector2(at.x, at.z));
-        log.AppendLine("  boss grove at " + at + ": SlimeKing, " + trees + " dead trees, 2 sludge pools");
+        // Report what was built, not what the code used to build: the sludge count was a
+        // literal 2 and went on claiming two pools after ToxicMudEnabled removed them.
+        log.AppendLine("  boss grove at " + at + ": SlimeKing, " + trees + " dead trees, " +
+                       (ToxicMudEnabled ? "2 sludge pools" : "no sludge (ToxicMudEnabled is off)"));
     }
 
     static void Note(string id, Vector3 pos)
