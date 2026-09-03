@@ -511,7 +511,7 @@ public static class Level1Builder
 
     static void BeMay(Vector3 pos)
     {
-        var go = Spawn("NPC_VillagerGirl", playRoot, pos);
+        var go = Spawn("NPC_VillagerWoman", playRoot, pos);
         go.name = "BeMay";
         var npc = go.AddComponent<SideQuestNPC>();
         var so = new SerializedObject(npc);
