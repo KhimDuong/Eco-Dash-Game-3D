@@ -115,12 +115,12 @@ public class GroundProfile
 
     [Header("Where it is allowed to be")]
     [Tooltip("The play area's half-extents. Relief only exists inside it.")]
-    public Vector2 halfExtents = new(32.5f, 24.5f);
+    public Vector2 halfExtents = new(32f, 24f);
     [Tooltip("Dead flat within this many metres of the boundary. The walls, the 112 fence " +
              "posts and everything else authored against the perimeter never move.")]
-    public float edgeFlat = 4f;
+    public float edgeFlat = 0.8f;
     [Tooltip("Ramps up to full relief over this many further metres inward.")]
-    public float edgeFeather = 5f;
+    public float edgeFeather = 2.0f;
     public List<FlatZone> flat = new();
 
     /// <summary>Ground height at a world XZ, in metres.</summary>

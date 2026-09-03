@@ -31,7 +31,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 5992580287711871420}
+  - {fileID: 8879891691820864321}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!135 &69967460872229861
@@ -70,7 +70,7 @@ MonoBehaviour:
   pickupSound: {fileID: 8300000, guid: 85f8fe2dd10192b4d91739e89240c15c, type: 3}
   bobSpeed: 2
   bobHeight: 0
---- !u!1 &6368719519931915014
+--- !u!1 &8102088836334258683
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -78,9 +78,9 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 5992580287711871420}
-  - component: {fileID: 7243538145761562137}
-  - component: {fileID: 4855655387120859859}
+  - component: {fileID: 8879891691820864321}
+  - component: {fileID: 5518156284100336868}
+  - component: {fileID: 7741857833761843246}
   m_Layer: 0
   m_Name: Art_marijuanna
   m_TagString: Untagged
@@ -88,13 +88,13 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &5992580287711871420
+--- !u!4 &8879891691820864321
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6368719519931915014}
+  m_GameObject: {fileID: 8102088836334258683}
   serializedVersion: 2
   m_LocalRotation: {x: -0.7071068, y: 0, z: 0, w: 0.7071068}
   m_LocalPosition: {x: 0, y: -0.05, z: 0}
@@ -103,21 +103,21 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1220795519762706911}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!33 &7243538145761562137
+--- !u!33 &5518156284100336868
 MeshFilter:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6368719519931915014}
+  m_GameObject: {fileID: 8102088836334258683}
   m_Mesh: {fileID: -8613549880523055091, guid: 5a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d, type: 3}
---- !u!23 &4855655387120859859
+--- !u!23 &7741857833761843246
 MeshRenderer:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6368719519931915014}
+  m_GameObject: {fileID: 8102088836334258683}
   m_Enabled: 1
   m_CastShadows: 1
   m_ReceiveShadows: 1

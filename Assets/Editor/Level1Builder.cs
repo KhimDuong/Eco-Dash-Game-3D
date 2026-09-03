@@ -26,8 +26,8 @@ public static class Level1Builder
     const string LayoutCsv = "Tools/level1_layout.csv";
     const string Kit = "Assets/Prefabs/Greybox/";
 
-    // The 2D level's walls sat at x = ±32.5 and y = ±24.5, 1 m thick.
-    const float HalfX = 32.5f, HalfZ = 24.5f, WallHeight = 3f, Tile = 4f;
+    // The 2D level's walls sat at x = ±32 and y = ±24, 1 m thick (64 x 48 m tile grid).
+    const float HalfX = 32f, HalfZ = 24f, WallHeight = 3f, Tile = 4f;
 
     // The boss grove's centre, shared by BossGrove (which builds it) and BuildProfile (which
     // holds the ground flat under it).
