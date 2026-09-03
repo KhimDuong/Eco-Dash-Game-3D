@@ -76,6 +76,7 @@ public static class Level2Builder
         TerrainKit.FactoryHall(envRoot, log, MazeHalfExtents());
         Dress();
         ScatterLitter();
+        AddExtras();
         PlaceSystems();
         SetupLighting();
         int navOk = BakeNavMesh();
@@ -223,6 +224,58 @@ public static class Level2Builder
             placedAt.Add(p);
         }
         log.AppendLine("  litter: " + placedAt.Count + " pieces of factory waste to clean");
+    }
+
+    static void AddExtras()
+    {
+        // Co Lan NPC at entrance
+        CoLan(playerStart + new Vector3(2.5f, 0f, 1.5f));
+
+        // 4 Factory Lore Notes
+        Note("ln_factory_1", new Vector3(-12f, 0f, 10f));
+        Note("ln_factory_2", new Vector3(14f, 0f, 8f));
+        Note("ln_factory_3", new Vector3(-10f, 0f, -8f));
+        Note("ln_factory_4", new Vector3(12f, 0f, -10f));
+    }
+
+    static void CoLan(Vector3 pos)
+    {
+        var go = Spawn(Greybox, "NPC_VillagerWoman", playRoot, pos);
+        go.name = "CoLan";
+        var npc = go.AddComponent<SideQuestNPC>();
+        var so = new SerializedObject(npc);
+        so.FindProperty("questId").stringValue = QuestCatalog.LanIntel;
+        so.FindProperty("grantFlag").stringValue = QuestLog.FlagRecipePortal;
+
+        SetLines(so.FindProperty("offerLines"), new[]
+        {
+            ("Cô Lan", "Greenie ơi! Tập đoàn Khói Đen đang che giấu các tài liệu xả thải độc hại bên trong nhà máy này."),
+            ("Cô Lan", "Cháu hãy tìm giúp cô 3 mẩu nhật ký/báo cáo bị giấu rải rác trong các ngách nhà máy nhé! Cô sẽ thưởng cho cháu công thức chế Mảnh Cổng Dịch Chuyển."),
+        });
+        SetLines(so.FindProperty("inProgressLines"), new[]
+        {
+            ("Cô Lan", "Cháu tìm thêm nhật ký trong các ngách mê cung giúp cô nhé! Cần đủ 3 mẩu tài liệu."),
+        });
+        SetLines(so.FindProperty("doneLines"), new[]
+        {
+            ("Cô Lan", "Cảm ơn cháu! Nhờ 3 mẩu tài liệu này cô đã có đủ bằng chứng vạch trần tập đoàn Khói Đen rồi!"),
+        });
+        var promptTr = go.transform.Find("Prompt");
+        if (promptTr != null) so.FindProperty("prompt").objectReferenceValue = promptTr.gameObject;
+        so.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    static void Note(string id, Vector3 pos)
+    {
+        var go = Spawn(Greybox, "LoreNote", playRoot, pos);
+        go.name = id;
+        var note = go.GetComponent<LoreNote>();
+        if (note != null)
+        {
+            var so = new SerializedObject(note);
+            so.FindProperty("noteId").stringValue = id;
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
     }
 
     /// <summary>
