@@ -585,6 +585,9 @@ public static class ArtPass
             var body = root.transform.Find("Body");
             ArtKit.Spawn(ArtKit.Quat + "Farmer.glb", body, 1.62f, rotY: 180f, idle: true,
                          variant: "BaTu", recolour: BaTuPalette);
+            Log.AppendLine("NPC_VillagerWoman: recoloured farmer (1.62 m) — Bà Tư");
+        });
+
         // Bé Mây: custom 3D girl model (GIRL fbx.fbx) at child height (1.25 m)
         Variant(Greybox + "NPC_Villager.prefab", Greybox + "NPC_VillagerGirl.prefab", root =>
         {
