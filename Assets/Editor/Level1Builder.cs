@@ -516,18 +516,33 @@ public static class Level1Builder
         var npc = go.AddComponent<SideQuestNPC>();
         var so = new SerializedObject(npc);
         so.FindProperty("questId").stringValue = QuestCatalog.MayPet;
+        so.FindProperty("completion").enumValueIndex = (int)SideQuestNPC.Completion.TurnInItems;
+        
+        var idsProp = so.FindProperty("turnInIds");
+        idsProp.arraySize = 1;
+        idsProp.GetArrayElementAtIndex(0).stringValue = "scrap";
+        
+        var countsProp = so.FindProperty("turnInCounts");
+        countsProp.arraySize = 1;
+        countsProp.GetArrayElementAtIndex(0).intValue = 1;
+
         SetLines(so.FindProperty("offerLines"), new[]
         {
-            ("Bé Mây", "Huhu... anh Greenie ơi, con Robot cưng của em bị lạc mất rồi!"),
-            ("Bé Mây", "Em thấy nó bị dạt về phía góc thung lũng, nơi có mấy con Slime hung dữ lắm... Anh giúp em tìm lại nó với!"),
+            ("Bé Mây", "Huhu... anh Greenie ơi, con Robot cưng của em bị rơi mất linh kiện ở góc thung lũng rồi!"),
+            ("Bé Mây", "Mấy con Slime ở góc thung lũng nhặt mất Mảnh Kim Loại linh kiện của nó... Anh giúp em thu hồi lại 1 Mảnh Kim Loại với!"),
         });
         SetLines(so.FindProperty("inProgressLines"), new[]
         {
-            ("Bé Mây", "Anh tìm thấy Robot cưng của em ở góc thung lũng chưa? Huhu..."),
+            ("Bé Mây", "Anh đánh bại Slime nhặt lại Mảnh Kim Loại linh kiện cho em chưa? Huhu..."),
+        });
+        SetLines(so.FindProperty("readyLines"), new[]
+        {
+            ("Bé Mây", "Anh tìm thấy linh kiện Robot cho em rồi! Cảm ơn anh Greenie nhiều lắm!"),
+            ("Bé Mây", "Em sẽ dọn lên Trạm Tái Chế ở với Ông Bear cho an toàn."),
         });
         SetLines(so.FindProperty("doneLines"), new[]
         {
-            ("Bé Mây", "Cảm ơn anh Greenie đã tìm lại Robot cho em! Em sẽ dọn lên Trạm Tái Chế ở với Ông Bear cho an toàn."),
+            ("Bé Mây", "Cảm ơn anh Greenie! Em đang chuẩn bị dọn lên Trạm Tái Chế đây."),
         });
         var promptTr = go.transform.Find("Prompt");
         if (promptTr != null) so.FindProperty("prompt").objectReferenceValue = promptTr.gameObject;
@@ -541,20 +556,35 @@ public static class Level1Builder
         var npc = go.AddComponent<SideQuestNPC>();
         var so = new SerializedObject(npc);
         so.FindProperty("questId").stringValue = QuestCatalog.TaiPond;
+        so.FindProperty("completion").enumValueIndex = (int)SideQuestNPC.Completion.TurnInItems;
         so.FindProperty("rewardItemId").stringValue = "portal_shard";
         so.FindProperty("rewardItemCount").intValue = 1;
+
+        var idsProp = so.FindProperty("turnInIds");
+        idsProp.arraySize = 1;
+        idsProp.GetArrayElementAtIndex(0).stringValue = "bottle";
+        
+        var countsProp = so.FindProperty("turnInCounts");
+        countsProp.arraySize = 1;
+        countsProp.GetArrayElementAtIndex(0).intValue = 3;
+
         SetLines(so.FindProperty("offerLines"), new[]
         {
-            ("Ông Tài", "Chào cháu robot! Cái ao này bị ô nhiễm rác thải nặng quá, lão không câu cá được nữa."),
-            ("Ông Tài", "Cháu giúp lão dọn sạch rác quanh ao độc này nhé! Lão sẽ thưởng cho cháu 1 Mảnh Cổng Dịch Chuyển quý giá."),
+            ("Ông Tài", "Chào cháu robot! Cái ao này bị ô nhiễm rác thải Chai Nhựa nặng quá, lão không câu cá được nữa."),
+            ("Ông Tài", "Cháu hãy bắn nổ rác quanh ao thu gom 3 Chai Nhựa đem lại cho lão nhé! Lão sẽ thưởng cho cháu 1 Mảnh Cổng Dịch Chuyển quý giá."),
         });
         SetLines(so.FindProperty("inProgressLines"), new[]
         {
-            ("Ông Tài", "Dọn thêm rác quanh ao giúp lão nhé cháu! Đủ rác lão mới câu cá lại được."),
+            ("Ông Tài", "Bắn nổ rác gom đủ 3 Chai Nhựa quanh ao đem lại cho lão nhé cháu!"),
+        });
+        SetLines(so.FindProperty("readyLines"), new[]
+        {
+            ("Ông Tài", "Cháu đã gom đủ 3 Chai Nhựa rác thải rồi sao? Giỏi lắm! Nước ao bắt đầu trong trở lại rồi."),
+            ("Ông Tài", "Cảm ơn cháu nhiều lắm! Đây là 1 Mảnh Cổng Dịch Chuyển như lão đã hứa."),
         });
         SetLines(so.FindProperty("doneLines"), new[]
         {
-            ("Ông Tài", "Nước ao trong sạch lại rồi! Cảm ơn cháu nhiều lắm, đây là Mảnh Cổng như lão đã hứa."),
+            ("Ông Tài", "Nước ao trong sạch lại rồi! Cảm ơn cháu, chúc cháu thượng lộ bình an."),
         });
         var promptTr = go.transform.Find("Prompt");
         if (promptTr != null) so.FindProperty("prompt").objectReferenceValue = promptTr.gameObject;
