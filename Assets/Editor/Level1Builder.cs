@@ -509,6 +509,58 @@ public static class Level1Builder
         so.ApplyModifiedPropertiesWithoutUndo();
     }
 
+    static void BeMay(Vector3 pos)
+    {
+        var go = Spawn("NPC_VillagerWoman", playRoot, pos);
+        go.name = "BeMay";
+        var npc = go.AddComponent<SideQuestNPC>();
+        var so = new SerializedObject(npc);
+        so.FindProperty("questId").stringValue = QuestCatalog.MayPet;
+        SetLines(so.FindProperty("offerLines"), new[]
+        {
+            ("Bé Mây", "Huhu... anh Greenie ơi, con Robot cưng của em bị lạc mất rồi!"),
+            ("Bé Mây", "Em thấy nó bị dạt về phía góc thung lũng, nơi có mấy con Slime hung dữ lắm... Anh giúp em tìm lại nó với!"),
+        });
+        SetLines(so.FindProperty("inProgressLines"), new[]
+        {
+            ("Bé Mây", "Anh tìm thấy Robot cưng của em ở góc thung lũng chưa? Huhu..."),
+        });
+        SetLines(so.FindProperty("doneLines"), new[]
+        {
+            ("Bé Mây", "Cảm ơn anh Greenie đã tìm lại Robot cho em! Em sẽ dọn lên Trạm Tái Chế ở với Ông Bear cho an toàn."),
+        });
+        var promptTr = go.transform.Find("Prompt");
+        if (promptTr != null) so.FindProperty("prompt").objectReferenceValue = promptTr.gameObject;
+        so.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    static void OngTai(Vector3 pos)
+    {
+        var go = Spawn("NPC_Villager", playRoot, pos);
+        go.name = "OngTai";
+        var npc = go.AddComponent<SideQuestNPC>();
+        var so = new SerializedObject(npc);
+        so.FindProperty("questId").stringValue = QuestCatalog.TaiPond;
+        so.FindProperty("rewardItemId").stringValue = "portal_shard";
+        so.FindProperty("rewardItemCount").intValue = 1;
+        SetLines(so.FindProperty("offerLines"), new[]
+        {
+            ("Ông Tài", "Chào cháu robot! Cái ao này bị ô nhiễm rác thải nặng quá, lão không câu cá được nữa."),
+            ("Ông Tài", "Cháu giúp lão dọn sạch rác quanh ao độc này nhé! Lão sẽ thưởng cho cháu 1 Mảnh Cổng Dịch Chuyển quý giá."),
+        });
+        SetLines(so.FindProperty("inProgressLines"), new[]
+        {
+            ("Ông Tài", "Dọn thêm rác quanh ao giúp lão nhé cháu! Đủ rác lão mới câu cá lại được."),
+        });
+        SetLines(so.FindProperty("doneLines"), new[]
+        {
+            ("Ông Tài", "Nước ao trong sạch lại rồi! Cảm ơn cháu nhiều lắm, đây là Mảnh Cổng như lão đã hứa."),
+        });
+        var promptTr = go.transform.Find("Prompt");
+        if (promptTr != null) so.FindProperty("prompt").objectReferenceValue = promptTr.gameObject;
+        so.ApplyModifiedPropertiesWithoutUndo();
+    }
+
     static void SetLines(SerializedProperty array, (string speaker, string text)[] lines)
     {
         array.arraySize = lines.Length;
@@ -525,6 +577,10 @@ public static class Level1Builder
 
     static void AddExtras()
     {
+        // Side-quest NPCs (Bé Mây at the village, Ông Tài at the pond)
+        BeMay(new Vector3(1.5f, 0f, 18.5f));
+        OngTai(new Vector3(-21f, 0f, 10.5f));
+
         // The 2D build had a single TEST_LoreNote; the valley owns four catalogue notes.
         Note("ln_valley_1", new Vector3(-14f, 0f, 8f));
         Note("ln_valley_2", new Vector3(20f, 0f, 6f));
