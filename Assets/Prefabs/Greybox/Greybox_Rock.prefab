@@ -30,7 +30,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 5419849853755404528}
+  - {fileID: 6397688666498215721}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!135 &8621539172354562335
@@ -54,7 +54,7 @@ SphereCollider:
   serializedVersion: 3
   m_Radius: 0.3454816
   m_Center: {x: 0, y: 0.35, z: 0}
---- !u!1 &4646866084538575434
+--- !u!1 &6017644037444171155
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -62,9 +62,9 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 5419849853755404528}
-  - component: {fileID: 8978197628517105493}
-  - component: {fileID: 6592144389849795487}
+  - component: {fileID: 6397688666498215721}
+  - component: {fileID: 8027380906625081484}
+  - component: {fileID: 5224750812889404486}
   m_Layer: 0
   m_Name: Art_rock_tallA
   m_TagString: Untagged
@@ -72,13 +72,13 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &5419849853755404528
+--- !u!4 &6397688666498215721
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4646866084538575434}
+  m_GameObject: {fileID: 6017644037444171155}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -87,21 +87,21 @@ Transform:
   m_Children: []
   m_Father: {fileID: 2033765149477613382}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!33 &8978197628517105493
+--- !u!33 &8027380906625081484
 MeshFilter:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4646866084538575434}
+  m_GameObject: {fileID: 6017644037444171155}
   m_Mesh: {fileID: 6033134405945360628, guid: dd5bad1952cd38d4e841b9e8d8ccabb1, type: 3}
---- !u!23 &6592144389849795487
+--- !u!23 &5224750812889404486
 MeshRenderer:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4646866084538575434}
+  m_GameObject: {fileID: 6017644037444171155}
   m_Enabled: 1
   m_CastShadows: 1
   m_ReceiveShadows: 1
